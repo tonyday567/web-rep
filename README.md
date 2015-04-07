@@ -10,7 +10,8 @@ Representation of a web page, based on lucid.
 
 ## Develop
 
-The libray requires a bespoke version of the mvc library which can be found <a href="https://github.com/tonyday567/Haskell-MVC-Library"> in the `dev` branch. It also requires <a href="https://github.com/tonyday567/mvc-extended">, <a href="https://github.com/tonyday567/time-extended"> and <a href="https://github.com/tonyday567/pipes-extended">.
+The libray requires a bespoke version of the mvc library which can be found in the [mvc - dev branch][]. It also requires [mvc-extended][], [time-extended][] and [pipes-extended][].
+
 
 ``` sh
 $ git clone https://github.com/tonyday567/mvc-extended.git
@@ -31,3 +32,8 @@ $ cabal install --dependencies-only
 $ cabal build
 $ dist/build/test/test
 ```
+
+[mvc - dev branch]: https://github.com/tonyday567/Haskell-MVC-Library/tree/dev
+[mvc-extended]: https://github.com/tonyday567/mvc-extended
+[time-extended]: https://github.com/tonyday567/time-extended
+[pipes-extended]: https://github.com/tonyday567/pipes-extended
