@@ -18,6 +18,7 @@ module Lucid.Page.Css
   ) where
 
 import Clay hiding (optimizeSpeed, geometricPrecision, PlayState)
+import Clay.Render
 import Clay.Stylesheet (key)
 import Control.Applicative
 import Data.Monoid
@@ -29,7 +30,17 @@ instance Monoid Css where
   mappend = liftA2 mappend
 
 instance Show Css where
-  show = unpack . render
+  show = 
+    unpack . 
+    renderWith Config 
+    { indentation    = "  "
+    , newline        = "\n"
+    , sep            = " "
+    , finalSemicolon = True
+    , warn           = True
+    , align          = True
+    , banner         = False
+    } []
 
 -- SVG css
 fill :: Color -> Css

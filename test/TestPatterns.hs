@@ -2,16 +2,20 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+-- Creates a page with QUnit tests
+-- Testing requires 
+-- 1. run makeTestPatterns
+-- 2. visit test/canned/test-patterns.html in a browser
+
 module TestPatterns where
 
-import Control.Applicative
-import Data.Monoid
 import qualified Data.Map as Map
-import Web.Page
+import           Data.Monoid
+import           Lucid.Page
 
 modCounter :: JExpr
 modCounter = 
-  module' 
+  moduleE 
   [] 
   []
   [var' "i" (0::Int)]
@@ -23,11 +27,11 @@ modCounter =
 
 modCounter' :: JExpr
 modCounter' = 
-  module' [] [] 
+  moduleE [] [] 
   [ var' "i" (0::Int) 
-  , (ref "get" =: fun' [] [] (ref "i"))
-  , (ref "set" =: fun' ["val"] [[jmacro|i=val;|]] (ref "null"))
-  , (ref "increment" =: fun' [] [] [jmacroE|++i|])
+  , ref "get" =: fun' [] [] (ref "i")
+  , ref "set" =: fun' ["val"] [[jmacro|i=val;|]] (ref "null")
+  , ref "increment" =: fun' [] [] [jmacroE|++i|]
   ]
   $ Map.fromList 
   [ ("get", ref "get")
@@ -37,7 +41,7 @@ modCounter' =
 
 modCounter'' :: JExpr
 modCounter'' = 
-  module' 
+  moduleE 
   ["i"]
   [0]
   []
@@ -91,6 +95,7 @@ tCounter'' =
    |]
 
 
+tPage :: Page
 tPage = 
   Page 
   ["http://code.jquery.com/qunit/qunit-1.17.1.css"] 
@@ -104,7 +109,9 @@ tPage =
     div_ [id_ "qunit-fixture"] mempty)
 
 
-tPageConfig = PageConfig Separated Headless Pretty LinkedLibs (Concerns "test.css" "test.js" "test.html")
+tPageConfig :: PageConfig
+tPageConfig = PageConfig Separated Headless Pretty LinkedLibs (Concerns "test-patterns.css" "test-patterns.js" "test-patterns.html")
 
-tFile = renderPageToFileConcernsWith' tPageConfig tPage (Concerns mempty "test.js" "test.html")
+makeTestPatterns :: IO ()
+makeTestPatterns = renderPageToFile "test/canned" tPageConfig tPage
 

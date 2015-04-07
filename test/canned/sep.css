@@ -1,0 +1,19 @@
+
+{
+  font-size   : 10px;
+  font-family : "Arial","Helvetica", sans-serif;
+}
+
+#btnGo
+{
+  margin-top    : 20px;
+  margin-bottom : 20px;
+}
+
+#btnGo.on
+{
+  color : rgb(0,128,0);
+}
+
+
+/* Generated with Clay, http://fvisser.nl/clay */

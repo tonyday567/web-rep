@@ -1,10 +1,15 @@
-name:                lucid-page
-version:             0.1.0.0
-license-file:        LICENSE
-author:              Tony Day
-maintainer:          tonyday567@gmail.com
-build-type:          Simple
-cabal-version:       >=1.10
+name: lucid-page
+version: 0.0.1
+cabal-version: >=1.10
+build-type: Simple
+license: MIT
+license-file: LICENSE.md
+maintainer: Tony Day <tonyday567@gmail.com>
+bug-reports: https://github.com/tonyday567/lucid-page/issues
+synopsis: Haskell project lucid-page repo 
+description: <https://github.com/tonyday567/lucid-page>
+extra-source-files:
+    README.md
 
 library
   exposed-modules:     Lucid.Page
@@ -17,6 +22,7 @@ library
                      , Language.Javascript.JMacro.Chain
 
   build-depends:       base >=4.7 && <4.8
+                     , HTTP
                      , blaze-builder
                      , bytestring
                      , clay
@@ -29,6 +35,7 @@ library
                      , lens
                      , lucid
                      , mtl
+                     , mvc-extended
                      , text
                      , transformers
 
@@ -40,8 +47,9 @@ test-suite test
   main-is:             test.hs
   default-language:    Haskell2010
   ghc-options:         -Wall -O2 -threaded
-  hs-source-dirs:      test
+  hs-source-dirs:      src, test
   build-depends:       base >= 4 && < 5
+                     , HTTP
                      , lucid-page
                      , blaze-builder
                      , bytestring
@@ -56,7 +64,14 @@ test-suite test
                      , lens
                      , lucid
                      , mtl
+                     , mvc-extended
                      , tasty
                      , tasty-hspec
                      , text
                      , transformers
+                     -- extras
+                     , http-client
+                     , pipes
+                     , pipes-http
+                     , pipes-extended
+                     , pipes-bytestring

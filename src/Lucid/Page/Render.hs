@@ -17,6 +17,7 @@ import           Data.Monoid
 import           Data.Text.Lazy (Text, pack, toStrict, fromStrict)
 import           Data.Text.Lazy.IO (writeFile)
 import qualified Data.Text as Text
+import Data.Traversable
 import           Lucid
 import           Prelude hiding (writeFile)
 import qualified Lucid.Page.Css as Css
@@ -36,57 +37,66 @@ renderPageWith pc p =
     Inline    -> (mempty, mempty, h)
     Separated -> (css, js, h)
   where
-    p' = case pc^.pagecConcerns of
-      Inline -> p
-      Separated -> pageLibsCss %~ (<>cssLink) $ pageLibsJs %~ (<>jsLink) $ p
-    cssLink = if css == mempty then mempty else [Text.pack (_css $ pc^.pagecFilenames)]
-    jsLink = if js == mempty then mempty else [Text.pack (_js $ pc^.pagecFilenames)]
     h = case pc^.pagecStructure of
       HeaderBody -> 
         doctypehtml_ $
         head_ $ mconcat
         [ meta_ [charset_ "utf-8"]
-        , mconcat (((\x -> link_ [x,rel_ "stylesheet"]) . href_) <$> (p'^.pageLibsCss))
-        , mconcat ((\x -> with (script_ mempty) [src_ x]) <$> p'^.pageLibsJs)
+        , mconcat (((\x -> link_ [x,rel_ "stylesheet"]) . href_) <$> libsCss')
+        , mconcat ((\x -> with (script_ mempty) [src_ x]) <$> libsJs')
         , jsInline
         , cssInline
-        , p'^.pageHtmlHeader
+        , p^.pageHtmlHeader
         ] <>
-        body_ (p'^.pageHtmlBody)
+        body_ (p^.pageHtmlBody)
       Headless ->
         mconcat
         [ doctype_
         , meta_ [charset_ "utf-8"]
-        , mconcat (((\x -> link_ [x,rel_ "stylesheet"]) . href_) <$> (p'^.pageLibsCss))
+        , mconcat (((\x -> link_ [x,rel_ "stylesheet"]) . href_) <$> libsCss')
         , cssInline
-        , mconcat ((\x -> with (script_ mempty) [src_ x]) <$> p'^.pageLibsJs)
-        , p'^.pageHtmlHeader
-        , p'^.pageHtmlBody
+        , mconcat ((\x -> with (script_ mempty) [src_ x]) <$> libsJs')
+        , p^.pageHtmlHeader
+        , p^.pageHtmlBody
         , jsInline
         ]  
       Svg ->
         Html.doctypesvg_ <> 
         svg_ 
         (Html.defs_ $ mconcat
-         [ renderLibsJsSvg (fromStrict <$> p'^.pageLibsJs)
-         , renderLibsCssSvg (fromStrict <$> p'^.pageLibsCss)
+         [ renderLibsJsSvg (fromStrict <$> libsJs')
+         , renderLibsCssSvg (fromStrict <$> libsCss')
          , cssInline
          , jsInline
-         , p'^.pageHtmlBody
+         , p^.pageHtmlBody
          ])
-    css = rendercss (p'^.pageCss)
-    js = renderjs (p'^.pageJsGlobal <> Js.onLoad (p'^.pageJsOnLoad))
+    css = rendercss (p^.pageCss)
+    js = renderjs (p^.pageJsGlobal <> Js.onLoad (p^.pageJsOnLoad))
     (renderjs, rendercss) = renderers $ pc^.pagecRender 
-    (cssInline, jsInline) = 
-      case pc^.pagecConcerns of
-        Separated    -> (mempty,mempty)
-        Inline -> (style_ [type_ (toStrict $ pack "text/css")] css, script_ mempty js)
+    cssInline
+      | pc^.pagecConcerns == Separated || css==mempty = mempty
+      | otherwise = style_ [type_ (toStrict $ pack "text/css")] css
+    jsInline
+      | pc^.pagecConcerns == Separated || js==mempty = mempty
+      | otherwise = script_ mempty js
+    libsCss = case pc^.pagecLibs of
+      LinkedLibs -> p^.pageLibsCss
+      LocalLibs dir -> (\x -> Text.pack dir <> x) <$> p^.pageLibsCss
+    libsCss' = case pc^.pagecConcerns of
+      Inline -> libsCss
+      Separated -> libsCss <> [Text.pack (_css $ pc^.pagecFilenames)]
+    libsJs = case pc^.pagecLibs of
+      LinkedLibs -> p^.pageLibsJs
+      LocalLibs dir -> (\x -> Text.pack dir <> x) <$> p^.pageLibsJs
+    libsJs' = case pc^.pagecConcerns of
+      Inline -> libsJs
+      Separated -> libsJs <> [Text.pack (_js $ pc^.pagecFilenames)]
 
-renderPageToFile :: PageConfig -> Page -> IO ()
-renderPageToFile pc@(PageConfig _ _ _ _ files) page =
-  liftIO $ liftA2 writeFile' files (renderPageText pc page)
+renderPageToFile :: FilePath -> PageConfig -> Page -> IO ()
+renderPageToFile dir pc@(PageConfig _ _ _ _ files) page =
+  void $ sequenceA $ liftA2 writeFile' files (renderPageText pc page)
   where
-    writeFile' fp s = unless (fp==mempty) (writeFile fp s)
+    writeFile' fp s = unless (s==mempty) (writeFile (dir<>"/"<>fp) s)
 
 renderPageHtmlToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageHtmlToFile file pc page =

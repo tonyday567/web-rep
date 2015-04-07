@@ -51,13 +51,13 @@ instance Applicative Concerns where
   pure a = Concerns a a a
   Concerns f g h <*> Concerns a b c = Concerns (f a) (g b) (h c)
 
-liftIO :: Concerns (IO ()) -> IO ()
-liftIO (Concerns c j h) = c >> j >> h >> return ()
+concernNames :: FilePath -> FilePath -> Concerns FilePath
+concernNames dir stem = (\x->dir<>stem<>x) <$> Concerns ".css" ".js" ".html"
 
-data PageConcerns = Inline | Separated deriving Show
-data PageStructure = HeaderBody | Headless | Svg deriving Show
-data PageLibs = LocalLibs | LinkedLibs deriving Show
-data PageRender = Pretty | Minified deriving Show
+data PageConcerns = Inline | Separated deriving (Show, Eq)
+data PageStructure = HeaderBody | Headless | Svg deriving (Show, Eq)
+data PageLibs = LocalLibs FilePath | LinkedLibs deriving (Show, Eq)
+data PageRender = Pretty | Minified deriving (Show, Eq)
 
 data PageConfig =
   PageConfig
@@ -65,8 +65,8 @@ data PageConfig =
   , _pagecStructure :: PageStructure
   , _pagecRender :: PageRender
   , _pagecLibs :: PageLibs
-  , _pagecFilenames :: Concerns String
-  } deriving (Show)
+  , _pagecFilenames :: Concerns FilePath
+  } deriving (Show, Eq)
 
 instance Default PageConfig where
     def = PageConfig Inline HeaderBody Minified LinkedLibs (Concerns "def.css" "def.js" "def.html")
