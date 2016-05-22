@@ -21,14 +21,14 @@ library
                      , Lucid.Page.Render
                      , Language.Javascript.JMacro.Chain
 
-  build-depends:       base >=4.7 && <4.8
+  build-depends:       base
                      , HTTP
                      , blaze-builder
                      , bytestring
                      , clay
                      , containers
                      , data-default
-                     , happstack-server >= 7.3.9
+                     , happstack-server
                      , hjsmin
                      , jmacro
                      , language-javascript
@@ -38,6 +38,7 @@ library
                      , mvc-extended
                      , text
                      , transformers
+                     , blaze-html
 
   hs-source-dirs:      src      
   default-language:    Haskell2010
@@ -56,7 +57,7 @@ test-suite test
                      , clay
                      , containers
                      , data-default
-                     , happstack-server >= 7.3.9
+                     , happstack-server
                      , hjsmin
                      , hspec
                      , jmacro
@@ -75,3 +76,4 @@ test-suite test
                      , pipes-http
                      , pipes-extended
                      , pipes-bytestring
+                     , blaze-html

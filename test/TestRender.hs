@@ -6,7 +6,6 @@ module TestRender where
 
 import           Lucid.Page
 
-import           Control.Applicative
 import           Control.Lens
 import           Control.Monad
 import           Data.Default
@@ -14,16 +13,14 @@ import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy
 import qualified Data.Text.Lazy.IO as Text
-import           Data.Traversable
 import           Test.Tasty.Hspec
 import Network.HTTP.Client
-import Data.ByteString
 import Pipes
 import Pipes.HTTP
 import qualified Pipes.ByteString as PB  -- from `pipes-bytestring`
 
 page1 :: Page
-page1 = 
+page1 =
   pageHtmlBody .~ TestRender.button  $
   pageCss      .~ css $
   pageJsGlobal .~ mempty $
@@ -131,8 +128,8 @@ testsRender = do
   let dir = "test/canned/"
   return $ describe "Lucid.Page.Render" $ do
     it "run genTest 'test/canned/' to refresh canned files." True
-    it "renderPage mempty" $ renderText (renderPage mempty) `shouldBe` "<!DOCTYPE HTML><html><head><meta charset=\"utf-8\"><script>window.onload=(function(){})</script><body></body></head></html>"
-    it "renderPageToFile, renderPage (compared with canned file)" $
+    it "renderPage mempty" $ renderText (renderPage mempty) `shouldBe` "<html><head><meta charset=\"utf-8\"><script>window.onload=(function(){})</script><body></body></head></html>"
+    it "renderPageToFile, renderPage (compared with default canned file)" $
       testVsFile dir "default" def page1 `shouldReturn` True
     it "the various PageConfig's" $
       testVsFile dir "sep" pagecfg2 page2 `shouldReturn` True

@@ -24,6 +24,7 @@ import qualified Lucid.Page.Css as Css
 import qualified Lucid.Page.Html as Html
 import qualified Lucid.Page.Js as Js
 import           Lucid.Page.Types
+-- import qualified Text.Blaze.Html5 as Html5
 
 renderPage :: Page -> Html ()
 renderPage p = (\(_,_,x)->x) $ renderPageWith (pagecConcerns .~ Inline $ def) p
@@ -39,7 +40,7 @@ renderPageWith pc p =
   where
     h = case pc^.pagecStructure of
       HeaderBody -> 
-        doctypehtml_ $
+        html_ $
         head_ $ mconcat
         [ meta_ [charset_ "utf-8"]
         , mconcat (((\x -> link_ [x,rel_ "stylesheet"]) . href_) <$> libsCss')
