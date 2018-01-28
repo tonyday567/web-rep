@@ -1,3 +1,5 @@
+module Web.Page.Request where
+
 import Control.Monad.Cont
 import Control.Concurrent
 import Network.HTTP

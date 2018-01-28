@@ -6,7 +6,7 @@ module TestChain where
 import Control.Applicative
 import Data.Monoid
 import Test.Tasty.Hspec
-import Lucid.Page.Js
+import Web.Page.Js
 
 trip :: JExpr -> Bool
 trip = (==) <*> (toJExpr . toChain)

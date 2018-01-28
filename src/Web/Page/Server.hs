@@ -3,13 +3,13 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-module Lucid.Page.Server
-  ( module Lucid.Page.Server
+module Web.Page.Server
+  ( module Web.Page.Server
   , module Happstack.Server
   ) where
 
-import Lucid.Page.Types
-import Lucid.Page.Render
+import Web.Page.Types
+import Web.Page.Render
 import Data.Monoid
 import Happstack.Server
 import Lucid (Html, renderBS)

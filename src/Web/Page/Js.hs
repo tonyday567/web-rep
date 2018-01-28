@@ -4,8 +4,8 @@
 
 -- some jmacro combinators and helpers
 -- could also be called Language.Javascript.JMacro.Extended
-module Lucid.Page.Js
-  ( module Lucid.Page.Js
+module Web.Page.Js
+  ( module Web.Page.Js
   , module Language.Javascript.JMacro
   , module Language.Javascript.JMacro.Chain
   ) where

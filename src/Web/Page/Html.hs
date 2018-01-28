@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-{- Could also be called Lucid.Extended -}
+{- Could also be called Web.Extended -}
 
-module Lucid.Page.Html 
-  ( module Lucid.Page.Html
+module Web.Page.Html 
+  ( module Web.Page.Html
   , module Lucid
   , module Lucid.Base
   ) where

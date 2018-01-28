@@ -4,7 +4,7 @@
 
 module TestServe where
 
-import           Lucid.Page
+import           Web.Page
 
 import MVC.Extended
 import MVC.Action
@@ -134,7 +134,7 @@ testsServe :: IO (SpecWith())
 testsServe = undefined 
 {- do
   let dir = "test/canned/"
-  return $ describe "Lucid.Page.Render" $ do
+  return $ describe "Web.Page.Render" $ do
     it "run genTest 'test/canned/' to refresh canned files." True
     it "renderPage mempty" $ renderText (renderPage mempty) `shouldBe` "<!DOCTYPE HTML><html><head><meta charset=\"utf-8\"><script>window.onload=(function(){})</script><body></body></head></html>"
     it "renderPageToFile, renderPage (compared with canned file)" $
@@ -162,7 +162,7 @@ pcServe =
     Concerns "static/page-serve.css" "static/page-serve.js" mempty $ 
   def
 
-testRequest = def { Pipes.HTTP.method = "GET", Pipes.HTTP.port = 8001 }
+testRequest = defaultRequest { Pipes.HTTP.method = "GET", Pipes.HTTP.port = 8001 }
 
 testClient = withManager defaultManagerSettings
 

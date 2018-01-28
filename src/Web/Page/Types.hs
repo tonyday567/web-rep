@@ -4,7 +4,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 
-module Lucid.Page.Types where
+module Web.Page.Types where
 
 import Control.Applicative
 import Control.Lens
@@ -13,8 +13,8 @@ import Data.Foldable
 import Data.Text
 import Data.Monoid
 import Lucid
-import Lucid.Page.Css
-import Lucid.Page.Js
+import Web.Page.Css
+import Web.Page.Js
 
 data Page =
     Page

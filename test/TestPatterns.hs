@@ -11,7 +11,7 @@ module TestPatterns where
 
 import qualified Data.Map as Map
 import           Data.Monoid
-import           Lucid.Page
+import           Web.Page
 
 modCounter :: JExpr
 modCounter = 

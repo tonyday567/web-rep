@@ -5,13 +5,13 @@
 
 {- could also be called Clay.Extended -}
 
-module Lucid.Page.Css
+module Web.Page.Css
   ( fill
   , stroke
   , strokeWidth
   , crispEdges
-  , Lucid.Page.Css.optimizeSpeed
-  , Lucid.Page.Css.geometricPrecision
+  , Web.Page.Css.optimizeSpeed
+  , Web.Page.Css.geometricPrecision
   , shapeRendering
   , module Clay
   , pack
@@ -25,9 +25,11 @@ import Data.Monoid
 import Data.Text (pack)
 import Data.Text.Lazy (unpack)
 
+{-
 instance Monoid Css where
   mempty = pure ()
   mappend = liftA2 mappend
+-}
 
 instance Show Css where
   show = 
@@ -49,7 +51,7 @@ fill = key "fill"
 stroke :: Color -> Css
 stroke = key "stroke"
 
-strokeWidth :: Size Abs -> Css
+strokeWidth :: Size Position -> Css
 strokeWidth = key "stroke-width"
 
 newtype ShapeRendering = ShapeRendering Value

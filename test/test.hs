@@ -11,7 +11,7 @@ import           Test.Tasty.Hspec
 tests :: IO TestTree
 tests = testGroup "the tests" <$> sequence
   [ testSpec "Language.Javascript.JMacro.Chain" =<< TestChain.testsChain
-  , testSpec "Lucid.Page.Render" =<< TestRender.testsRender
+  , testSpec "Web.Page.Render" =<< TestRender.testsRender
   ]
 
 main :: IO ()

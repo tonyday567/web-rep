@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lucid.Page.Render 
+module Web.Page.Render 
   ( renderPage
   , renderPageWith
   , renderPageHtmlWith
@@ -20,10 +20,10 @@ import qualified Data.Text as Text
 import Data.Traversable
 import           Lucid
 import           Prelude hiding (writeFile)
-import qualified Lucid.Page.Css as Css
-import qualified Lucid.Page.Html as Html
-import qualified Lucid.Page.Js as Js
-import           Lucid.Page.Types
+import qualified Web.Page.Css as Css
+import qualified Web.Page.Html as Html
+import qualified Web.Page.Js as Js
+import           Web.Page.Types
 -- import qualified Text.Blaze.Html5 as Html5
 
 renderPage :: Page -> Html ()
