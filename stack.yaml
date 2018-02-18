@@ -1,4 +1,4 @@
-resolver: nightly-2018-01-27
+resolver: nightly-2018-01-29
 
 packages:
 - '.'
@@ -9,3 +9,4 @@ extra-deps:
   - git: https://github.com/tonyday567/generic-lens-labels.git
     commit: 268482be078e543c1f8fef33ae8ceabc7a201f8b
   - streaming-0.2.0.0
+  - pipes-http-1.0.5
