@@ -4,14 +4,8 @@ packages:
 - '.'
 
 extra-deps:
-  #- git: https://github.com/tonyday567/mvc-extended.git
-  #  commit: 3a9f7db2749d04795d773794b01714d63b35398b
   - git: https://github.com/tonyday567/etc.git
     commit: fa29c5770fcf7ccbdeb3b7578b9059cd9bd51dbb
-  - git: https://github.com/kcsongor/generic-lens.git
-    commit: 876ad15282e2ea5e5d77e3eae4c4a2bba77bd81a
   - git: https://github.com/tonyday567/generic-lens-labels.git
     commit: 268482be078e543c1f8fef33ae8ceabc7a201f8b
-  - mmorph-1.0.9
-  - mvc-1.1.6
-  - pipes-http-1.0.5
+  - streaming-0.2.0.0
