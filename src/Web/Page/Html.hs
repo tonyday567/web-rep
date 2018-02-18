@@ -3,9 +3,12 @@
 {- Could also be called Web.Extended -}
 
 module Web.Page.Html 
-  ( module Web.Page.Html
-  , module Lucid
+  ( module Lucid
   , module Lucid.Base
+  , doctypesvg_
+  , svg11_
+  , defs_
+  , linksvg_
   ) where
 
 import Lucid
@@ -16,18 +19,16 @@ import Lucid.Base
 doctypesvg_  :: Monad m => HtmlT m ()
 doctypesvg_ = makeElementNoEnd "?xml version='1.0' encoding='UTF-8'?><!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN\'\n'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'"
 
-xml_ :: Monad m => HtmlT m ()
-xml_ = makeElementNoEnd "?xml version=\"1.0\" standalone=\"no\"?"
-
-svgdef_ :: Monad m => HtmlT m () -> HtmlT m ()
-svgdef_ = 
+svg11_ :: Monad m => HtmlT m () -> HtmlT m ()
+svg11_ = 
   with (makeElement "svg")
   [ makeAttribute "xmlns" "http://www.w3.org/2000/svg"
   , makeAttribute "xmlns:xlink" "http://www.w3.org/1999/xlink"
+  , makeAttribute "version" "1.1"
   ]
 
-linkSvg_ :: Monad m => HtmlT m () -> HtmlT m ()
-linkSvg_ = makeElement "link"
+linksvg_ :: Monad m => HtmlT m () -> HtmlT m ()
+linksvg_ = makeElement "link"
 
 defs_ :: Monad m => HtmlT m a -> HtmlT m a
 defs_ = makeElement "defs"

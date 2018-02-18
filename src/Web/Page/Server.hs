@@ -15,7 +15,8 @@ import Happstack.Server
 import Lucid (Html, renderBS)
 import           Control.Monad
 import           Data.Default
-import MVC.Extended
+import Etc.Action
+import Control.Monad.Managed
 
 -- | happstack server
 serve :: ServerPart Response -> IO ()
@@ -26,7 +27,7 @@ serve response =
 
 -- | wrapped in an MVC.Action
 serve' :: ServerPart Response -> IO ()
-serve' = runAction . serve
+serve' = (\io -> with consoleActionBox $ \box -> controlBox def io box) . serve
 
 -- | include a directory to serve
 includeDir :: String -> ServerPart Response -> ServerPart Response

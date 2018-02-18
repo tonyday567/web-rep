@@ -1,31 +1,15 @@
 name: web-page
-version: '0.0.1.0'
-synopsis: Haskell project web-page repo
-description: <https://github.com/tonyday567/web-page>
+version: '0.0.2.0'
+synopsis: a web-page type
+description: See readme.md for verbage (if any)
 maintainer: Tony Day <tonyday567@gmail.com>
 license: MIT
 license-file: LICENSE.md
 bug-reports: https://github.com/tonyday567/web-page/issues
 extra-source-files:
-- README.md
+- readme.md
+- stack.yaml
 dependencies:
-- HTTP
-- blaze-builder
-- bytestring
-- clay
-- containers
-- data-default
-- happstack-server
-- hjsmin
-- jmacro
-- language-javascript
-- lens
-- lucid
-- mtl
-- mvc-extended
-- text
-- transformers
-- blaze-html
 library:
   source-dirs: src
   exposed-modules:
@@ -36,14 +20,23 @@ library:
   - Web.Page.Html
   - Web.Page.Types
   - Web.Page.Render
-  - Language.Javascript.JMacro.Chain
   dependencies:
   - base
+  - clay
+  - data-default
+  - etc
+  - generic-lens-labels
+  - happstack-server
+  - language-javascript
+  - lens
+  - lucid
+  - managed
+  - protolude
+  - text
 tests:
   test:
     main: test.hs
     source-dirs:
-    - src
     - test
     ghc-options:
     - -Wall
@@ -51,11 +44,19 @@ tests:
     - -threaded
     dependencies:
     - base >=4 && <5
-    - web-page
-    - hspec
+    - bytestring
+    - clay
+    - data-default
+    - etc
+    - http-client
+    - lens
+    - lucid
+    - managed
+    - pipes
+    - pipes-bytestring
+    - pipes-http
+    - protolude
     - tasty
     - tasty-hspec
-    - http-client
-    - pipes
-    - pipes-http
-    - pipes-bytestring
+    - text
+    - web-page

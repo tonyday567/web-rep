@@ -1,48 +1,65 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module Web.Page.Types where
+module Web.Page.Types
+  ( Page(Page)
+  , PageConfig(PageConfig)
+  , Concern(..)
+  , Concerns(Concerns)
+  , suffixes
+  , concernNames
+  , PageConcerns(..)
+  , PageStructure(..)
+  , PageRender(..)
+  , PageLibs(..)
+  ) where
 
-import Control.Applicative
 import Control.Lens
 import Data.Default
-import Data.Foldable
-import Data.Text
-import Data.Monoid
+import Data.Generics.Labels()
 import Lucid
-import Web.Page.Css
-import Web.Page.Js
+import Protolude
+import qualified Web.Page.Css as Css
+import qualified Web.Page.Js as Js
 
 data Page =
     Page
-    { _pageLibsCss :: [Text]
-    , _pageLibsJs :: [Text]
-    , _pageCss :: Css
-    , _pageJsGlobal :: JStat
-    , _pageJsOnLoad :: JStat
-    , _pageHtmlHeader :: Html ()
-    , _pageHtmlBody :: Html ()
-    } deriving Show
+    { libsCss :: [Text]
+    , libsJs :: [Text]
+    , cssBody :: Css.Css
+    , jsGlobal :: Js.JS
+    , jsOnLoad :: [Js.JSStatement]
+    , htmlHeader :: Html ()
+    , htmlBody :: Html ()
+    } deriving (Show, Generic)
 
 makeLenses ''Page
 
 instance Monoid Page where
-    mempty = Page [] [] mempty mempty mempty mempty mempty
-    mappend p0 p1 =
-        Page
-        (p0^.pageLibsCss <> p1^.pageLibsCss)
-        (p0^.pageLibsJs <> p1^.pageLibsJs)
-        (p0^.pageCss        <> p1^.pageCss)
-        (p0^.pageJsGlobal   <> p1^.pageJsGlobal)
-        (p0^.pageJsOnLoad   <> p1^.pageJsOnLoad)
-        (p0^.pageHtmlHeader <> p1^.pageHtmlHeader)
-        (p0^.pageHtmlBody   <> p1^.pageHtmlBody)
+  mempty = Page [] [] mempty mempty mempty mempty mempty
+  mappend p0 p1 =
+    Page
+    (p0 ^. #libsCss <> p1 ^. #libsCss)
+    (p0 ^. #libsJs <> p1 ^. #libsJs)
+    (p0 ^. #cssBody <> p1 ^. #cssBody)
+    (p0 ^. #jsGlobal <> p1 ^. #jsGlobal)
+    (p0 ^. #jsOnLoad <> p1 ^. #jsOnLoad)
+    (p0 ^. #htmlHeader <> p1 ^. #htmlHeader)
+    (p0 ^. #htmlBody <> p1 ^. #htmlBody)
 
-data Concern = Css | Js | Html deriving Show
-data Concerns a = Concerns { _css::a, _js::a, _html::a } deriving (Eq, Show, Foldable, Traversable)
+data Concern = Css | Js | Html deriving (Show, Eq, Generic)
+
+data Concerns a =
+  Concerns
+  { css :: a
+  , js :: a
+  , html :: a
+  } deriving (Eq, Show, Foldable, Traversable, Generic)
 
 instance Functor Concerns where
   fmap f (Concerns c j h) = Concerns (f c) (f j) (f h)
@@ -51,25 +68,43 @@ instance Applicative Concerns where
   pure a = Concerns a a a
   Concerns f g h <*> Concerns a b c = Concerns (f a) (g b) (h c)
 
-concernNames :: FilePath -> FilePath -> Concerns FilePath
-concernNames dir stem = (\x->dir<>stem<>x) <$> Concerns ".css" ".js" ".html"
+suffixes :: Concerns FilePath
+suffixes = Concerns ".css" ".js" ".html"
 
-data PageConcerns = Inline | Separated deriving (Show, Eq)
-data PageStructure = HeaderBody | Headless | Svg deriving (Show, Eq)
-data PageLibs = LocalLibs FilePath | LinkedLibs deriving (Show, Eq)
-data PageRender = Pretty | Minified deriving (Show, Eq)
+concernNames :: FilePath -> FilePath -> Concerns FilePath
+concernNames dir stem =
+  (\x->dir<>stem<>x) <$> suffixes
+
+data PageConcerns =
+  Inline |
+  Separated
+  deriving (Show, Eq, Generic)
+
+data PageStructure =
+  HeaderBody |
+  Headless |
+  Svg
+  deriving (Show, Eq, Generic)
+
+data PageLibs =
+  LocalLibs FilePath |
+  LinkedLibs
+  deriving (Show, Eq, Generic)
+
+data PageRender =
+  Pretty |
+  Minified
+  deriving (Show, Eq, Generic)
 
 data PageConfig =
   PageConfig
-  { _pagecConcerns :: PageConcerns
-  , _pagecStructure :: PageStructure
-  , _pagecRender :: PageRender
-  , _pagecLibs :: PageLibs
-  , _pagecFilenames :: Concerns FilePath
-  } deriving (Show, Eq)
+  { concerns :: PageConcerns
+  , structure :: PageStructure
+  , pageRender :: PageRender
+  , pageLibs :: PageLibs
+  , filenames :: Concerns FilePath
+  } deriving (Show, Eq, Generic)
 
 instance Default PageConfig where
-    def = PageConfig Inline HeaderBody Minified LinkedLibs (Concerns "def.css" "def.js" "def.html")
-
-makeLenses ''PageConfig
-
+  def = PageConfig Inline HeaderBody Minified LinkedLibs
+    (Concerns "def.css" "def.js" "def.html")

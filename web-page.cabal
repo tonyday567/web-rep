@@ -2,12 +2,12 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5d2f2ea6463883f076601ec3c2f807ec98a12a93f4e811557909229393392c3c
+-- hash: de69861b5d070e6ae72f8e9c05a03ccea5887589af1c8de15ad2cfcc8e424aa0
 
 name:           web-page
-version:        0.0.1.0
-synopsis:       Haskell project web-page repo
-description:    <https://github.com/tonyday567/web-page>
+version:        0.0.2.0
+synopsis:       a web-page type
+description:    See readme.md for verbage (if any)
 bug-reports:    https://github.com/tonyday567/web-page/issues
 maintainer:     Tony Day <tonyday567@gmail.com>
 license:        MIT
@@ -16,30 +16,25 @@ build-type:     Simple
 cabal-version:  >= 1.10
 
 extra-source-files:
-    README.md
+    readme.md
+    stack.yaml
 
 library
   hs-source-dirs:
       src
   build-depends:
-      HTTP
-    , base
-    , blaze-builder
-    , blaze-html
-    , bytestring
+      base
     , clay
-    , containers
     , data-default
+    , etc
+    , generic-lens-labels
     , happstack-server
-    , hjsmin
-    , jmacro
     , language-javascript
     , lens
     , lucid
-    , mtl
-    , mvc-extended
+    , managed
+    , protolude
     , text
-    , transformers
   exposed-modules:
       Web.Page
       Web.Page.Css
@@ -48,9 +43,7 @@ library
       Web.Page.Html
       Web.Page.Types
       Web.Page.Render
-      Language.Javascript.JMacro.Chain
   other-modules:
-      Web.Page.Request
       Paths_web_page
   default-language: Haskell2010
 
@@ -58,48 +51,27 @@ test-suite test
   type: exitcode-stdio-1.0
   main-is: test.hs
   hs-source-dirs:
-      src
       test
   ghc-options: -Wall -O2 -threaded
   build-depends:
-      HTTP
-    , base >=4 && <5
-    , blaze-builder
-    , blaze-html
+      base >=4 && <5
     , bytestring
     , clay
-    , containers
     , data-default
-    , happstack-server
-    , hjsmin
-    , hspec
+    , etc
     , http-client
-    , jmacro
-    , language-javascript
     , lens
     , lucid
-    , mtl
-    , mvc-extended
+    , managed
     , pipes
     , pipes-bytestring
     , pipes-http
+    , protolude
     , tasty
     , tasty-hspec
     , text
-    , transformers
     , web-page
   other-modules:
-      Language.Javascript.JMacro.Chain
-      Web.Page
-      Web.Page.Css
-      Web.Page.Html
-      Web.Page.Js
-      Web.Page.Render
-      Web.Page.Request
-      Web.Page.Server
-      Web.Page.Types
-      TestChain
-      TestPatterns
       TestRender
       TestServe
       Paths_web_page

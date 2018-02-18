@@ -1,137 +1,123 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 module TestServe where
 
-import           Web.Page
+import Web.Page
 
-import MVC.Extended
-import MVC.Action
-import Pipes.Extended
-import           Control.Applicative
-import           Control.Lens
-import           Control.Monad
-import           Data.Default
-import           Data.Monoid
-import           Data.Text (Text)
-import qualified Data.Text.Lazy as Lazy
-import qualified Data.Text.Lazy.IO as Text
-import           Data.Traversable
-import           Test.Tasty.Hspec
+import Control.Lens
+import Data.Default
 import Network.HTTP.Client
-import Data.ByteString
-import Pipes
 import Pipes.HTTP
-import qualified Pipes.ByteString as PB  -- from `pipes-bytestring`
+import Protolude
+import qualified Data.Text.Lazy as Text
+import qualified Data.Text.Lazy.IO as Text
 import qualified Pipes.Prelude as Pipes
+import Etc.Action
 
 page1 :: Page
-page1 = 
-  pageHtmlBody .~ TestServe.button  $
-  pageCss      .~ css $
-  pageJsGlobal .~ mempty $
-  pageJsOnLoad .~ click $
-  pageLibsCss  .~ cssLibs $
-  pageLibsJs   .~ jsLibs $
+page1 =
+  #htmlBody .~ TestServe.button $
+  #cssBody .~ css $
+  #jsGlobal .~ mempty $
+  #jsOnLoad .~ click $
+  #libsCss .~ cssLibs $
+  #libsJs .~ jsLibs $
   mempty
 
 page2 :: Page
-page2 =      
-  pageLibsCss .~ cssLibsLocal $
-  pageLibsJs .~ jsLibsLocal $
+page2 =
+  #libsCss .~ cssLibsLocal $
+  #libsJs .~ jsLibsLocal $
   page1
 
 pagecfg2 :: PageConfig
-pagecfg2 = 
-  pagecConcerns .~ Separated $ 
-  pagecRender .~ Pretty $ 
-  pagecStructure .~ Headless $ 
-  pagecLibs .~ LocalLibs "../static/" $ 
+pagecfg2 =
+  #concerns .~ Separated $
+  #pageRender .~ Pretty $
+  #structure .~ Headless $
+  #pageLibs .~ LocalLibs "../static/" $
   def
 
 cssLibs :: [Text]
-cssLibs = 
+cssLibs =
   ["http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"]
 
 cssLibsLocal :: [Text]
-cssLibsLocal = 
-  ["css/font-awesome.min.css"]
+cssLibsLocal = ["css/font-awesome.min.css"]
 
 jsLibs :: [Text]
-jsLibs = 
-  [ "http://code.jquery.com/jquery-1.6.3.min.js"
-  ]
+jsLibs = ["http://code.jquery.com/jquery-1.6.3.min.js"]
 
 jsLibsLocal :: [Text]
-jsLibsLocal = 
-  [ "jquery-2.1.3.min.js"
-  ]
+jsLibsLocal = ["jquery-2.1.3.min.js"]
 
 css :: Css
 css = do
   fontSize (px 10)
   fontFamily ["Arial", "Helvetica"] [sansSerif]
   "#btnGo" ? do
-      marginTop (px 20)
-      marginBottom (px 20)
-  "#btnGo.on" ?
-      color green
+    marginTop (px 20)
+    marginBottom (px 20)
+  "#btnGo.on" ? color green
 
 -- js
-click :: JStat
-click =
-  [jmacro|
-   $("#btnGo").click( function() {
-     $("#btnGo").toggleClass("on");
-     alert("bada bing!");
-   });
-  |]
+click :: [JSStatement]
+click = toStatements $ JS $ readJs $
+  Text.unpack $
+  Text.unlines
+  [ "$('#btnGo').click( function() {"
+  , "$('#btnGo').toggleClass('on');"
+  , "alert('bada bing!');"
+   , "});"
+  ]
 
 button :: Html ()
-button = with button_ [id_ "btnGo", type_ "button"] ("Go " <> with i_ [class_ "fa fa-play"] mempty)
+button =
+  with
+    button_
+    [id_ "btnGo", type_ "button"]
+    ("Go " <> with i_ [class_ "fa fa-play"] mempty)
 
 generatePage :: FilePath -> FilePath -> PageConfig -> Page -> IO ()
-generatePage dir stem pc p = 
-  renderPageToFile dir (pagecFilenames .~ concernNames "" stem $ pc) p
+generatePage dir stem pc =
+  renderPageToFile dir (#filenames .~ concernNames "" stem $ pc)
 
-generatePages :: Traversable t => FilePath -> t (FilePath, PageConfig, Page) -> IO ()
-generatePages dir xs = void $ sequenceA $ (\(fp,pc,p) -> generatePage dir fp pc p) <$> xs
+generatePages ::
+     Traversable t => FilePath -> t (FilePath, PageConfig, Page) -> IO ()
+generatePages dir xs =
+  void $ sequenceA $ (\(fp, pc, p) -> generatePage dir fp pc p) <$> xs
 
 genTest :: FilePath -> IO ()
-genTest dir = void $ generatePages dir 
-  [ ("default", def, page1)
-  , ("sep", pagecfg2, page2)
-  ]
+genTest dir =
+  void $ generatePages dir [("default", def, page1), ("sep", pagecfg2, page2)]
 
 testVsFile :: FilePath -> FilePath -> PageConfig -> Page -> IO Bool
 testVsFile dir stem pc p = do
-  let names = concernNames "" stem
-  let pc' = pagecFilenames .~ names $ pc 
-  let t = renderPageText pc' p
-  case pc^.pagecConcerns of
-    Inline -> do
-      t' <- Text.readFile (dir <> _html names)
-      return $ _html t == t'
-    Separated -> do
-      t' <- sequenceA $ Text.readFile <$> (dir<>) <$> names
-      return $ t == t'
+  (t,t') <- textVsFile dir stem pc p
+  pure (t == t')
 
-textVsFile :: FilePath -> FilePath -> PageConfig -> Page -> IO (Concerns Lazy.Text, Concerns Lazy.Text)
+textVsFile ::
+     FilePath
+  -> FilePath
+  -> PageConfig
+  -> Page
+  -> IO (Concerns Text.Text, Concerns Text.Text)
 textVsFile dir stem pc p = do
   let names = concernNames "" stem
-  let pc' = pagecFilenames .~ names $ pc 
+  let pc' = #filenames .~ names $ pc
   let t = renderPageText pc' p
-  case pc^.pagecConcerns of
+  case pc ^. #concerns of
     Inline -> do
-      t' <- Text.readFile (dir <> _html names)
+      t' <- Text.readFile (dir <> names ^. #html)
       return (t, Concerns mempty mempty t')
     Separated -> do
-      t' <- sequenceA $ Text.readFile <$> (dir<>) <$> names
+      t' <- sequenceA $ Text.readFile <$> (dir <>) <$> names
       return (t, t')
 
-testsServe :: IO (SpecWith())
-testsServe = undefined 
 {- do
   let dir = "test/canned/"
   return $ describe "Web.Page.Render" $ do
@@ -143,70 +129,52 @@ testsServe = undefined
       testVsFile dir "sep" pagecfg2 page2 `shouldReturn` True
 -}
 
--- testServe :: PageConfig -> Page -> IO ()
+testServe :: PageConfig -> Page -> IO ()
 testServe pc p = serve' (servePageWith pc p)
 
 pServe :: Page
-pServe =
-  pageLibsCss .~ cssLibsLocal $
-  pageLibsJs .~ jsLibsLocal $
-  page1
+pServe = #libsCss .~ cssLibsLocal $ #libsJs .~ jsLibsLocal $ page1
 
 pcServe :: PageConfig
-pcServe = 
-  pagecConcerns .~ Separated $ 
-  pagecRender .~ Pretty $ 
-  pagecStructure .~ Headless $ 
-  pagecLibs .~ LocalLibs "static/" $ 
-  pagecFilenames .~ 
-    Concerns "static/page-serve.css" "static/page-serve.js" mempty $ 
+pcServe =
+  #concerns .~ Separated $
+  #pageRender .~ Pretty $
+  #structure .~ Headless $
+  #pageLibs .~ LocalLibs "static/" $
+  #filenames .~
+  Concerns "static/page-serve.css" "static/page-serve.js" mempty $
   def
 
-testRequest = defaultRequest { Pipes.HTTP.method = "GET", Pipes.HTTP.port = 8001 }
+testRequest :: Pipes.HTTP.Request
+testRequest = defaultRequest {Pipes.HTTP.method = "GET", Pipes.HTTP.port = 8001}
 
-testClient = withManager defaultManagerSettings
+testResponse :: Manager -> (Pipes.HTTP.Response BodyReader -> IO a) -> IO a
+testResponse = withResponse testRequest
 
-testResponse manager = withResponse testRequest manager
-
+client :: IO [ByteString]
 client = do
-    withManager tlsManagerSettings $ \m ->
-        withHTTP testRequest m $ \resp ->
-            Pipes.toListM $ responseBody resp
+  m <- newManager tlsManagerSettings
+  withHTTP testRequest m $ \resp -> Pipes.toListM $ responseBody resp
 
 tReq :: IO Pipes.HTTP.Request
-tReq = parseUrl "0.0.0.0:8001"
+tReq = parseRequest "0.0.0.0:8001"
 
 -- start the server (and serve mempty)
 -- wait x secs
 -- run a client and gather the ByteString
 -- Quit server
 -- compare client result with file
-
-
-t1 = 
-  runWrapWith'
-  (vcs %~ (<> const (timeOut 20.0)) $ def)
-  (do
-      print "in server chunk"
-      testServe pcServe pServe
-      print "what!")
-  (do 
-      print "in client chunk"
-      sleep 5
-      print "post-sleep client"
-      print =<< client
-      print "post print client")
-
 {-
-test1 :: Managed (View Comms, Controller Comms) 
-test1 = vc
-  where
-    vc = (,) <$> v <*> c
-    c = undefined
-    v = undefined
-  
+t1 :: IO [ActionComm]
+t1 =
+  etc
+    (vcs %~ (<> const (timeOut 20.0)) $ def)
+    (do print "in server chunk"
+        testServe pcServe pServe
+        print "what!")
+    (do print "in client chunk"
+        sleep 5
+        print "post-sleep client"
+        print =<< client
+        print "post print client")
 -}
-
-
-
-
