@@ -1,5 +1,5 @@
 name: web-page
-version: '0.0.2.0'
+version: '0.1.0'
 synopsis: a web-page type
 description: See readme.md for verbage (if any)
 maintainer: Tony Day <tonyday567@gmail.com>
@@ -7,32 +7,35 @@ license: MIT
 license-file: LICENSE.md
 bug-reports: https://github.com/tonyday567/web-page/issues
 extra-source-files:
-- readme.md
 - stack.yaml
 dependencies:
+  - aeson
+  - base
+  - clay
+  - generic-lens
+  - interpolatedstring-perl6
+  - javascript-bridge
+  - language-javascript
+  - lucid
+  - lucid-svg
+  - microlens
+  - mtl
+  - protolude
+  - scotty
+  - text
+  - wai
+  - wai-extra
+  - wai-middleware-static
 library:
   source-dirs: src
   exposed-modules:
   - Web.Page
   - Web.Page.Css
+  - Web.Page.Html.Input
   - Web.Page.Js
   - Web.Page.Server
-  - Web.Page.Html
   - Web.Page.Types
   - Web.Page.Render
-  dependencies:
-  - base
-  - clay
-  - data-default
-  - etc
-  - generic-lens-labels
-  - happstack-server
-  - language-javascript
-  - lens
-  - lucid
-  - managed
-  - protolude
-  - text
 tests:
   test:
     main: test.hs
@@ -43,20 +46,19 @@ tests:
     - -O2
     - -threaded
     dependencies:
-    - base >=4 && <5
-    - bytestring
-    - clay
-    - data-default
-    - etc
-    - http-client
-    - lens
-    - lucid
-    - managed
-    - pipes
-    - pipes-bytestring
-    - pipes-http
-    - protolude
+    - web-page
     - tasty
     - tasty-hspec
-    - text
-    - web-page
+executables:
+  page-example:
+    main: example.hs
+    source-dirs: app
+    ghc-options:
+      - -funbox-strict-fields
+      - -fforce-recomp
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - web-page
+

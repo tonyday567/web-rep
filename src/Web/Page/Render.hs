@@ -6,31 +6,30 @@ module Web.Page.Render
   ( renderPage
   , renderPageWith
   , renderPageHtmlWith
-  , renderPageText
+  , renderPageAsText
   , renderPageToFile
   , renderPageHtmlToFile
+  , renderPageTextWith
   ) where
 
 import Control.Applicative
-import Control.Lens
+import Lens.Micro
 import Control.Monad
-import Data.Default
 import Data.Monoid
 import qualified Data.Text as Text
 import Data.Text.Lazy (Text, fromStrict, pack, toStrict)
 import Data.Text.Lazy.IO (writeFile)
 import Data.Traversable
 import Lucid
+import qualified Lucid.Svg as Svg
 import Prelude hiding (writeFile)
 import qualified Web.Page.Css as Css
-import qualified Web.Page.Html as Html
 import qualified Web.Page.Js as Js
 import Web.Page.Types
 
--- import qualified Text.Blaze.Html5 as Html5
 renderPage :: Page -> Html ()
 renderPage p =
-  (\(_, _, x) -> x) $ renderPageWith def p
+  (\(_, _, x) -> x) $ renderPageWith defaultPageConfig p
 
 renderPageHtmlWith :: PageConfig -> Page -> Html ()
 renderPageHtmlWith pc p =
@@ -45,37 +44,39 @@ renderPageWith pc p =
     h =
       case pc ^. #structure of
         HeaderBody ->
-          html_ $
-          head_ $
-          mconcat
+          doctype_ <>
+          with html_ [lang_ "en"]
+          (head_
+          (mconcat
             [ meta_ [charset_ "utf-8"]
-            , mconcat
-                (((\x -> link_ [x, rel_ "stylesheet"]) . href_) <$> libsCss')
-            , mconcat ((\x -> with (script_ mempty) [src_ x]) <$> libsJs')
-            , jsInline
             , cssInline
+            , mconcat libsCss'
             , p ^. #htmlHeader
-            ] <>
-          body_ (p ^. #htmlBody)
+            ]) <>
+          body_
+          (mconcat
+            [ p ^. #htmlBody
+            , jsInline
+            , mconcat libsJs'
+            ]))
         Headless ->
           mconcat
             [ doctype_
             , meta_ [charset_ "utf-8"]
-            , mconcat
-                (((\x -> link_ [x, rel_ "stylesheet"]) . href_) <$> libsCss')
+            , mconcat libsCss'
             , cssInline
-            , mconcat ((\x -> with (script_ mempty) [src_ x]) <$> libsJs')
+            , mconcat libsJs'
             , p ^. #htmlHeader
             , p ^. #htmlBody
             , jsInline
             ]
         Svg ->
-          Html.doctypesvg_ <>
+          Svg.doctype_ <>
           svg_
-            (Html.defs_ $
+            (Svg.defs_ $
              mconcat
-               [ renderLibsJsSvg (fromStrict <$> libsJs')
-               , renderLibsCssSvg (fromStrict <$> libsCss')
+               [ mconcat libsJs'
+               , mconcat libsCss'
                , cssInline
                , jsInline
                , p ^. #htmlBody
@@ -89,26 +90,22 @@ renderPageWith pc p =
     jsInline
       | pc ^. #concerns == Separated || js == mempty = mempty
       | otherwise = script_ mempty js
-    libsCss =
-      case pc ^. #pageLibs of
-        LinkedLibs -> p ^. #libsCss
-        LocalLibs dir -> (\x -> Text.pack dir <> x) <$> p ^. #libsCss
     libsCss' =
       case pc ^. #concerns of
-        Inline -> libsCss
-        Separated -> libsCss <> [Text.pack (pc ^. #filenames . #css)]
-    libsJs =
-      case pc ^. #pageLibs of
-        LinkedLibs -> p ^. #libsJs
-        LocalLibs dir -> (\x -> Text.pack dir <> x) <$> p ^. #libsJs
+        Inline -> p ^. #libsCss
+        Separated ->
+          p ^. #libsCss <>
+          [libCss (Text.pack $ pc ^. #filenames . #css)]
     libsJs' =
       case pc ^. #concerns of
-        Inline -> libsJs
-        Separated -> libsJs <> [Text.pack (pc ^. #filenames. #js)]
+        Inline -> p ^. #libsJs
+        Separated ->
+          p ^. #libsJs <>
+          [libJs (Text.pack $ pc ^. #filenames . #js)]
 
 renderPageToFile :: FilePath -> PageConfig -> Page -> IO ()
-renderPageToFile dir pc@(PageConfig _ _ _ _ files) page =
-  void $ sequenceA $ liftA2 writeFile' files (renderPageText pc page)
+renderPageToFile dir pc page =
+  void $ sequenceA $ liftA2 writeFile' (pc ^. #filenames) (renderPageAsText pc page)
   where
     writeFile' fp s = unless (s == mempty) (writeFile (dir <> "/" <> fp) s)
 
@@ -116,8 +113,8 @@ renderPageHtmlToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageHtmlToFile file pc page =
   writeFile file (renderText $ renderPageHtmlWith pc page)
 
-renderPageText :: PageConfig -> Page -> Concerns Text
-renderPageText pc p =
+renderPageAsText :: PageConfig -> Page -> Concerns Text
+renderPageAsText pc p =
   case pc ^. #concerns of
     Inline -> Concerns mempty mempty htmlt
     Separated -> Concerns css js htmlt
@@ -125,32 +122,83 @@ renderPageText pc p =
     htmlt = renderText h
     (css, js, h) = renderPageWith pc p
 
-renderLibsJsSvg :: [Text] -> Html ()
-renderLibsJsSvg xs = mconcat $ libJsSvg <$> xs
+rendererJs :: PageRender -> Js.PageJs -> Text
+rendererJs _ (Js.PageJsText js) = fromStrict js
+rendererJs Minified (Js.PageJs js) = Js.renderToText . Js.minifyJS . Js.unJS $ js
+rendererJs Pretty (Js.PageJs js) = Js.renderToText . Js.unJS $ js
 
-libJsSvg :: Text -> Html ()
-libJsSvg x =
-  with
-    (script_ mempty)
-    [ href_ (toStrict x)
-    , rel_ "stylesheet"
-    , type_ (toStrict $ pack "text/css")
-    , Html.makeAttribute "xmlns" "http://www.w3.org/1999/xhtml"
-    ]
+rendererCss :: PageRender -> Css.Css -> Text
+rendererCss Minified css = Css.renderWith Css.compact [] css
+rendererCss Pretty css = Css.render css
 
-renderLibsCssSvg :: [Text] -> Html ()
-renderLibsCssSvg xs =
-  mconcat
-    ((with Html.linksvg_ .
-      (\x ->
-         [ href_ (toStrict x)
-         , rel_ "stylesheet"
-         , type_ (toStrict $ pack "text/css")
-         , Html.makeAttribute "xmlns" "http://www.w3.org/1999/xhtml"
-         ])) <$>
-     xs)
-    mempty
+renderers :: PageRender -> (Js.PageJs -> Text, Css.Css -> Text)
+renderers p = (rendererJs p, rendererCss p)
 
-renderers :: PageRender -> (Js.JS -> Text, Css.Css -> Text)
-renderers Minified = (Js.renderToText . Js.minifyJS . Js.unJS, Css.renderWith Css.compact [])
-renderers Pretty = (Js.renderToText . Js.unJS, Css.render)
+renderPageTextWith :: PageConfig -> PageText -> (Text, Text, Html ())
+renderPageTextWith pc p =
+  case pc ^. #concerns of
+    Inline -> (mempty, mempty, h)
+    Separated -> (fromStrict css, js, h)
+  where
+    h =
+      case pc ^. #structure of
+        HeaderBody ->
+          doctype_ <>
+          with html_ [lang_ "en"]
+          (head_
+          (mconcat
+            [ meta_ [charset_ "utf-8"]
+            , toHtmlRaw cssInline
+            , mconcat (toHtmlRaw <$> libsCss')
+            , toHtmlRaw $ p ^. #htmlHeaderText
+            ]) <>
+          body_
+          (mconcat
+            [ toHtmlRaw $ p ^. #htmlBodyText
+            , toHtmlRaw jsInline
+            , mconcat (toHtmlRaw <$> libsJs')
+            ]))
+        Headless ->
+          mconcat
+            [ doctype_
+            , meta_ [charset_ "utf-8"]
+            , mconcat (toHtmlRaw <$> libsCss')
+            , toHtmlRaw cssInline
+            , mconcat (toHtmlRaw <$> libsJs')
+            , toHtmlRaw $ p ^. #htmlHeaderText
+            , toHtmlRaw $ p ^. #htmlBodyText
+            , toHtmlRaw jsInline
+            ]
+        Svg ->
+          Svg.doctype_ <>
+          svg_
+            (Svg.defs_ $
+             mconcat
+               [ mconcat (toHtmlRaw <$> libsJs')
+               , mconcat (toHtmlRaw <$> libsCss')
+               , toHtmlRaw cssInline
+               , toHtmlRaw jsInline
+               , toHtmlRaw $ p ^. #htmlBodyText
+               ])
+    css = p ^. #cssBodyText
+    js = rendererJs Pretty (Js.PageJsText $ p ^. #jsGlobalText) <>
+         rendererJs Pretty (Js.onLoad (Js.PageJsText $ p ^. #jsOnLoadText))
+    cssInline
+      | pc ^. #concerns == Separated || css == mempty = mempty
+      | otherwise = renderText $ style_ [type_ (toStrict $ pack "text/css")] css
+    jsInline
+      | pc ^. #concerns == Separated || js == mempty = mempty
+      | otherwise = renderText $ script_ mempty js
+    libsCss' =
+      case pc ^. #concerns of
+        Inline -> fromStrict <$> p ^. #libsCssText
+        Separated ->
+          (fromStrict <$> p ^. #libsCssText) <>
+          [renderText $ libCss (Text.pack $ pc ^. #filenames . #css)]
+    libsJs' =
+      case pc ^. #concerns of
+        Inline -> fromStrict <$> p ^. #libsJsText
+        Separated ->
+          (fromStrict <$> p ^. #libsJsText) <>
+          [renderText $ libJs (Text.pack $ pc ^. #filenames . #js)]
+

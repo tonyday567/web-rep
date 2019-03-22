@@ -11,7 +11,10 @@ module Web.Page.Css
   , optimizeSpeed
   , geometricPrecision
   , shapeRendering
-  , module Clay
+  , Css
+  , render
+  , renderWith
+  , compact
   ) where
 
 import Clay hiding (optimizeSpeed, geometricPrecision, PlayState)
@@ -21,7 +24,7 @@ import Data.Text.Lazy (unpack)
 instance Show Css where
   show = unpack . render
 
--- SVG css
+-- a few SVG css
 fill :: Color -> Css
 fill = key "fill"
 

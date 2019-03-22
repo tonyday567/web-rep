@@ -1,8 +1,4 @@
-/.cabal-sandbox/
-/cabal.sandbox.config
-/dist/
-/.DS_Store
 .stack-work
-/src/.DS_Store
-/src/Web/Page/.DS_Store
-/test/.DS_Store
+.DS_Store
+/.dir-locals.el
+/.DS_Store

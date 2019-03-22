@@ -1,63 +1,38 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Server
-  ( module Web.Page.Server
-  , module Happstack.Server
+  ( servePageWith
   ) where
 
 import Web.Page.Types
 import Web.Page.Render
-import Data.Monoid
-import Happstack.Server
-import Lucid (Html, renderBS)
-import           Control.Monad
-import           Data.Default
-import Etc.Action
-import Control.Monad.Managed
+import Lucid (renderText)
+import Control.Monad
+import Web.Scotty
+import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, only)
+import qualified Data.Text.Lazy as Lazy
+import qualified Control.Monad.State as State
+import Lens.Micro
 
--- | happstack server
-serve :: ServerPart Response -> IO ()
-serve response =
-  simpleHTTP (nullConf {port = 8001}) $ do
-    decodeBody (defaultBodyPolicy "/tmp/" 4096 4096 4096)
-    response
-
--- | wrapped in an MVC.Action
-serve' :: ServerPart Response -> IO ()
-serve' = (\io -> with consoleActionBox $ \box -> controlBox def io box) . serve
-
--- | include a directory to serve
-includeDir :: String -> ServerPart Response -> ServerPart Response
-includeDir lib page = msum
-  [ dir "" page
-  , dir lib $ serveDirectory EnableBrowsing [] lib
-  ]
-
-instance ToMessage (Html ()) where
-  toContentType _ = "text/html; charset=UTF-8"
-  toMessage       = renderBS
-
-servePage :: Page -> ServerPart Response
-servePage p = ok $ toResponse $ renderPageHtmlWith def p
-
-servePageWith :: PageConfig -> Page -> ServerPart Response
-servePageWith pc@(PageConfig concerns _ _ locLibs (Concerns cssfp jsfp _)) p = pages <> servedir
-  where
-  pages = case concerns of
-    Inline -> ok $ toResponse $ renderPageHtmlWith pc p
+servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
+servePageWith rp pc p =
+  sequence_ $ servedir <> [pages]
+    where
+  pages = case pc ^. #concerns of
+    Inline -> get rp $  Web.Scotty.html $
+           renderText $ renderPageHtmlWith pc p
     Separated -> let (css,js,h) = renderPageWith pc p in
-      msum
-      [ dir cssfp $ ok $ toResponse css
-      , dir jsfp $ ok $ toResponse js
-      , dir "hello"    $ ok $ toResponse ("Hello, World!"::Html ())
-      , dir "goodbye"  $ ok $ toResponse ("Goodbye, World!"::Html ())
-      , ok $ toResponse h
-      ]
-  servedir = case locLibs of
-    LinkedLibs -> mempty
-    LocalLibs fp -> dir fp $ serveDirectory EnableBrowsing [] fp
-
+      do
+        -- middleware $ staticPolicy (noDots >-> addBase (takeDirectory cssfp))
+        middleware $ staticPolicy $ only [(cssfp,cssfp), (jsfp, jsfp)]
+        get rp (do
+                   State.lift $ writeFile' cssfp (Lazy.unpack css)
+                   State.lift $ writeFile' jsfp (Lazy.unpack js)
+                   html $ renderText h)
+  cssfp = pc ^. #filenames . #css
+  jsfp = pc ^. #filenames . #js
+  writeFile' fp s = unless (s == mempty) (writeFile fp s)
+  servedir = (\x -> middleware $ staticPolicy (noDots <> addBase x)) <$> pc ^. #localdirs
 

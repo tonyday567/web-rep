@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE DeriveFoldable #-}
@@ -8,7 +7,9 @@
 
 module Web.Page.Types
   ( Page(Page)
+  , PageText(PageText)
   , PageConfig(PageConfig)
+  , defaultPageConfig
   , Concern(..)
   , Concerns(Concerns)
   , suffixes
@@ -16,33 +17,31 @@ module Web.Page.Types
   , PageConcerns(..)
   , PageStructure(..)
   , PageRender(..)
-  , PageLibs(..)
+  , libCss
+  , libJs
   ) where
 
-import Control.Lens
-import Data.Default
+import Lens.Micro
 import Data.Generics.Labels()
 import Lucid
-import Protolude
+import Protolude hiding ((<>))
+import Data.Semigroup ((<>))
 import qualified Web.Page.Css as Css
 import qualified Web.Page.Js as Js
 
 data Page =
     Page
-    { libsCss :: [Text]
-    , libsJs :: [Text]
+    { libsCss :: [Html ()]
+    , libsJs :: [Html ()]
     , cssBody :: Css.Css
-    , jsGlobal :: Js.JS
-    , jsOnLoad :: [Js.JSStatement]
+    , jsGlobal :: Js.PageJs
+    , jsOnLoad :: Js.PageJs
     , htmlHeader :: Html ()
     , htmlBody :: Html ()
     } deriving (Show, Generic)
 
-makeLenses ''Page
-
-instance Monoid Page where
-  mempty = Page [] [] mempty mempty mempty mempty mempty
-  mappend p0 p1 =
+instance Semigroup Page where
+  (<>) p0 p1 =
     Page
     (p0 ^. #libsCss <> p1 ^. #libsCss)
     (p0 ^. #libsJs <> p1 ^. #libsJs)
@@ -51,6 +50,21 @@ instance Monoid Page where
     (p0 ^. #jsOnLoad <> p1 ^. #jsOnLoad)
     (p0 ^. #htmlHeader <> p1 ^. #htmlHeader)
     (p0 ^. #htmlBody <> p1 ^. #htmlBody)
+
+instance Monoid Page where
+  mempty = Page [] [] mempty mempty mempty mempty mempty
+  mappend = (<>)
+
+data PageText =
+    PageText
+    { libsCssText :: [Text]
+    , libsJsText :: [Text]
+    , cssBodyText :: Text
+    , jsGlobalText :: Text
+    , jsOnLoadText :: Text
+    , htmlHeaderText :: Text
+    , htmlBodyText :: Text
+    } deriving (Show, Generic)
 
 data Concern = Css | Js | Html deriving (Show, Eq, Generic)
 
@@ -86,11 +100,6 @@ data PageStructure =
   Svg
   deriving (Show, Eq, Generic)
 
-data PageLibs =
-  LocalLibs FilePath |
-  LinkedLibs
-  deriving (Show, Eq, Generic)
-
 data PageRender =
   Pretty |
   Minified
@@ -101,10 +110,21 @@ data PageConfig =
   { concerns :: PageConcerns
   , structure :: PageStructure
   , pageRender :: PageRender
-  , pageLibs :: PageLibs
   , filenames :: Concerns FilePath
+  , localdirs :: [FilePath]
   } deriving (Show, Eq, Generic)
 
-instance Default PageConfig where
-  def = PageConfig Inline HeaderBody Minified LinkedLibs
-    (Concerns "def.css" "def.js" "def.html")
+defaultPageConfig :: PageConfig
+defaultPageConfig = PageConfig Inline HeaderBody Minified
+    (("default"<>) <$> suffixes) []
+
+libCss :: Text -> Html ()
+libCss url = link_
+  [ rel_ "stylesheet"
+  , href_ url
+  ]
+
+libJs :: Text -> Html ()
+libJs url = with (script_ mempty) [src_ url]
+
+

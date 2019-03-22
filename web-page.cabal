@@ -1,11 +1,13 @@
--- This file has been generated from package.yaml by hpack version 0.20.0.
+cabal-version: >= 1.10
+
+-- This file has been generated from package.yaml by hpack version 0.29.6.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: de69861b5d070e6ae72f8e9c05a03ccea5887589af1c8de15ad2cfcc8e424aa0
+-- hash: 37dfb81797348f9bb1377fa48207527609c70fe3236d227457e88e2815e6cd4f
 
 name:           web-page
-version:        0.0.2.0
+version:        0.1.0
 synopsis:       a web-page type
 description:    See readme.md for verbage (if any)
 bug-reports:    https://github.com/tonyday567/web-page/issues
@@ -13,38 +15,68 @@ maintainer:     Tony Day <tonyday567@gmail.com>
 license:        MIT
 license-file:   LICENSE.md
 build-type:     Simple
-cabal-version:  >= 1.10
-
 extra-source-files:
-    readme.md
     stack.yaml
 
 library
   hs-source-dirs:
       src
   build-depends:
-      base
+      aeson
+    , base
     , clay
-    , data-default
-    , etc
-    , generic-lens-labels
-    , happstack-server
+    , generic-lens
+    , interpolatedstring-perl6
+    , javascript-bridge
     , language-javascript
-    , lens
     , lucid
-    , managed
+    , lucid-svg
+    , microlens
+    , mtl
     , protolude
+    , scotty
     , text
+    , wai
+    , wai-extra
+    , wai-middleware-static
   exposed-modules:
       Web.Page
       Web.Page.Css
+      Web.Page.Html.Input
       Web.Page.Js
       Web.Page.Server
-      Web.Page.Html
       Web.Page.Types
       Web.Page.Render
   other-modules:
       Paths_web_page
+  default-language: Haskell2010
+
+executable page-example
+  main-is: example.hs
+  other-modules:
+      Paths_web_page
+  hs-source-dirs:
+      app
+  ghc-options: -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , base
+    , clay
+    , generic-lens
+    , interpolatedstring-perl6
+    , javascript-bridge
+    , language-javascript
+    , lucid
+    , lucid-svg
+    , microlens
+    , mtl
+    , protolude
+    , scotty
+    , text
+    , wai
+    , wai-extra
+    , wai-middleware-static
+    , web-page
   default-language: Haskell2010
 
 test-suite test
@@ -54,25 +86,26 @@ test-suite test
       test
   ghc-options: -Wall -O2 -threaded
   build-depends:
-      base >=4 && <5
-    , bytestring
+      aeson
+    , base
     , clay
-    , data-default
-    , etc
-    , http-client
-    , lens
+    , generic-lens
+    , interpolatedstring-perl6
+    , javascript-bridge
+    , language-javascript
     , lucid
-    , managed
-    , pipes
-    , pipes-bytestring
-    , pipes-http
+    , lucid-svg
+    , microlens
+    , mtl
     , protolude
+    , scotty
     , tasty
     , tasty-hspec
     , text
+    , wai
+    , wai-extra
+    , wai-middleware-static
     , web-page
   other-modules:
-      TestRender
-      TestServe
       Paths_web_page
   default-language: Haskell2010
