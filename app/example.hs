@@ -7,7 +7,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import Control.Category (id)
+-- import Control.Category (id)
 import Data.Aeson
 import Lens.Micro
 import Lucid
@@ -31,9 +31,9 @@ jsbTest :: Page
 jsbTest =
   bootstrapPage <>
   jsbPage &
-  #htmlHeader .~ title_ "input development" &
+  #htmlHeader .~ title_ "jsbTest" &
   #htmlBody .~ mconcat
-  [ h1_ "inputs"
+  [ h1_ "jsbTest"
   , with div_ [style_ "padding:1.5rem;position:relative;border-style:solid;border-color:#f8f9fa;border-width:0.2rem;"]
     (h2_ "inputs" <> with form_ [id_ "inputs"] mempty)
   , with div_ [id_ "output"] (h2_ "output" <> with div_ [id_ "results"] mempty)
@@ -94,9 +94,9 @@ suaveTest :: Page
 suaveTest =
   bootstrapPage <>
   jsbPage &
-  #htmlHeader .~ title_ "suave test" &
+  #htmlHeader .~ title_ "suaveTest" &
   #htmlBody .~ mconcat
-  [ h1_ "inputs"
+  [ h1_ "suaveTest"
   , with div_ [style_ "padding:1.5rem;position:relative;border-style:solid;border-color:#f8f9fa;border-width:0.2rem;"]
     (h2_ "inputs" <> with form_ [id_ "inputs"] mempty)
   , with div_ [id_ "output"] (h2_ "output" <> with div_ [id_ "results"] mempty)
@@ -108,8 +108,8 @@ jsbMid = start $ \ ev e ->
   jsbListener 300 ev e `E.finally` putStrLn ("jsbListener finalled" :: Text)
 
 suaveMid :: Application -> Application
-suaveMid = start $ \ ev e -> suaveListener 300 ev e `E.finally`
-      putStrLn ("suaveListener finalled" :: Text)
+suaveMid = start $ \ ev e ->
+  suaveListener 300 ev e `E.finally` putStrLn ("suaveListener finalled" :: Text)
 
 main :: IO ()
 main =
@@ -117,8 +117,12 @@ main =
     middleware $ staticPolicy (noDots >-> addBase "other")
     middleware logStdoutDev
     middleware $ \app req res -> putStrLn ("raw path:" :: Text) >> print (rawPathInfo req) >> app req res
-    servePageWith "/" id defaultPageConfig page1
-    servePageWith "/default" id defaultPageConfig page1
-    servePageWith "/separated" id cfg2 page2
-    servePageWith "/jsb" id defaultPageConfig jsbTest
-    servePageWith "/suave" id defaultPageConfig suaveTest
+    -- middleware jsbMid
+    middleware suaveMid
+
+    servePageWith "/" defaultPageConfig page1
+    servePageWith "/default" defaultPageConfig page1
+    servePageWith "/separated" cfg2 page2
+    servePageWith "/jsb" defaultPageConfig jsbTest
+    servePageWith "/suave" defaultPageConfig suaveTest
+    -- get "/jsb" (html $ renderText $ renderPageHtmlWith defaultPageConfig jsbTest)

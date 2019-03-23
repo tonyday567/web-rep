@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
 
@@ -17,20 +16,11 @@ import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, only)
 import qualified Data.Text.Lazy as Lazy
 import qualified Control.Monad.State as State
 import Lens.Micro
-import Network.Wai
-import qualified Data.ByteString.Char8 as BS
-import Web.Scotty.Internal.Types (RoutePattern(..))
 
-isLitEq :: RoutePattern -> [Char] -> Bool
-isLitEq (Literal l) t = Lazy.unpack l == t
-isLitEq _ _ = False
-
-servePageWith :: RoutePattern -> Middleware -> PageConfig -> Page -> ScottyM ()
-servePageWith rp mid pc p =
-  sequence_ $ servedir <> [getpage, mids]
+servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
+servePageWith rp pc p =
+  sequence_ $ servedir <> [getpage]
     where
-  mids =
-    middleware $ ifRequest (\req -> rp `isLitEq` BS.unpack (rawPathInfo req)) mid
   getpage = case pc ^. #concerns of
     Inline ->
       get rp (html $ renderText $ renderPageHtmlWith pc p)
