@@ -2,3 +2,4 @@
 .DS_Store
 /.dir-locals.el
 /.DS_Store
+/dist-newstyle

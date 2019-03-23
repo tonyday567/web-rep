@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 37dfb81797348f9bb1377fa48207527609c70fe3236d227457e88e2815e6cd4f
+-- hash: b47acf9f73150fccc54bb39b92af768e9da0dfab01d448372f95adb7abdf1d90
 
 name:           web-page
 version:        0.1.0
@@ -24,7 +24,10 @@ library
   build-depends:
       aeson
     , base
+    , box
+    , bytestring
     , clay
+    , colour
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -35,18 +38,25 @@ library
     , mtl
     , protolude
     , scotty
+    , stm
+    , streaming
     , text
+    , transformers
     , wai
     , wai-extra
     , wai-middleware-static
   exposed-modules:
       Web.Page
+      Web.Page.Bootstrap
       Web.Page.Css
+      Web.Page.Examples
       Web.Page.Html.Input
       Web.Page.Js
+      Web.Page.JSB
       Web.Page.Server
       Web.Page.Types
       Web.Page.Render
+      Web.Page.Suavemente
   other-modules:
       Paths_web_page
   default-language: Haskell2010
@@ -61,7 +71,10 @@ executable page-example
   build-depends:
       aeson
     , base
+    , box
+    , bytestring
     , clay
+    , colour
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -72,7 +85,10 @@ executable page-example
     , mtl
     , protolude
     , scotty
+    , stm
+    , streaming
     , text
+    , transformers
     , wai
     , wai-extra
     , wai-middleware-static
@@ -88,7 +104,10 @@ test-suite test
   build-depends:
       aeson
     , base
+    , box
+    , bytestring
     , clay
+    , colour
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -99,9 +118,12 @@ test-suite test
     , mtl
     , protolude
     , scotty
+    , stm
+    , streaming
     , tasty
     , tasty-hspec
     , text
+    , transformers
     , wai
     , wai-extra
     , wai-middleware-static

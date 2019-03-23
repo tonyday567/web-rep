@@ -11,6 +11,8 @@ extra-source-files:
 dependencies:
   - aeson
   - base
+  - box
+  - bytestring
   - clay
   - generic-lens
   - interpolatedstring-perl6
@@ -26,16 +28,24 @@ dependencies:
   - wai
   - wai-extra
   - wai-middleware-static
+  - stm
+  - transformers
+  - colour
+  - streaming
 library:
   source-dirs: src
   exposed-modules:
   - Web.Page
+  - Web.Page.Bootstrap
   - Web.Page.Css
+  - Web.Page.Examples
   - Web.Page.Html.Input
   - Web.Page.Js
+  - Web.Page.JSB
   - Web.Page.Server
   - Web.Page.Types
   - Web.Page.Render
+  - Web.Page.Suavemente
 tests:
   test:
     main: test.hs
