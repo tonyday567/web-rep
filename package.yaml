@@ -10,6 +10,7 @@ extra-source-files:
 - stack.yaml
 dependencies:
   - aeson
+  - attoparsec
   - base
   - box
   - bytestring
@@ -21,6 +22,7 @@ dependencies:
   - lucid
   - lucid-svg
   - microlens
+  - mmorph
   - mtl
   - protolude
   - scotty
@@ -32,6 +34,7 @@ dependencies:
   - transformers
   - colour
   - streaming
+  - unordered-containers
 library:
   source-dirs: src
   exposed-modules:

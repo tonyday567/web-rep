@@ -1,6 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -11,21 +10,25 @@
 
 module Web.Page.Suavemente where
 
-import Protolude
+import Protolude hiding (replace)
 import Control.Applicative (liftA2)
 import Control.Concurrent.STM.TVar (newTVar, readTVar, writeTVar, TVar)
 import Control.Monad.STM (STM, atomically)
 import Control.Monad.State (StateT (..), liftIO)
 import Control.Monad.State.Class (MonadState (..), modify)
 import Control.Monad.Trans.Class (lift)
-import Data.Aeson (FromJSON (..), Value (), Result(..))
-import Data.Aeson.Types (Parser, parse)
+import Data.Aeson (FromJSON (..), Value (), fromJSON)
 import Data.Text (pack, Text)
-import GHC.Generics (Generic)
 import Lucid
 import Web.Page.Html.Input
 import qualified Streaming as S
 import qualified Streaming.Prelude as S
+import Web.Page.JSB
+import Data.Attoparsec.Text
+import Network.JavaScript
+import Box
+import qualified Control.Exception as E
+import qualified Data.Text.Lazy as Lazy
 
 -- | An applicative functor can introduce new markup, and hook it up to the
 -- event stream.
@@ -39,19 +42,18 @@ data Input' a = Input'
     --
     -- The 'IO ()' action is to publish a change notification to the downstream
     -- computations.
-  , _iFold :: IO ()
-           -> S.Stream (S.Of ChangeEvent) IO ()
-           -> S.Stream (S.Of ChangeEvent) IO ()
+  , _iFold :: S.Stream (S.Of Element) IO ()
+           -> S.Stream (S.Of Element) IO ()
 
     -- | The current value of the 'Input'.
   , _iValue :: STM a
   } deriving Functor
 
 instance Applicative Input' where
-  pure = Input' mempty (const . const $ pure ()) . pure
+  pure = Input' mempty (const $ pure ()) . pure
   Input' fh ff fv <*> Input' ah af av =
     Input' (fh <> ah)
-          (liftA2 (.) ff af)
+          (af . ff)
           (fv <*> av)
 
 -- | An applicative functor capable of getting input from an HTML page.
@@ -69,49 +71,36 @@ instance Applicative Suave where
 data SomeSuave where
   SomeSuave :: (a -> Html ()) -> Suave a -> SomeSuave
 
--- | Change messages that come from the JS side.
-data ChangeEvent = ChangeEvent
-  { ceElement :: Text
-  , cePayload :: Value
-  } deriving (Eq, Show, Generic)
-
 -- | Generate a new name for an HTML element.
-genName :: MonadState Int m => m Text
-genName = do
+genName :: MonadState Int m => Text -> m Text
+genName prefix = do
   s <- get
   modify (+1)
-  pure $ show s
+  pure $ prefix <> show s
 
 -- | Constructor for building 'Suave' inputs that are backed by HTML elements.
 mkInput
-    :: (Value -> Parser a)
+    :: Parser a
     -> (Text -> a -> Html ())
     -> a                        -- ^ The input's initial value.
     -> Suave a
 mkInput p f a = Suave $ do
-  name <- genName
+  name <- genName "Suave"
   tvar <- lift $ newTVar a
   pure $ Input' (f name a) (getEvents p tvar name) (readTVar tvar)
 
--- | EXPLODE IF PARSING FAILS
-fromResult :: Result a -> a
-fromResult (Success a) = a
-fromResult (Error s) = panic (pack s)
-
 getEvents
-    :: (Value -> Parser a)
+    :: Parser a
     -> TVar a  -- ^ The underlying 'TVar' to publish changes to.
     -> Text  -- ^ The name of the HTML input.
-    -> IO ()   -- ^ Publish a change notification.
-    -> S.Stream (S.Of ChangeEvent) IO ()
-    -> S.Stream (S.Of ChangeEvent) IO ()
-getEvents p t n update
+    -> S.Stream (S.Of Element) IO ()
+    -> S.Stream (S.Of Element) IO ()
+getEvents p t n
   = S.mapMaybeM (
-    \a@(ChangeEvent i z) ->
+    \a@(Element i z) ->
        case i == n of
           True  -> do
-            liftIO . atomically . writeTVar t . fromResult $ parse p z
-            update
+            liftIO . either print (atomically . writeTVar t) . parseOnly p $ z
             pure Nothing
           False -> pure $ Just a
            )
@@ -119,22 +108,82 @@ getEvents p t n update
 ------------------------------------------------------------------------------
 -- | Create an input driven by an HTML slider.
 slider_
-    :: (Show a, ToHtml a, Num a, FromJSON a)
+    :: (Integral a, Show a, ToHtml a, Num a, FromJSON a)
     => Text  -- ^ label
     -> a       -- ^ min
     -> a       -- ^ max
     -> a       -- ^ initial value
     -> Suave a
-slider_ label l u = mkInput parseJSON $ \name v ->
-  (toHtml $ Input v Range (Just label) Nothing name [("min", pack $ show l), ("max", pack $ show u)])
+slider_ label l u = mkInput decimal $ \name v ->
+  (toHtml $ jsbify $ bootify $ Input v Range (Just label) Nothing name [("min", pack $ show l), ("max", pack $ show u)])
 
 textbox_
     :: Text  -- ^ label
     -> Text  -- ^ initial value
     -> Suave Text
-textbox_ label = mkInput parseJSON $ \name v ->
-  (toHtml $ Input v TextBox (Just label) Nothing name [])
+textbox_ label = mkInput takeText $ \name v ->
+  (toHtml $ jsbify $ bootify $ Input v TextBox (Just label) Nothing name [])
 
 annotate :: (ToHtml a) => a -> Text -> Html ()
 annotate a c = p_ (toHtml c) <> hr_ mempty <> toHtml a
+
+testSuave :: (Show a) => Suave a -> Event Value -> Engine -> IO ()
+testSuave s ev e = do
+    em <- eventEmitter ev e
+    putStrLn ("post-em" :: Text)
+    Input' _ f _ <- atomically $ evalStateT (suavely s) 0
+    putStrLn ("post-f" :: Text)
+    S.effects $ f $ valueToElement (toStreamM em)
+    Input' _ _ a <- atomically $ evalStateT (suavely s) 0
+    putStrLn ("post-a" :: Text)
+    a0 <- atomically a
+    replace e "results" (show a0)
+
+eventEmitter :: Event Value -> Engine -> IO (Emitter IO Value)
+eventEmitter ev _ = do
+  (c,e) <- atomically $ ends Unbounded
+  void $ addListener ev (atomically . c)
+  pure (liftE $ Emitter (Just <$> e))
+
+valueToElement :: S.Stream (S.Of Value) IO () -> S.Stream (S.Of Element) IO ()
+valueToElement s = s & S.map (toEither . fromJSON) & S.partitionEithers & S.effects
+
+suaveMid :: Suave a -> (Event Value -> Engine -> IO ()) -> Application -> Application
+suaveMid s eeio = start $ \ ev e -> do
+  liftIO $ do
+    Input' h _ _ <- atomically $ evalStateT (suavely s) 0
+    append e "inputs" (Lazy.toStrict $ renderText h)
+  eeio ev e `E.finally` putStrLn ("jsbBox finalled" :: Text)
+
+testSuave' :: (Show a) => Suave a -> Event Value -> Engine -> IO ()
+testSuave' s ev e = do
+    Input' _ f _ <- atomically $ evalStateT (suavely s) 0
+    putStrLn ("post-f" :: Text)
+    eventBox''
+      s
+      (liftC <$> toCommit
+       (\stream ->
+          stream &
+          S.concat &
+          f &
+          S.print))
+      ev e
+    putStrLn ("post-a" :: Text)
+    -- a0 <- atomically a
+    -- replace e "results" (show a0)
+
+eventBox'' :: (Show a) => Suave a -> Cont IO (Committer IO (Either Text Element)) -> Event Value -> Engine -> IO ()
+eventBox'' s comm ev e = do
+  (c,em) <- atomically $ ends Unbounded
+  void $ addListener ev (\v -> do
+                            atomically $ c v
+                            Input' _ _ a <- atomically $ evalStateT (suavely s) 0
+                            a0 <- atomically a
+                            replace e "results" (show a0)
+                            )
+  n <- etcM 0 model
+    (Box <$>
+     comm <*>
+     (liftE <$> pure (Emitter (Just <$> em))))
+  print n
 

@@ -1,19 +1,17 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wall #-}
 
 -- import Control.Category (id)
-import Data.Aeson
 import Lens.Micro
 import Lucid
-import Network.JavaScript
-import Network.Wai
-import Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, (>->))
 import Protolude hiding (replace)
 import Web.Page
@@ -23,17 +21,21 @@ import Web.Page.Examples
 import Web.Page.Html.Input
 import Web.Page.JSB
 import Web.Scotty
-import qualified Control.Exception as E
+import Data.Attoparsec.Text
+import qualified Data.Text as Text
+import Network.JavaScript
+import qualified Box
+import Data.Aeson (Value)
 import qualified Data.Text.Lazy as Lazy
+import qualified Control.Exception as E
 
--- a page with bootstrap features to test the js bridge
-jsbTest :: Page
-jsbTest =
+inputTestPage :: Page
+inputTestPage =
   bootstrapPage <>
   jsbPage &
   #htmlHeader .~ title_ "jsbTest" &
   #htmlBody .~ mconcat
-  [ h1_ "jsbTest"
+  [ h1_ "inputTestPage"
   , with div_ [style_ "padding:1.5rem;position:relative;border-style:solid;border-color:#f8f9fa;border-width:0.2rem;"]
     (h2_ "inputs" <> with form_ [id_ "inputs"] mempty)
   , with div_ [id_ "output"] (h2_ "output" <> with div_ [id_ "results"] mempty)
@@ -66,63 +68,67 @@ textTest = jsbify $ bootify $
   , ("placeholder", "test placeholder")
   ]
 
-jsbListener :: Int -> Event Value -> Engine -> IO ()
-jsbListener timeout ev e = do
-  putStrLn ("jsbListener (re)started" :: Text)
-  append e "log" "jsbListener (re)start ..."
-  let x = renderText (toHtml rangeTest <> toHtml textTest)
-  append e "inputs" (Lazy.toStrict x)
-  _ <- addListener ev (result e)
-  threadDelay (timeout * 1000 * 1000)
-  replace e "log" "timed out"
+suaveTest :: Suave (Int, Text)
+suaveTest = do
+  s <- slider_ "slider" 0 5 3
+  t <- textbox_ "label" "suave"
+  pure (s,t)
 
-suaveTester :: Suave Text
-suaveTester = textbox_ "label" "suave"
+initJsbTest :: (Int, Text)
+initJsbTest = (rangeTest ^. #val, textTest ^. #val)
 
-suaveListener :: Int -> Event Value -> Engine -> IO ()
-suaveListener timeout ev e = do
-  putStrLn ("suaveListener (re)started" :: Text)
-  append e "log" "suaveListener (re)start ..."
-  Input' html' _ _ <- atomically $ evalStateT (suavely suaveTester) 0
-  -- a0 <- atomically a
-  append e "inputs" (Lazy.toStrict $ renderText html')
-  _ <- addListener ev (result e)
-  threadDelay (timeout * 1000 * 1000)
-  replace e "log" "timed out"
+stepJsbTest :: Element -> (Int, Text) -> Either Text (Int, Text)
+stepJsbTest (Element "rangeid" v) (_, t) =
+  either
+  (Left . Text.pack)
+  (\x -> Right (x,t))
+  p
+  where
+    p = parseOnly decimal v
+stepJsbTest (Element "textid" v) (n, _) = Right (n,v)
+stepJsbTest e _ = Left $ "unknown id: " <> show e
 
-suaveTest :: Page
-suaveTest =
-  bootstrapPage <>
-  jsbPage &
-  #htmlHeader .~ title_ "suaveTest" &
-  #htmlBody .~ mconcat
-  [ h1_ "suaveTest"
-  , with div_ [style_ "padding:1.5rem;position:relative;border-style:solid;border-color:#f8f9fa;border-width:0.2rem;"]
-    (h2_ "inputs" <> with form_ [id_ "inputs"] mempty)
-  , with div_ [id_ "output"] (h2_ "output" <> with div_ [id_ "results"] mempty)
-  , with div_ [id_ "log"] (h2_ "server log")
-  ]
+stepJsbTest' :: Element -> (Int, Text) -> (Int,Text)
+stepJsbTest' e s =
+  case stepJsbTest e s of
+    Left _ -> s
+    Right x -> x
 
-jsbMid :: Application -> Application
-jsbMid = start $ \ ev e ->
-  jsbListener 300 ev e `E.finally` putStrLn ("jsbListener finalled" :: Text)
+sendResult :: Engine -> Either Text (Int, Text) -> IO ()
+sendResult e (Left err) = append e "log" err
+sendResult e (Right (i, v)) =
+  replace e "results" (show i <> ":" <> v)
 
-suaveMid :: Application -> Application
-suaveMid = start $ \ ev e ->
-  suaveListener 300 ev e `E.finally` putStrLn ("suaveListener finalled" :: Text)
+eventProcessTest :: Event Value -> Engine -> IO (Int, Text)
+eventProcessTest ev e =
+  eventConsume initJsbTest stepJsbTest'
+  ( (Box.liftC <$> Box.showStdout) <>
+    pure (Box.Committer (\v -> sendResult e v >> pure True))
+  ) ev e
+
+jsbMidTest :: (Show a) => Html () -> (Event Value -> Engine -> IO a) -> Application -> Application
+jsbMidTest init eeio = start $ \ ev e -> do
+  append e "inputs" (Lazy.toStrict $ renderText init)
+  final <- eeio ev e `E.finally` putStrLn ("jsbMidTest finalled" :: Text)
+  putStrLn $ ("final value was: " :: Text) <> show final
 
 main :: IO ()
 main =
   scotty 3000 $ do
     middleware $ staticPolicy (noDots >-> addBase "other")
-    middleware logStdoutDev
-    middleware $ \app req res -> putStrLn ("raw path:" :: Text) >> print (rawPathInfo req) >> app req res
+    -- middleware logStdoutDev
+    -- middleware $ \app req res -> putStrLn ("raw path:" :: Text) >> print (rawPathInfo req) >> app req res
     -- middleware jsbMid
-    middleware suaveMid
+    -- middleware suaveMid
+    -- middleware jsbBox
+    -- middleware (suaveMid suaveTest (testSuave' suaveTest))
+    middleware (jsbMidTest (toHtml rangeTest <> toHtml textTest) eventProcessTest)
 
     servePageWith "/" defaultPageConfig page1
     servePageWith "/default" defaultPageConfig page1
     servePageWith "/separated" cfg2 page2
-    servePageWith "/jsb" defaultPageConfig jsbTest
-    servePageWith "/suave" defaultPageConfig suaveTest
+    servePageWith "/jsb" defaultPageConfig inputTestPage
     -- get "/jsb" (html $ renderText $ renderPageHtmlWith defaultPageConfig jsbTest)
+
+
+

@@ -4,10 +4,13 @@
 {-# LANGUAGE NoPatternSynonyms #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Web.Page.Html.Input
   ( Input(Input)
+  , SomeInput(..)
   , MultiInputAttributes(MultiInputAttributes)
   , InputType(..)
   , bootify
@@ -30,6 +33,10 @@ data Input a =
   , id' :: Text
   , atts :: [(Text, Text)]
   } deriving (Eq, Show, Generic)
+
+-- | An existentialized 'Input'.
+data SomeInput where
+  SomeInput :: (a -> Html ()) -> Input a -> SomeInput
 
 data MultiInputAttributes a =
   MultiInputAttributes
