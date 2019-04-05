@@ -115,7 +115,7 @@ slider_
     -> a       -- ^ initial value
     -> Suave a
 slider_ label l u = mkInput decimal $ \name v ->
-  (toHtml $ jsbify $ bootify $ Input v Range (Just label) Nothing name [("min", pack $ show l), ("max", pack $ show u)])
+  (toHtml $ jsbify $ bootify $ Input v Slider (Just label) Nothing name [("min", pack $ show l), ("max", pack $ show u)])
 
 textbox_
     :: Text  -- ^ label

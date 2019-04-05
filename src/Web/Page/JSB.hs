@@ -159,9 +159,6 @@ jsbMid h eeio = start $ \ ev e -> do
   append e "inputs" (Lazy.toStrict $ renderText h)
   eeio ev e `E.finally` putStrLn ("jsbMid finalled" :: Text)
 
-
-
-
 model' :: (FromJSON a, MonadState s m) => (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text s)) m ()
 model' step s =
   s &
