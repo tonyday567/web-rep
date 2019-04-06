@@ -14,6 +14,8 @@ recipe
 
 ```
 stack build --test --exec "$(stack path --local-install-root)/bin/page-example" --file-watch
+stack build --test --exec "$(stack path --local-install-root)/bin/chart-style" --file-watch
+stack build web-page:test:test --file-watch --ghc-options -freverse-errors
 ```
 
 reference

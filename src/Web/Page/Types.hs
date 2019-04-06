@@ -17,8 +17,6 @@ module Web.Page.Types
   , PageConcerns(..)
   , PageStructure(..)
   , PageRender(..)
-  , libCss
-  , libJs
   ) where
 
 import Lens.Micro
@@ -118,13 +116,5 @@ defaultPageConfig :: PageConfig
 defaultPageConfig = PageConfig Inline HeaderBody Minified
     (("default"<>) <$> suffixes) []
 
-libCss :: Text -> Html ()
-libCss url = link_
-  [ rel_ "stylesheet"
-  , href_ url
-  ]
-
-libJs :: Text -> Html ()
-libJs url = with (script_ mempty) [src_ url]
 
 

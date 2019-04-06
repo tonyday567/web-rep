@@ -16,9 +16,10 @@ import Control.Applicative
 import Lens.Micro
 import Control.Monad
 import Data.Monoid
+import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Text.Lazy (Text, fromStrict, pack, toStrict)
-import Data.Text.Lazy.IO (writeFile)
+import Data.Text.Lazy (fromStrict, toStrict)
+import Data.Text.IO (writeFile)
 import Data.Traversable
 import Lucid
 import qualified Lucid.Svg as Svg
@@ -26,6 +27,7 @@ import Prelude hiding (writeFile)
 import qualified Web.Page.Css as Css
 import qualified Web.Page.Js as Js
 import Web.Page.Types
+import Web.Page.Html
 
 renderPage :: Page -> Html ()
 renderPage p =
@@ -86,7 +88,7 @@ renderPageWith pc p =
     (renderjs, rendercss) = renderers $ pc ^. #pageRender
     cssInline
       | pc ^. #concerns == Separated || css == mempty = mempty
-      | otherwise = style_ [type_ (toStrict $ pack "text/css")] css
+      | otherwise = style_ [type_ "text/css"] css
     jsInline
       | pc ^. #concerns == Separated || js == mempty = mempty
       | otherwise = script_ mempty js
@@ -111,7 +113,7 @@ renderPageToFile dir pc page =
 
 renderPageHtmlToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageHtmlToFile file pc page =
-  writeFile file (renderText $ renderPageHtmlWith pc page)
+  writeFile file (toText $ renderPageHtmlWith pc page)
 
 renderPageAsText :: PageConfig -> Page -> Concerns Text
 renderPageAsText pc p =
@@ -119,17 +121,17 @@ renderPageAsText pc p =
     Inline -> Concerns mempty mempty htmlt
     Separated -> Concerns css js htmlt
   where
-    htmlt = renderText h
+    htmlt = toText h
     (css, js, h) = renderPageWith pc p
 
 rendererJs :: PageRender -> Js.PageJs -> Text
-rendererJs _ (Js.PageJsText js) = fromStrict js
-rendererJs Minified (Js.PageJs js) = Js.renderToText . Js.minifyJS . Js.unJS $ js
-rendererJs Pretty (Js.PageJs js) = Js.renderToText . Js.unJS $ js
+rendererJs _ (Js.PageJsText js) = js
+rendererJs Minified (Js.PageJs js) = toStrict . Js.renderToText . Js.minifyJS . Js.unJS $ js
+rendererJs Pretty (Js.PageJs js) = toStrict . Js.renderToText . Js.unJS $ js
 
 rendererCss :: PageRender -> Css.Css -> Text
-rendererCss Minified css = Css.renderWith Css.compact [] css
-rendererCss Pretty css = Css.render css
+rendererCss Minified css = toStrict $ Css.renderWith Css.compact [] css
+rendererCss Pretty css = toStrict $ Css.render css
 
 renderers :: PageRender -> (Js.PageJs -> Text, Css.Css -> Text)
 renderers p = (rendererJs p, rendererCss p)
@@ -138,7 +140,7 @@ renderPageTextWith :: PageConfig -> PageText -> (Text, Text, Html ())
 renderPageTextWith pc p =
   case pc ^. #concerns of
     Inline -> (mempty, mempty, h)
-    Separated -> (fromStrict css, js, h)
+    Separated -> (css, js, h)
   where
     h =
       case pc ^. #structure of
@@ -185,7 +187,7 @@ renderPageTextWith pc p =
          rendererJs Pretty (Js.onLoad (Js.PageJsText $ p ^. #jsOnLoadText))
     cssInline
       | pc ^. #concerns == Separated || css == mempty = mempty
-      | otherwise = renderText $ style_ [type_ (toStrict $ pack "text/css")] css
+      | otherwise = renderText $ style_ [type_ "text/css"] css
     jsInline
       | pc ^. #concerns == Separated || js == mempty = mempty
       | otherwise = renderText $ script_ mempty js

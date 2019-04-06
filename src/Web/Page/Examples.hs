@@ -5,6 +5,7 @@
 module Web.Page.Examples where
 
 import Web.Page
+import Web.Page.Html
 import Text.InterpolatedString.Perl6
 import Protolude
 import qualified Clay

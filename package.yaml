@@ -48,16 +48,16 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
-  - Data.Shared
   - Web.Page
   - Web.Page.Bootstrap
+  - Web.Page.Bridge
+  - Web.Page.Bridge.Rep
+  - Web.Page.Chart
   - Web.Page.Css
   - Web.Page.Examples
   - Web.Page.Html
   - Web.Page.Html.Input
-  - Web.Page.Html.Scooter
   - Web.Page.Js
-  - Web.Page.JSB
   - Web.Page.Server
   - Web.Page.Types
   - Web.Page.Render
@@ -86,8 +86,8 @@ executables:
       - -with-rtsopts=-N
     dependencies:
       - web-page
-  chart-example:
-    main: chart-example.hs
+  chart-style:
+    main: chart-style.hs
     source-dirs: app
     ghc-options:
       - -funbox-strict-fields
@@ -97,4 +97,3 @@ executables:
       - -with-rtsopts=-N
     dependencies:
       - web-page
-

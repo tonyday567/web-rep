@@ -13,7 +13,6 @@ import Web.Page.Render
 import Lucid (renderText)
 import Web.Scotty
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, only)
-import qualified Data.Text.Lazy as Lazy
 import qualified Control.Monad.State as State
 import Lens.Micro
 
@@ -28,8 +27,8 @@ servePageWith rp pc p =
       do
         middleware $ staticPolicy $ only [(cssfp,cssfp), (jsfp, jsfp)]
         get rp (do
-                   State.lift $ writeFile' cssfp (Lazy.toStrict css)
-                   State.lift $ writeFile' jsfp (Lazy.toStrict js)
+                   State.lift $ writeFile' cssfp css
+                   State.lift $ writeFile' jsfp js
                    html $ renderText h)
   cssfp = pc ^. #filenames . #css
   jsfp = pc ^. #filenames . #js

@@ -71,41 +71,27 @@ cardify atts h t b =
    (maybe mempty (with h5_ [class_ "card-title"] . toHtml) t <>
     b)
 
-container :: Html () -> Html ()
-container = with div_ [class_ "container"]
-
-row :: Html () -> Html ()
-row = with div_ [class_ "row"]
-
-col :: Html () -> Html ()
-col = with div_ [class_ "col"]
-
-colSm :: Html () -> Html ()
-colSm = with div_ [class_ "col-sm"]
+b_ :: Text -> Html () -> Html ()
+b_ t = with div_ [class_ t]
 
 accordianCard :: Bool -> [(Text, Text)] -> Text -> Text -> Text -> Text -> Html () -> Html ()
 accordianCard collapse atts idp idh idb t0 b =
   with div_ ([class_ "card"] <> toAtts atts) $
-    (with div_ [class_ "card-header", id_ idh]
+    with div_ [class_ "card-header", id_ idh]
       (with h2_ [class_ "mb-0"]
-        (with button_ [class_ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb ] (toHtml t0)))) <>
+        (with button_ [class_ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb ] (toHtml t0))) <>
     with div_ [id_ idb, class_ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
     (with div_ [class_ "card-body"] b)
 
-genName :: (MonadState Int m, Monad m) => m Text
-genName = do
-  modify (+1)
-  show <$> get
-
 accordion :: (MonadState Int m, Monad m) => Text -> Maybe Text -> [(Text, Html ())] -> m (Html ())
-accordion idp x hs = do
-  idp' <- (idp <>) <$> genName
+accordion pre x hs = do
+  idp' <- genNamePre pre
   with div_ [class_ "accordion", id_ idp'] <$> aCards idp'
     where
       aCards par = mconcat <$> sequence (aCard par <$> hs)
       aCard par (t,b) = do
-        idh <- (idp <>) <$> genName
-        idb <- (idp <>) <$> genName
+        idh <- genNamePre pre
+        idb <- genNamePre pre
         pure $ accordianCard (maybe True (/=t) x) [] par idh idb t b
 
 

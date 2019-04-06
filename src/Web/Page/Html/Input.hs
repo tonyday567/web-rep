@@ -15,7 +15,7 @@ module Web.Page.Html.Input
   , MultiInputAttributes(MultiInputAttributes)
   , InputType(..)
   , bootify
-  , jsbify
+  , bridgeify
   , showJsInput
   , showJs
   ) where
@@ -94,7 +94,7 @@ includeValue (Checkbox _) = False
 includeValue _ = True
 
 -- the instance here needs to be `ToHtml a` because `Show a` gives "\"text\"" for show "text", and hilarity ensues
-instance (Show a) => ToHtml (Input a) where
+instance (ToHtml a) => ToHtml (Input a) where
   toHtml i@(Input v itype label' wrap' idh hatts) =
     maybe identity (\c x ->  with div_ (toAtts c) x) wrap'
     (bool (l <> i') (i' <> l) (isCheckbox itype))
@@ -104,7 +104,7 @@ instance (Show a) => ToHtml (Input a) where
         with (toHtml itype)
         ( [id_ idh] <>
           toAtts hatts <>
-          bool [] [value_ (show v)] (includeValue itype))
+          bool [] [value_ (show $ toHtmlRaw v)] (includeValue itype))
   toHtmlRaw (Input v itype label' wrap' idh hatts) =
     maybe identity (\c x ->  with div_ (toAtts c) x) wrap' (l <> i')
     where
@@ -113,7 +113,7 @@ instance (Show a) => ToHtml (Input a) where
         with (toHtmlRaw itype)
         ( [id_ idh] <>
           toAtts hatts <>
-          bool [] [value_ (show v)] (includeValue itype))
+          bool [] [value_ (show $ toHtmlRaw v)] (includeValue itype))
 
 formClass :: InputType a -> Text
 formClass inp =
@@ -159,8 +159,8 @@ bootify inp@(Input _ itype _ _ _ _) =
   (field @"wrap" %~ (<> Just [("class", formGroupClass itype)])) $
   inp
 
-jsbify :: Input a -> Input a
-jsbify i =
+bridgeify :: Input a -> Input a
+bridgeify i =
   field @"atts" %~ (<>   [
     ( "oninput"
     , "jsb.event({ \"element\": this.id, \"value\": " <>

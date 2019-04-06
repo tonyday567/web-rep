@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 34802df03a1053600c84817ead7c8d513899b30320720cfe40343849908abd49
+-- hash: be49eaa339e75d30da595561dc1837c4bb059b7f78a4d42f01144638e6a725d2
 
 name:           web-page
 version:        0.1.0
@@ -59,26 +59,25 @@ library
     , wai-extra
     , wai-middleware-static
   exposed-modules:
-      Data.Shared
       Web.Page
       Web.Page.Bootstrap
+      Web.Page.Bridge
+      Web.Page.Bridge.Rep
+      Web.Page.Chart
       Web.Page.Css
       Web.Page.Examples
       Web.Page.Html
       Web.Page.Html.Input
-      Web.Page.Html.Scooter
       Web.Page.Js
-      Web.Page.JSB
       Web.Page.Server
       Web.Page.Types
       Web.Page.Render
   other-modules:
-      Web.Page.Suavemente
       Paths_web_page
   default-language: Haskell2010
 
-executable chart-example
-  main-is: chart-example.hs
+executable chart-style
+  main-is: chart-style.hs
   other-modules:
       Paths_web_page
   hs-source-dirs:
