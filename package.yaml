@@ -9,15 +9,14 @@ bug-reports: https://github.com/tonyday567/web-page/issues
 extra-source-files:
 - stack.yaml
 dependencies:
+  - JuicyPixels
   - aeson
   - attoparsec
   - base
   - bifunctors
   - box
-  - bytestring
-  - chart-svg
   - clay
-  - containers
+  - colour
   - generic-lens
   - interpolatedstring-perl6
   - javascript-bridge
@@ -25,26 +24,18 @@ dependencies:
   - lens
   - lucid
   - lucid-svg
-  - microlens
   - mmorph
   - mtl
+  - numhask-space
   - protolude
   - scotty
-  - text
-  - wai
-  - wai-extra
-  - wai-middleware-static
-  - stm
-  - transformers
-  - colour
   - streaming
-  - unordered-containers
-  - JuicyPixels
   - svg-tree
-  - numhask-prelude
-  - blaze-markup
-  - suavemente
-  - numhask-space
+  - text
+  - transformers
+  - unordered-containers
+  - wai
+  - wai-middleware-static
 library:
   source-dirs: src
   exposed-modules:
@@ -52,7 +43,6 @@ library:
   - Web.Page.Bootstrap
   - Web.Page.Bridge
   - Web.Page.Bridge.Rep
-  - Web.Page.Chart
   - Web.Page.Css
   - Web.Page.Examples
   - Web.Page.Html
@@ -77,17 +67,6 @@ tests:
 executables:
   page-example:
     main: example.hs
-    source-dirs: app
-    ghc-options:
-      - -funbox-strict-fields
-      - -fforce-recomp
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - web-page
-  chart-style:
-    main: chart-style.hs
     source-dirs: app
     ghc-options:
       - -funbox-strict-fields

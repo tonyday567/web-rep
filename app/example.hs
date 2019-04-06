@@ -22,7 +22,7 @@ import Web.Page
 import Web.Page.Bootstrap
 import Web.Page.Examples
 import Web.Page.Html.Input
-import Web.Page.Bridge (Element(..), bridgePage, append, replace, eventConsume )
+import Web.Page.Bridge
 import Web.Page.Bridge.Rep
 import Web.Scotty
 import qualified Box
@@ -114,7 +114,7 @@ sendBridgeTest e (Right a) =
 
 consumeBridgeTest :: Event Value -> Engine -> IO (Int, Text)
 consumeBridgeTest ev e =
-  eventConsume initBridgeTest stepBridgeTest'
+  elementConsume initBridgeTest stepBridgeTest'
   ( (Box.liftC <$> Box.showStdout) <>
     pure (Box.Committer (\v -> sendBridgeTest e v >> pure True))
   ) ev e
@@ -159,14 +159,13 @@ main = do
     middleware $ staticPolicy (noDots >-> addBase "other")
     -- middleware logStdoutDev
     -- middleware $ \app req res -> putStrLn ("raw path:" :: Text) >> print (rawPathInfo req) >> app req res
-    {-
-    middleware (midBridgeTest inputBridgeTest consumeBridgeTest)
     let inputBridgeTest = toHtml rangeTest <> toHtml textTest
+    middleware (midBridgeTest inputBridgeTest consumeBridgeTest)
     servePageWith "/bridge" defaultPageConfig
       (ioTestPage mempty (toHtml (show initBridgeTest :: Text)))
-    -}
     servePageWith "/default" defaultPageConfig page1
     servePageWith "/accordion" defaultPageConfig (testPage ah)
+    -- /rep will not work until you comment out /bridge
     middleware (midRepTest repTest' show)
     servePageWith "/rep" defaultPageConfig
       (ioTestPage mempty mempty)

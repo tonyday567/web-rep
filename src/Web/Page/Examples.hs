@@ -10,7 +10,7 @@ import Text.InterpolatedString.Perl6
 import Protolude
 import qualified Clay
 import Lucid
-import Lens.Micro
+import Control.Lens
 
 -- | simple page examples
 page1 :: Page

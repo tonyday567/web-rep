@@ -5,8 +5,6 @@ resolver: nightly-2019-03-22
 packages:
 - '.'
 - '../box'
-- '../chart-svg'
-- '../suavemente'
 
 extra-deps:
   - generic-lens-1.1.0.0
@@ -19,5 +17,3 @@ extra-deps:
       - numhask
       - numhask-prelude
       - numhask-space
-  - servant-server-0.15
-  - servant-websockets-1.0.0

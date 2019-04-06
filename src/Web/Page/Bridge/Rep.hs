@@ -185,7 +185,7 @@ maybeRep label cl start sa = SharedRep $ do
 
 consumeSharedBridge :: Show b => (Engine -> b -> IO a) -> HashMap Text Text -> (Either Text (HashMap Text Text) -> b) -> Event Value -> Engine -> IO (HashMap Text Text)
 consumeSharedBridge cc hm fa ev e =
-  eventConsume hm (\(Element k v) s -> insert k v s)
+  elementConsume hm (\(Element k v) s -> insert k v s)
   (contramap fa <$>
   ( (Box.liftC <$> Box.showStdout) <>
     pure (Box.Committer (\v -> cc e v >> pure True))

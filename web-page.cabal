@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: be49eaa339e75d30da595561dc1837c4bb059b7f78a4d42f01144638e6a725d2
+-- hash: 3a1a8b068f2c82db3e882b70b862b1fcc67711c2632d3ffa75ca819b28a7570c
 
 name:           web-page
 version:        0.1.0
@@ -27,13 +27,9 @@ library
     , attoparsec
     , base
     , bifunctors
-    , blaze-markup
     , box
-    , bytestring
-    , chart-svg
     , clay
     , colour
-    , containers
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -41,29 +37,23 @@ library
     , lens
     , lucid
     , lucid-svg
-    , microlens
     , mmorph
     , mtl
-    , numhask-prelude
     , numhask-space
     , protolude
     , scotty
-    , stm
     , streaming
-    , suavemente
     , svg-tree
     , text
     , transformers
     , unordered-containers
     , wai
-    , wai-extra
     , wai-middleware-static
   exposed-modules:
       Web.Page
       Web.Page.Bootstrap
       Web.Page.Bridge
       Web.Page.Bridge.Rep
-      Web.Page.Chart
       Web.Page.Css
       Web.Page.Examples
       Web.Page.Html
@@ -74,53 +64,6 @@ library
       Web.Page.Render
   other-modules:
       Paths_web_page
-  default-language: Haskell2010
-
-executable chart-style
-  main-is: chart-style.hs
-  other-modules:
-      Paths_web_page
-  hs-source-dirs:
-      app
-  ghc-options: -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      JuicyPixels
-    , aeson
-    , attoparsec
-    , base
-    , bifunctors
-    , blaze-markup
-    , box
-    , bytestring
-    , chart-svg
-    , clay
-    , colour
-    , containers
-    , generic-lens
-    , interpolatedstring-perl6
-    , javascript-bridge
-    , language-javascript
-    , lens
-    , lucid
-    , lucid-svg
-    , microlens
-    , mmorph
-    , mtl
-    , numhask-prelude
-    , numhask-space
-    , protolude
-    , scotty
-    , stm
-    , streaming
-    , suavemente
-    , svg-tree
-    , text
-    , transformers
-    , unordered-containers
-    , wai
-    , wai-extra
-    , wai-middleware-static
-    , web-page
   default-language: Haskell2010
 
 executable page-example
@@ -136,13 +79,9 @@ executable page-example
     , attoparsec
     , base
     , bifunctors
-    , blaze-markup
     , box
-    , bytestring
-    , chart-svg
     , clay
     , colour
-    , containers
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -150,22 +89,17 @@ executable page-example
     , lens
     , lucid
     , lucid-svg
-    , microlens
     , mmorph
     , mtl
-    , numhask-prelude
     , numhask-space
     , protolude
     , scotty
-    , stm
     , streaming
-    , suavemente
     , svg-tree
     , text
     , transformers
     , unordered-containers
     , wai
-    , wai-extra
     , wai-middleware-static
     , web-page
   default-language: Haskell2010
@@ -182,13 +116,9 @@ test-suite test
     , attoparsec
     , base
     , bifunctors
-    , blaze-markup
     , box
-    , bytestring
-    , chart-svg
     , clay
     , colour
-    , containers
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -196,16 +126,12 @@ test-suite test
     , lens
     , lucid
     , lucid-svg
-    , microlens
     , mmorph
     , mtl
-    , numhask-prelude
     , numhask-space
     , protolude
     , scotty
-    , stm
     , streaming
-    , suavemente
     , svg-tree
     , tasty
     , tasty-hspec
@@ -213,7 +139,6 @@ test-suite test
     , transformers
     , unordered-containers
     , wai
-    , wai-extra
     , wai-middleware-static
     , web-page
   other-modules:

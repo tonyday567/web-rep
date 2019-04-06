@@ -19,7 +19,7 @@ module Web.Page.Types
   , PageRender(..)
   ) where
 
-import Lens.Micro
+import Control.Lens
 import Data.Generics.Labels()
 import Lucid
 import Protolude hiding ((<>))

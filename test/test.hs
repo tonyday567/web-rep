@@ -3,16 +3,16 @@
 
 module Main where
 
+import Control.Lens
+import Lucid
+import Protolude
 import Test.Tasty
 import Test.Tasty.Hspec
-import Protolude
-import Lens.Micro
-import qualified Data.Text.IO as Text
 import Web.Page
 import Web.Page.Bootstrap
-import Web.Page.Html
 import Web.Page.Examples
-import Lucid
+import Web.Page.Html
+import qualified Data.Text.IO as Text
 
 generatePage :: FilePath -> FilePath -> PageConfig -> Page -> IO ()
 generatePage dir stem pc =

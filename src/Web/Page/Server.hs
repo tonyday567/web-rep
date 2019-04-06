@@ -14,7 +14,7 @@ import Lucid (renderText)
 import Web.Scotty
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, only)
 import qualified Control.Monad.State as State
-import Lens.Micro
+import Control.Lens hiding (only)
 
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
 servePageWith rp pc p =

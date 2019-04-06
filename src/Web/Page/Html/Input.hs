@@ -25,7 +25,7 @@ import Lucid.Base
 import Data.Text
 import Protolude
 import Data.Generics.Product (field)
-import Lens.Micro
+import Control.Lens
 import Web.Page.Html
 import Web.Page.Types
 import Web.Page.Js

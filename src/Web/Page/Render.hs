@@ -13,7 +13,7 @@ module Web.Page.Render
   ) where
 
 import Control.Applicative
-import Lens.Micro
+import Control.Lens
 import Control.Monad
 import Data.Monoid
 import Data.Text (Text)
