@@ -14,7 +14,7 @@ import Control.Lens
 import Data.Aeson (Value)
 import Data.Attoparsec.Text
 import Data.HashMap.Strict
-import Lucid hiding (b_)
+import Lucid hiding (b_, button_)
 import Network.JavaScript
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, (>->))
 import Protolude hiding (replace, empty, Rep)
@@ -127,7 +127,7 @@ midBridgeTest init eeio = start $ \ ev e -> do
 
 repTest :: (Monad m) => SharedRep m (Int, Text)
 repTest = do
-  n <- slider_ "slider" 0 5 3
+  n <- sliderI_ "slider" 0 5 1 3
   t <- textbox_ "textbox" "sometext"
   pure (n, t)
 
@@ -149,6 +149,28 @@ logResults :: (a -> Text) -> Engine -> Either Text a -> IO ()
 logResults _ e (Left err) = append e "log" err
 logResults r e (Right x) = results r e x
 
+data RepExamples =
+  RepExamples
+  { repTextbox :: Text
+  , repSliderI :: Int
+  , repSlider :: Double
+  , repCheckbox :: Bool
+  , repButton :: Bool
+  , repDropdown :: Int
+  , repColor :: PixelRGB8
+  } deriving (Show, Eq)
+
+repExamples :: (Monad m) => SharedRep m RepExamples
+repExamples = do
+  t <- textbox_ "textbox" "sometext"
+  n <- sliderI_ "int slider" 0 5 1 3
+  ds <- slider_ "double slider" 0 1 0.1 3
+  c <- checkbox_ "checkbox" True
+  b <- button_ "button" False
+  dr <- dropdown_ decimal show "dropdown" (show <$> [1..5]) 3
+  col <- color_ "color" (PixelRGB8 56 128 200)
+  pure (RepExamples t n ds c b dr col)
+
 -- FIXME: work out how to leave middleware all uncommented
 -- Simply switching on based on paths doesn't work because socket comms comes through "/"
 -- so the first bridge middleware consumes all the elements
@@ -159,15 +181,17 @@ main = do
     middleware $ staticPolicy (noDots >-> addBase "other")
     -- middleware logStdoutDev
     -- middleware $ \app req res -> putStrLn ("raw path:" :: Text) >> print (rawPathInfo req) >> app req res
-    let inputBridgeTest = toHtml rangeTest <> toHtml textTest
+    {-
     middleware (midBridgeTest inputBridgeTest consumeBridgeTest)
+    -}
+    -- let inputBridgeTest = toHtml rangeTest <> toHtml textTest
     servePageWith "/bridge" defaultPageConfig
       (ioTestPage mempty (toHtml (show initBridgeTest :: Text)))
     servePageWith "/default" defaultPageConfig page1
     servePageWith "/accordion" defaultPageConfig (testPage ah)
     -- /rep will not work until you comment out /bridge
-    middleware (midRepTest repTest' show)
+    middleware (midRepTest repExamples show)
     servePageWith "/rep" defaultPageConfig
       (ioTestPage mempty mempty)
-
+ 
 

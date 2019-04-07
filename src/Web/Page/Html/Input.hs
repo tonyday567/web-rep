@@ -1,17 +1,17 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NoPatternSynonyms #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Web.Page.Html.Input
   ( Input(Input)
-  , SomeInput(..)
   , MultiInputAttributes(MultiInputAttributes)
   , InputType(..)
   , bootify
@@ -20,16 +20,15 @@ module Web.Page.Html.Input
   , showJs
   ) where
 
+import Control.Lens
+import Data.Text
 import Lucid
 import Lucid.Base
-import Data.Text
 import Protolude
-import Data.Generics.Product (field)
-import Control.Lens
-import Web.Page.Html
-import Web.Page.Types
-import Web.Page.Js
 import Text.InterpolatedString.Perl6
+import Web.Page.Html
+import Web.Page.Js
+import Web.Page.Types
 
 data Input a =
   Input
@@ -40,10 +39,6 @@ data Input a =
   , id' :: Text
   , atts :: [(Text, Text)]
   } deriving (Eq, Show, Generic)
-
--- | An existentialized 'Input'.
-data SomeInput where
-  SomeInput :: (a -> Html ()) -> Input a -> SomeInput
 
 data MultiInputAttributes a =
   MultiInputAttributes
@@ -57,8 +52,8 @@ data InputType a =
   TextBox |
   ColorPicker |
   Checkbox Bool |
-  Dropdown [(Text,Text)] (Maybe Text) |
-  Dropdown' [Text] (Maybe Text) |
+  Button Bool Text |
+  Dropdown [Text] (Maybe Text) |
   MultiInput (MultiInputAttributes a)
   deriving (Eq, Show, Generic)
 
@@ -73,9 +68,10 @@ instance ( ) => ToHtml (InputType a) where
     input_ [ type_ "text"]
   toHtml ColorPicker =
     input_ [ type_ "color"]
+  toHtml (Button pushed lab) =
+    input_ [ type_ "button", class_ "btn btn-primary btn-sm", data_ "toggle" "button",
+           makeAttribute "aria-pressed" (bool "false" "true" pushed), value_ lab]
   toHtml (Dropdown opts mv) =
-    select_ (mconcat $ (\(k,v) -> with option_ ([value_ v] <> bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml k)) <$> opts)
-  toHtml (Dropdown' opts mv) =
     select_ (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
   toHtml (Checkbox checked) =
     input_ ([type_ "checkbox"] <> bool [] [checked_] checked)
@@ -89,13 +85,13 @@ instance ( ) => ToHtml (InputType a) where
 
 includeValue :: InputType a -> Bool
 includeValue (Dropdown _ _) = False
-includeValue (Dropdown' _ _) = False
 includeValue (Checkbox _) = False
+includeValue (Button _ _) = False
 includeValue _ = True
 
 -- the instance here needs to be `ToHtml a` because `Show a` gives "\"text\"" for show "text", and hilarity ensues
 instance (ToHtml a) => ToHtml (Input a) where
-  toHtml i@(Input v itype label' wrap' idh hatts) =
+  toHtml (Input v itype label' wrap' idh hatts) =
     maybe identity (\c x ->  with div_ (toAtts c) x) wrap'
     (bool (l <> i') (i' <> l) (isCheckbox itype))
     where
@@ -120,6 +116,7 @@ formClass inp =
   case inp of
     Slider -> "form-control-range"
     (Checkbox _) -> "form-check-input"
+    (Button _ _) -> ""
     _ -> "form-control"
 
 formGroupClass :: InputType a -> Text
@@ -146,44 +143,51 @@ isCheckbox :: InputType a -> Bool
 isCheckbox inp =
   case inp of
     Checkbox _ -> True
+    Button _ _ -> True
     _ -> False
-
 
 bootify :: Input a -> Input a
 bootify inp@(Input _ itype _ _ _ _) =
-  (field @"atts" %~
+  (#atts %~
    (<> [("class",
           formClass itype <>
           bool mempty " custom-range" (isRange itype)
         )])) .
-  (field @"wrap" %~ (<> Just [("class", formGroupClass itype)])) $
+  (#wrap %~ (<> Just [("class", formGroupClass itype)])) $
   inp
+
+inputElement :: IsString p => InputType a -> p
+inputElement t =
+  case t of
+    Checkbox _ -> "this.checked.toString()"
+    Button _ _ -> "(\"true\" !== this.getAttribute(\"aria-pressed\")).toString()"
+    _ -> "this.value"
 
 bridgeify :: Input a -> Input a
 bridgeify i =
-  field @"atts" %~ (<>   [
-    ( "oninput"
+  #atts %~ (<>   [
+    ( funk (i ^. #inputType)
     , "jsb.event({ \"element\": this.id, \"value\": " <>
-      bool "this.value" "this.checked.toString()" (isCheckbox i) <> "})"
+      inputElement (i ^. #inputType)
+          <> "})"
         )]) $ i
   where
-    isCheckbox (Input _ (Checkbox _) _ _ _ _) = True
-    isCheckbox _ = False
+    funk (Button _ _) = "onclick"
+    funk _ = "oninput"
 
 showJsInput :: Text -> Text -> Input a -> Input a
-showJsInput cl name = field @"atts" %~ (<> [
+showJsInput cl name = #atts %~ (<> [
     ( "onchange"
     , "showJs('" <> cl <> "','" <> name <> "');"
     )])
 
 showJs :: Page
-showJs = mempty & field @"jsGlobal" .~ PageJsText
+showJs = mempty & #jsGlobal .~ PageJsText
   [qc|
 function showJs (cl, box) \{
   var vis = (document.getElementById(box).checked) ? "block" : "none";
   Array.from(document.getElementsByClassName(cl)).forEach(x => x.style.display = vis);
 };
 |]
-
 
 
