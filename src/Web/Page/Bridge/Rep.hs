@@ -1,12 +1,11 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GADTs         #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Web.Page.Bridge.Rep
@@ -24,31 +23,31 @@ module Web.Page.Bridge.Rep
   , PixelRGB8(..)
   , textbox_
   , checkbox_
+  , toggle_
   , button_
   , maybeRep
-  , cardifySharedRep
-  , consumeSharedBridge
+  , updateMap
   ) where
 
+import Codec.Picture.Types (PixelRGB8(..))
 import Control.Applicative (liftA2)
 import Control.Category (id)
 import Control.Lens
+import Data.Aeson (Value)
 import Data.Attoparsec.Text
-import Data.Biapplicative (Biapplicative(..))
+import Data.Biapplicative
 import Data.Bifunctor (Bifunctor(..))
 import Data.HashMap.Strict
 import Data.Text (pack, Text)
 import Lucid hiding (button_)
+import Network.JavaScript hiding (delete)
+import Numeric
 import Protolude hiding ((<<*>>), Rep)
 import Web.Page.Bootstrap
 import Web.Page.Bridge
-import qualified Box
-import Data.Aeson (Value)
 import Web.Page.Html
 import Web.Page.Html.Input
-import Network.JavaScript
-import Codec.Picture.Types (PixelRGB8(..))
-import Numeric
+import qualified Box
 
 data RepF r a = Rep
   { rep :: r
@@ -105,30 +104,48 @@ makeRep p pr f a =
         maybe (Left "lookup failed") Right $
         either (Left . pack) Right . parseOnly p <$> lookup name s)
 
-shareInput :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> Input a -> a -> SharedRep m a
-shareInput p pr i a =
+repInput :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> Input a -> a -> SharedRep m a
+repInput p pr i a =
   SharedRep $ do
     name <- zoom _1 genName
     zoom _2 (modify (insert name (pr a)))
     pure $
       Rep
-      (toHtml $ bridgeify $ bootify $ (set #val a) $ (set #id' name) i)
+      (toHtml $ bridgeify $ bootify $ set #val a $ set #id' name i)
       (\s ->
         join $
         maybe (Left "lookup failed") Right $
         either (Left . pack) Right . parseOnly p <$> lookup name s)
 
+{-
+-- | does not put a value into the HashMap on instantiation, and consumes the value when found in the HashMap
+repMessage :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> Input a -> a -> SharedRep m a
+repMessage p pr i a =
+  SharedRep $ do
+    name <- zoom _1 genName
+    -- zoom _2 (modify (insert name (pr a)))
+    Rep <$> 
+      pure (toHtml $ bridgeify $ bootify $ set #val a $ set #id' name i) <*>
+      pure (\s -> do
+        let res = join $
+              maybe (Left "lookup failed") Right $
+              either (Left . pack) Right . parseOnly p <$>
+              lookup name s
+        put (delete name s)
+        res)
+-}
+
 slider_ :: (Monad m) => Text -> Double -> Double -> Double -> Double -> SharedRep m Double
-slider_ label l u s v = shareInput double show
-  (Input v Slider (Just label) Nothing "" [("min", pack $ show l), ("max", pack $ show u), ("step", pack $ show s)]) v
+slider_ label l u s v = repInput double show
+  (Input v Slider (Just label) Nothing mempty [("min", pack $ show l), ("max", pack $ show u), ("step", pack $ show s)]) v
 
 sliderI_ :: (Monad m, ToHtml a, Integral a, Show a) => Text -> a -> a -> a -> a -> SharedRep m a
-sliderI_ label l u s = makeRep decimal show $ \name v ->
-  (toHtml $ bridgeify $ bootify $ Input v Slider (Just label) Nothing name [("min", pack $ show l), ("max", pack $ show u), ("step", pack $ show s)])
+sliderI_ label l u s v = repInput decimal show 
+  (Input v Slider (Just label) Nothing mempty [("min", pack $ show l), ("max", pack $ show u), ("step", pack $ show s)]) v
 
 textbox_ :: (Monad m) => Text -> Text -> SharedRep m Text
-textbox_ label = makeRep takeText id $ \name v ->
-  (toHtml $ bridgeify $ bootify $ Input v TextBox (Just label) Nothing name [])
+textbox_ label v = repInput takeText id
+  (Input v TextBox (Just label) Nothing mempty []) v
 
 fromHex :: Parser PixelRGB8
 fromHex =
@@ -146,30 +163,30 @@ instance ToHtml PixelRGB8 where
   toHtmlRaw = toHtmlRaw . toHex
 
 color_ :: (Monad m) => Text -> PixelRGB8 -> SharedRep m PixelRGB8
-color_ label = makeRep fromHex toHex $ \name v ->
-  (toHtml $ bridgeify $ bootify $ Input v ColorPicker (Just label) Nothing name [])
+color_ label v = repInput fromHex toHex
+  (Input v ColorPicker (Just label) Nothing mempty []) v
 
 dropdown_ :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRep m a
-dropdown_ p pr label opts = makeRep p pr $ \name v ->
-  (toHtml $ bridgeify $ bootify $
-   Input v (Dropdown opts (Just (pr v))) (Just label) Nothing name [])
+dropdown_ p pr label opts v = repInput p pr 
+  (Input v (Dropdown opts (Just (pr v))) (Just label) Nothing mempty []) v
 
 checkbox_ :: (Monad m) => Text -> Bool -> SharedRep m Bool
-checkbox_ label = makeRep ((=="true") <$> takeText) (bool "false" "true") $ \name v ->
-  (toHtml $ bridgeify $ bootify $ Input v (Checkbox v) (Just label) Nothing name [])
+checkbox_ label v = repInput ((=="true") <$> takeText) (bool "false" "true")
+  (Input v (Checkbox v) (Just label) Nothing mempty []) v
 
-button_ :: (Monad m) => Text -> Bool -> SharedRep m Bool
-button_ label = makeRep ((=="true") <$> takeText) (bool "false" "true") $ \name v ->
-  (toHtml $ bridgeify $ bootify $ Input v (Button v label) Nothing Nothing name [])
+toggle_ :: (Monad m) => Text -> Bool -> SharedRep m Bool
+toggle_ label v = repInput ((=="true") <$> takeText) (bool "false" "true")
+  (Input v (Toggle v label) Nothing Nothing mempty []) v
 
-wrap :: (Html () -> Html ()) -> Rep a -> Rep a
-wrap w (Rep h f) = Rep (w h) f
+instance ToHtml () where
+  toHtml = const "()"
+  toHtmlRaw = const "()"
 
-cardifySharedRep :: (Monad m) => [(Text,Text)] -> Html () -> Maybe Text -> SharedRep m a -> SharedRep m a
-cardifySharedRep atts h mt s = SharedRep $ fmap (wrap card) (unrep s) where
-  card = cardify atts h mt
-  
+button_ :: (Monad m) => Text -> SharedRep m ()
+button_ label = repInput (pure ()) (const "")
+  (Input () (Button label) Nothing Nothing mempty []) ()
+
 checkboxShowJs :: (Monad m) => Text -> Text -> Bool -> SharedRep m Bool
 checkboxShowJs label cl = makeRep ((=="true") <$> takeText) (bool "false" "true") $
   \name v ->
@@ -180,22 +197,20 @@ checkboxShowJs label cl = makeRep ((=="true") <$> takeText) (bool "false" "true"
       Input v (Checkbox v) (Just label) Nothing name [])
 
 maybeRep :: (Monad m) => Text -> Text -> Bool -> SharedRep m a -> SharedRep m (Maybe a)
-maybeRep label cl st sa = SharedRep $ do
-  (Rep checkHtml checkFa) <- unrep $ checkboxShowJs label cl st
-  (Rep bodyHtml bodyFa) <- unrep sa
-  pure $ Rep
-    (cardify [] checkHtml Nothing
-     (with div_
-       [class_ cl, style_
+maybeRep label cl st sa = bimap hmap mmap (checkboxShowJs label cl st) <<*>> sa
+  where
+    hmap a b =
+      cardify [] a Nothing
+       (with div_
+        [class_ cl, style_
                    ("display:" <> bool "none" "block" st)]
-       bodyHtml))
-    (\hm -> either Left (bool (Right Nothing) (Just <$> bodyFa hm)) (checkFa hm))
+        b)
+    mmap a b = bool Nothing (Just b) a
 
-consumeSharedBridge :: Show b => (Engine -> b -> IO a) -> HashMap Text Text -> (Either Text (HashMap Text Text) -> b) -> Event Value -> Engine -> IO (HashMap Text Text)
-consumeSharedBridge cc hm fa ev e =
+updateMap :: Show b => (Engine -> b -> IO a) -> HashMap Text Text -> (Either Text (HashMap Text Text) -> b) -> Event Value -> Engine -> IO (HashMap Text Text)
+updateMap cc hm fa ev e =
   elementConsume hm (\(Element k v) s -> insert k v s)
   (contramap fa <$>
   ( (Box.liftC <$> Box.showStdout) <>
     pure (Box.Committer (\v -> cc e v >> pure True))
   )) ev e
-

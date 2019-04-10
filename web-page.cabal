@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3a1a8b068f2c82db3e882b70b862b1fcc67711c2632d3ffa75ca819b28a7570c
+-- hash: c5e1680b7457e98aba1cb9cf49547701be854850ccf830afa9da38dff04762c7
 
 name:           web-page
 version:        0.1.0
@@ -92,6 +92,7 @@ executable page-example
     , mmorph
     , mtl
     , numhask-space
+    , optparse-generic
     , protolude
     , scotty
     , streaming
@@ -100,6 +101,7 @@ executable page-example
     , transformers
     , unordered-containers
     , wai
+    , wai-extra
     , wai-middleware-static
     , web-page
   default-language: Haskell2010

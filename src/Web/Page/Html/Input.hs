@@ -52,7 +52,8 @@ data InputType a =
   TextBox |
   ColorPicker |
   Checkbox Bool |
-  Button Bool Text |
+  Toggle Bool Text |
+  Button Text |
   Dropdown [Text] (Maybe Text) |
   MultiInput (MultiInputAttributes a)
   deriving (Eq, Show, Generic)
@@ -68,9 +69,11 @@ instance ( ) => ToHtml (InputType a) where
     input_ [ type_ "text"]
   toHtml ColorPicker =
     input_ [ type_ "color"]
-  toHtml (Button pushed lab) =
+  toHtml (Toggle pushed lab) =
     input_ [ type_ "button", class_ "btn btn-primary btn-sm", data_ "toggle" "button",
            makeAttribute "aria-pressed" (bool "false" "true" pushed), value_ lab]
+  toHtml (Button lab) =
+    input_ [ type_ "button", class_ "btn btn-primary btn-sm", value_ lab]
   toHtml (Dropdown opts mv) =
     select_ (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
   toHtml (Checkbox checked) =
@@ -86,7 +89,8 @@ instance ( ) => ToHtml (InputType a) where
 includeValue :: InputType a -> Bool
 includeValue (Dropdown _ _) = False
 includeValue (Checkbox _) = False
-includeValue (Button _ _) = False
+includeValue (Toggle _ _) = False
+includeValue (Button _) = False
 includeValue _ = True
 
 -- the instance here needs to be `ToHtml a` because `Show a` gives "\"text\"" for show "text", and hilarity ensues
@@ -116,7 +120,8 @@ formClass inp =
   case inp of
     Slider -> "form-control-range"
     (Checkbox _) -> "form-check-input"
-    (Button _ _) -> ""
+    (Toggle _ _) -> ""
+    (Button _) -> ""
     _ -> "form-control"
 
 formGroupClass :: InputType a -> Text
@@ -143,7 +148,8 @@ isCheckbox :: InputType a -> Bool
 isCheckbox inp =
   case inp of
     Checkbox _ -> True
-    Button _ _ -> True
+    Toggle _ _ -> True
+    Button _ -> True
     _ -> False
 
 bootify :: Input a -> Input a
@@ -160,7 +166,7 @@ inputElement :: IsString p => InputType a -> p
 inputElement t =
   case t of
     Checkbox _ -> "this.checked.toString()"
-    Button _ _ -> "(\"true\" !== this.getAttribute(\"aria-pressed\")).toString()"
+    Toggle _ _ -> "(\"true\" !== this.getAttribute(\"aria-pressed\")).toString()"
     _ -> "this.value"
 
 bridgeify :: Input a -> Input a
@@ -172,7 +178,8 @@ bridgeify i =
           <> "})"
         )]) $ i
   where
-    funk (Button _ _) = "onclick"
+    funk (Toggle _ _) = "onclick"
+    funk (Button _) = "onclick"
     funk _ = "oninput"
 
 showJsInput :: Text -> Text -> Input a -> Input a

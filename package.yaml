@@ -76,3 +76,5 @@ executables:
       - -with-rtsopts=-N
     dependencies:
       - web-page
+      - wai-extra
+      - optparse-generic

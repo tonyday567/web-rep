@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -9,15 +10,17 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
-
-import Control.Lens
+ 
+import Control.Lens hiding (Wrapped, Unwrapped)
+import Control.Category (id)
 import Data.Aeson (Value)
 import Data.Attoparsec.Text
 import Data.HashMap.Strict
 import Lucid hiding (b_, button_)
 import Network.JavaScript
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, (>->))
-import Protolude hiding (replace, empty, Rep)
+import Network.Wai.Middleware.RequestLogger
+import Protolude hiding (replace, empty, Rep, log)
 import Web.Page
 import Web.Page.Bootstrap
 import Web.Page.Examples
@@ -29,6 +32,8 @@ import qualified Box
 import qualified Control.Exception as E
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
+import Options.Generic
+import Network.Wai
 
 testPage :: Html () -> Page
 testPage h =
@@ -138,8 +143,8 @@ midRepTest :: (Show a) => SharedRep IO a -> (a -> Text) -> Application -> Applic
 midRepTest s rend = start $ \ ev e -> do
   (Rep h fa, (_, hm)) <- flip runStateT (0,empty) (unrep s)
   append e "inputs" (Lazy.toStrict $ renderText h)
-  final <- consumeSharedBridge (logResults rend) hm (either Left fa) ev e
-    `E.finally` putStrLn ("scootMidTest finalled" :: Text)
+  final <- updateMap (logResults rend) hm (either Left fa) ev e
+    `E.finally` putStrLn ("midTestFinalled finalled" :: Text)
   putStrLn $ ("final value was: " :: Text) <> show final
 
 results :: (a -> Text) -> Engine -> a -> IO ()
@@ -155,7 +160,8 @@ data RepExamples =
   , repSliderI :: Int
   , repSlider :: Double
   , repCheckbox :: Bool
-  , repButton :: Bool
+  , repToggle :: Bool
+  , repButton :: ()
   , repDropdown :: Int
   , repColor :: PixelRGB8
   } deriving (Show, Eq)
@@ -164,34 +170,44 @@ repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
   t <- textbox_ "textbox" "sometext"
   n <- sliderI_ "int slider" 0 5 1 3
-  ds <- slider_ "double slider" 0 1 0.1 3
+  ds <- slider_ "double slider" 0 1 0.1 0.5
   c <- checkbox_ "checkbox" True
-  b <- button_ "button" False
+  tog <- toggle_ "toggle" False
+  b <- button_ "button"
   dr <- dropdown_ decimal show "dropdown" (show <$> [1..5]) 3
   col <- color_ "color" (PixelRGB8 56 128 200)
-  pure (RepExamples t n ds c b dr col)
+  pure (RepExamples t n ds c tog b dr col)
 
--- FIXME: work out how to leave middleware all uncommented
--- Simply switching on based on paths doesn't work because socket comms comes through "/"
--- so the first bridge middleware consumes all the elements
+data Opts w = Opts
+  { log :: w ::: Maybe Bool <?> "server log to stdout"
+  , logPath :: w ::: Maybe Bool <?> "log raw path"
+  , bridgeOnly :: w ::: Maybe Bool <?> "bridge-only test (no rep test)"
+  } deriving (Generic)
+
+instance ParseRecord (Opts Wrapped)
+
 main :: IO ()
 main = do
+  o :: Opts Unwrapped <- unwrapRecord "examples for web-page"
   ah <- flip evalStateT 0 (accordion "acctest" Nothing $ (\x -> (show x, "filler")) <$> [1..3::Int])
+  let tr = maybe False id
   scotty 3000 $ do
     middleware $ staticPolicy (noDots >-> addBase "other")
-    -- middleware logStdoutDev
-    -- middleware $ \app req res -> putStrLn ("raw path:" :: Text) >> print (rawPathInfo req) >> app req res
-    {-
-    middleware (midBridgeTest inputBridgeTest consumeBridgeTest)
-    -}
-    -- let inputBridgeTest = toHtml rangeTest <> toHtml textTest
-    servePageWith "/bridge" defaultPageConfig
-      (ioTestPage mempty (toHtml (show initBridgeTest :: Text)))
-    servePageWith "/default" defaultPageConfig page1
+    when (tr $ log o) $
+      middleware logStdoutDev
+    when (tr $ logPath o) $
+      middleware $ \app req res ->
+        putStrLn ("raw path:" :: Text) >>
+        print (rawPathInfo req) >> app req res
+  -- Only one middleware servicing the web socket can be run at a time.  Simply switching on based on paths doesn't work because socket comms comes through "/"
+  -- so that the first bridge middleware consumes all the elements
+    middleware $ bool
+        (midRepTest
+          (maybeRep "wrapped examples" "wrapper" True repExamples) show)
+        (midBridgeTest (toHtml rangeTest <> toHtml textTest)
+          consumeBridgeTest)
+        (tr $ bridgeOnly o)
+    servePageWith "/simple" defaultPageConfig page1
     servePageWith "/accordion" defaultPageConfig (testPage ah)
-    -- /rep will not work until you comment out /bridge
-    middleware (midRepTest repExamples show)
     servePageWith "/rep" defaultPageConfig
-      (ioTestPage mempty mempty)
- 
-
+      (ioTestPage mempty (bool mempty (toHtml (show initBridgeTest :: Text)) (tr $ bridgeOnly o)))
