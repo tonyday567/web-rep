@@ -147,6 +147,13 @@ midRepTest s rend = start $ \ ev e -> do
     `E.finally` putStrLn ("midTestFinalled finalled" :: Text)
   putStrLn $ ("final value was: " :: Text) <> show final
 
+midRepTest' :: (Show a) => SharedRep IO a -> (a -> Text) -> Application -> Application
+midRepTest' s rend = start $ \ ev e -> flip evalStateT (0, empty) $ do
+  Rep h fa <- unrep s
+  liftIO $ append e "inputs" (Lazy.toStrict $ renderText h)
+  final <- zoom _2 $ updateMapM (logResults rend) (either Left fa) ev e
+  liftIO $ putStrLn $ ("final value was: " :: Text) <> show final
+
 results :: (a -> Text) -> Engine -> a -> IO ()
 results r e x = replace e "results" (r x)
 

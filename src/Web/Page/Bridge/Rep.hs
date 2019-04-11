@@ -27,6 +27,7 @@ module Web.Page.Bridge.Rep
   , button_
   , maybeRep
   , updateMap
+  , updateMapM
   ) where
 
 import Codec.Picture.Types (PixelRGB8(..))
@@ -117,17 +118,19 @@ repInput p pr i a =
         maybe (Left "lookup failed") Right $
         either (Left . pack) Right . parseOnly p <$> lookup name s)
 
-{-
 -- | does not put a value into the HashMap on instantiation, and consumes the value when found in the HashMap
-repMessage :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> Input a -> a -> SharedRep m a
+-- repMessage :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> Input a -> a -> SharedRep m a
+{-
 repMessage p pr i a =
   SharedRep $ do
     name <- zoom _1 genName
     -- zoom _2 (modify (insert name (pr a)))
-    Rep <$> 
-      pure (toHtml $ bridgeify $ bootify $ set #val a $ set #id' name i) <*>
-      pure (\s -> do
-        let res = join $
+    hm <- zoom _2 get
+    Rep <$>
+      (toHtml $ bridgeify $ bootify $ set #val a $ set #id' name i)
+      (\s -> do
+        let res =
+              join $
               maybe (Left "lookup failed") Right $
               either (Left . pack) Right . parseOnly p <$>
               lookup name s
@@ -214,3 +217,10 @@ updateMap cc hm fa ev e =
   ( (Box.liftC <$> Box.showStdout) <>
     pure (Box.Committer (\v -> cc e v >> pure True))
   )) ev e
+
+updateMapM :: (Show b, MonadState (HashMap Text Text) m, MonadIO m) => (Engine -> b -> IO a) -> (Either Text (HashMap Text Text) -> b) -> Event Value -> Engine -> m ()
+updateMapM cc fa ev e = do
+  hm <- get
+  res <- liftIO $ updateMap cc hm fa ev e
+  put res
+
