@@ -1,16 +1,20 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Web.Page.Examples where
 
+import Control.Lens
+import Data.Attoparsec.Text
+import Lucid
+import Protolude
+import Text.InterpolatedString.Perl6
 import Web.Page
 import Web.Page.Html
-import Text.InterpolatedString.Perl6
-import Protolude
+import Web.Page.Rep
 import qualified Clay
-import Lucid
-import Control.Lens
 
 -- | simple page examples
 page1 :: Page
@@ -75,3 +79,28 @@ button1 =
     button_
     [id_ "btnGo", Lucid.type_ "button"]
     ("Go " <> with i_ [class_ "fa fa-play"] mempty)
+
+data RepExamples =
+  RepExamples
+  { repTextbox :: Text
+  , repSliderI :: Int
+  , repSlider :: Double
+  , repCheckbox :: Bool
+  , repToggle :: Bool
+  , repDropdown :: Int
+  , repColor :: PixelRGB8
+  } deriving (Show, Eq)
+
+repExamples :: (Monad m) => SharedRep m RepExamples
+repExamples = do
+  t <- textbox "textbox" "sometext"
+  n <- sliderI "int slider" 0 5 1 3
+  ds <- slider "double slider" 0 1 0.1 0.5
+  c <- checkbox "checkbox" True
+  tog <- toggle "toggle" False
+  dr <- dropdown decimal show "dropdown" (show <$> [1..5::Int]) 3
+  col <- color "color" (PixelRGB8 56 128 200)
+  pure (RepExamples t n ds c tog dr col)
+
+listifyExample :: (Monad m) => SharedRep m [Int]
+listifyExample = listify (\l a -> sliderI l (0::Int) 10 1 a) (show <$> [0..10::Int] :: [Text]) [0..10]

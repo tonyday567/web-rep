@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 709bdadb3be9bf684f417b949f0cbf7caa84ced5a7d1fc09df098296d2458c2c
+-- hash: 21ede2cf626d269f168a732ba456df0edda8cfbdff02c83db1f5f7dd8f67ea6b
 
 name:           web-page
 version:        0.1.0
@@ -54,7 +54,7 @@ library
       Web.Page
       Web.Page.Bootstrap
       Web.Page.Bridge
-      Web.Page.Bridge.Rep
+      Web.Page.Rep
       Web.Page.Css
       Web.Page.Examples
       Web.Page.Html

@@ -5,14 +5,20 @@ module Main where
 
 import Control.Lens
 import Lucid
-import Protolude
+import Protolude hiding (empty)
 import Test.Tasty
 import Test.Tasty.Hspec
 import Web.Page
 import Web.Page.Bootstrap
 import Web.Page.Examples
 import Web.Page.Html
+import Web.Page.Bridge
+import Web.Page.Rep
 import qualified Data.Text.IO as Text
+import Data.HashMap.Strict
+import Data.Aeson (Value(..))
+import qualified Control.Foldl as L
+import qualified Streaming.Prelude as S
 
 generatePage :: FilePath -> FilePath -> PageConfig -> Page -> IO ()
 generatePage dir stem pc =
@@ -79,19 +85,89 @@ testsBootstrap =
           (\x -> (Protolude.show x, "filler")) <$> [1..2::Int]) `shouldBe`
         "<div id=\"acctest1\" class=\"accordion\"><div class=\"card\"><div id=\"acctest2\" class=\"card-header\"><h2 class=\"mb-0\"><button data-toggle=\"collapse\" data-target=\"#acctest3\" aria-controls=\"acctest3\" type=\"button\" class=\"btn btn-link collapsed\" aria-expanded=\"false\">1</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest3\" aria-labelledby=\"acctest2\" class=\"collapse\"><div class=\"card-body\">filler</div></div></div><div class=\"card\"><div id=\"acctest4\" class=\"card-header\"><h2 class=\"mb-0\"><button data-toggle=\"collapse\" data-target=\"#acctest5\" aria-controls=\"acctest5\" type=\"button\" class=\"btn btn-link collapsed\" aria-expanded=\"false\">2</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest5\" aria-labelledby=\"acctest4\" class=\"collapse\"><div class=\"card-body\">filler</div></div></div></div>"
 
+testsBridge :: IO (SpecWith ())
+testsBridge =
+  return $
+    describe "Web.Page.Bridge" $
+      it "bridgePage versus canned" $
+        toText (renderPage bridgePage) `shouldBe`
+        "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>\nwindow.addEventListener('keydown',function(e) {\n  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {\n    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {\n      e.preventDefault();\n      return false;\n    }\n  }\n}, true);\n window.onload=function(){\nwindow.jsb = {ws: new WebSocket('ws://' + location.host + '/')};\njsb.ws.onmessage = (evt) => eval(evt.data);\n};</script></body></html>"
+
+testValues
+  :: (Monad m)
+  => SharedRep m a
+  -> [Value]
+  -> m [Either Text (HashMap Text Text, Either Text a)]
+testValues sr vs = S.fst' <$> do
+  (faStep, (_,hm)) <- flip runStateT (0, empty) $ do
+    (Rep _ fa) <- unrep sr
+    pure fa
+  flip evalStateT hm $
+    L.purely S.fold L.list
+    (runShared faStep (\(Element k v) s -> insert k v s) (S.each vs))
+
+runZero :: (Monad m) =>
+  HashMap Text Text -> SharedRep m a ->
+  m (HashMap Text Text, Either Text a)
+runZero hm sr = do
+  (Rep _ fa, (_, hm')) <- flip runStateT (0, hm) $ unrep sr
+  pure (fa hm')
+
+testbs :: [Value]
+testbs =
+  [ Object (fromList [("element","1"),("value","b1")])
+  , Object (fromList [("element","2"),("value","b2")])
+  , Object (fromList [("element","3"),("value","b3")])
+  ]
+
+
+testvs :: [Value]
+testvs =
+  [ Object (fromList [("element","2"),("value","false")])
+  , Object (fromList [("element","2"),("value","true")])
+  , Object (fromList [("element","3"),("value","x")])
+  , Object (fromList [("element","4"),("value","2")])
+  , Object (fromList [("element","5"),("value","0.6")])
+  , Object (fromList [("element","6"),("value","false")])
+  , Object (fromList [("element","7"),("value","true")])
+  , Object (fromList [("element","8"),("value","5")])
+  , Object (fromList [("element","9"),("value","#00b4cc")])
+  ]
+
 testsRep :: IO (SpecWith ())
 testsRep =
   return $
-    describe "Web.Page.Bridge.Rep" $ do
-      it "renderPage mempty" $ True
-        -- `shouldBe`
+    describe "Web.Page.Rep" $ do
+      it "Rep mempty" $
+        testValues (pure (mempty :: Text)) [] `shouldBe` [[]]
+      it "mempty passes values through to hashmap" $
+        testValues (pure (mempty :: Text)) testbs `shouldReturn`
+        [ Right (fromList [("1","b1")], Right "")
+        , Right (fromList [("1","b1"),("2","b2")], Right "")
+        , Right (fromList [("1","b1"),("2","b2"),("3","b3")], Right "")
+        ]
+      it "buttonB consumes an event and the value is transitory" $
+        testValues
+        ((,) <$> buttonB "b1" <*> buttonB "b2")
+        testbs `shouldReturn`
+        [ Right (fromList [],Right (True,False))
+        , Right (fromList [],Right (False,True))
+        , Right (fromList [("3","b3")],Right (False,False))
+        ]
+      it "repExamples creates canned HashMap" $
+        runZero empty repExamples `shouldReturn`
+        (fromList [("7","#3880c8"),("1","sometext"),("4","true"),("2","3"),("5","false"),("3","0.5"),("6","3")],Right RepExamples {repTextbox = "sometext", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200})
+      it "repExamples run through some canned events" $
+        testValues (maybeRep "" True repExamples) testvs `shouldReturn`
+        [Right (fromList [("7","false"),("4","3"),("2","false"),("5","0.5"),("8","3"),("3","sometext"),("6","true"),("9","#3880c8")],Right Nothing),Right (fromList [("7","false"),("4","3"),("2","true"),("5","0.5"),("8","3"),("3","sometext"),("6","true"),("9","#3880c8")],Right (Just (RepExamples {repTextbox = "sometext", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4","3"),("2","true"),("5","0.5"),("8","3"),("3","x"),("6","true"),("9","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4","2"),("2","true"),("5","0.5"),("8","3"),("3","x"),("6","true"),("9","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repSliderI = 2, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4","2"),("2","true"),("5","0.6"),("8","3"),("3","x"),("6","true"),("9","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repSliderI = 2, repSlider = 0.6, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4","2"),("2","true"),("5","0.6"),("8","3"),("3","x"),("6","false"),("9","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4","2"),("2","true"),("5","0.6"),("8","3"),("3","x"),("6","false"),("9","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4","2"),("2","true"),("5","0.6"),("8","5"),("3","x"),("6","false"),("9","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 5, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4","2"),("2","true"),("5","0.6"),("8","5"),("3","x"),("6","false"),("9","#00b4cc")],Right (Just (RepExamples {repTextbox = "x", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 5, repColor = PixelRGB8 0 180 204})))]
 
 -- The tests
 tests :: IO TestTree
 tests = testGroup "the tests" <$> sequence
   [ testSpec "Web.Page.Render" =<< testsRender
   , testSpec "Web.Page.Bootstrap" =<< testsBootstrap
-  , testSpec "Web.Page.Bridge.Rep" =<< testsRep
+  , testSpec "Web.Page.Bridge" =<< testsBridge
+  , testSpec "Web.Page.Rep" =<< testsRep
   ]
 
 main :: IO ()

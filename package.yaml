@@ -43,7 +43,7 @@ library:
   - Web.Page
   - Web.Page.Bootstrap
   - Web.Page.Bridge
-  - Web.Page.Bridge.Rep
+  - Web.Page.Rep
   - Web.Page.Css
   - Web.Page.Examples
   - Web.Page.Html

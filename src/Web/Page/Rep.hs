@@ -1,5 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -10,8 +11,9 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Web.Page.Bridge.Rep
-  ( RepF(..)
+module Web.Page.Rep
+  ( Element(..)
+  , RepF(..)
   , Rep
   , SharedRepF(..)
   , SharedRep
@@ -31,10 +33,12 @@ module Web.Page.Bridge.Rep
   , button
   , buttonB
   , maybeRep
-  , updateMap
-  , updateMapM
-  , updateMapMFake
   , listify
+  , execValue
+  , execValueConsume
+  , evalShared
+  , runShared
+  , runSharedRecord
   , evalSharedRepOnEvent
   , runSharedRepOnEvent
   ) where
@@ -56,12 +60,31 @@ import Network.JavaScript hiding (delete)
 import Numeric
 import Protolude hiding ((<<*>>), Rep, empty)
 import Web.Page.Bootstrap
-import Web.Page.Bridge
 import Web.Page.Html
 import Web.Page.Html.Input
-import qualified Box
-import qualified Control.Foldl as L
+import Box
+-- import qualified Control.Foldl as L
 import qualified Streaming.Prelude as S
+-- import qualified Streaming as S
+
+-- | Abstracted message event elements
+data Element = Element
+  { element :: Text
+  , value :: Text
+  } deriving (Eq, Show, Generic)
+
+instance ToJSON Element
+
+instance FromJSON Element
+  where
+    parseJSON = withObject "Element" $ \v ->
+      Element <$>
+      v .: "element" <*>
+      v .: "value"
+
+toEither :: Data.Aeson.Result a -> Either Text a
+toEither (Success a) = Right a
+toEither (Error e) = Left $ pack e
 
 data RepF r a = Rep
   { rep :: r
@@ -69,6 +92,16 @@ data RepF r a = Rep
   } deriving (Functor)
 
 type Rep a = RepF (Html ()) a
+
+instance (Semigroup r) => Semigroup (RepF r a) where
+  (Rep r0 a0) <> (Rep r1 a1) =
+    Rep
+    (r0 <> r1)
+    (\hm -> let (hm', x') = a0 hm in let (hm'', x'') = a1 hm' in (hm'', x' <> x''))
+
+instance (Monoid a, Monoid r) => Monoid (RepF r a) where
+  mempty = Rep mempty (\hm -> (hm, Right mempty))
+  mappend = (<>)
 
 instance Bifunctor RepF where
   bimap f g (Rep r a) = Rep (f r) (second (fmap g) . a)
@@ -116,7 +149,7 @@ repInput p pr i a =
       (\s ->
         (s, join $
         maybe (Left "lookup failed") Right $
-        either (Left . pack) Right . parseOnly p <$> lookup name s))
+        either (Left . (\x -> name <> ": " <> x) . pack) Right . parseOnly p <$> lookup name s))
 
 namedRepInput :: (ToHtml a, MonadState (Int, HashMap Text Text) m, Monad m) =>
   Parser a -> (a -> Text) -> Input a -> a -> SharedRepF m (Input a) (Text, a) 
@@ -258,66 +291,46 @@ maybeRep label st sa = SharedRep $ do
   where
     hmap cl a b =
       cardify [] a Nothing
-       (with div_
+       (Lucid.with div_
         [class_ cl, style_
                    ("display:" <> bool "none" "block" st)]
         b)
     mmap a b = bool Nothing (Just b) a
 
-updateMap :: Show b => (Engine -> b -> IO a) -> HashMap Text Text -> (Either Text (HashMap Text Text) -> b) -> Event Value -> Engine -> IO (HashMap Text Text)
-updateMap cc hm fa ev e =
-  elementConsume hm (\(Element k v) s -> insert k v s)
-  (contramap fa <$>
-  ( (Box.liftC <$> Box.showStdout) <>
-    pure (Box.Committer (\v -> cc e v >> pure True))
-  )) ev e
-
-updateMapFake :: Show b => HashMap Text Text -> (Either Text (HashMap Text Text) -> b) -> [Value] -> IO (HashMap Text Text)
-updateMapFake hm fa vs =
-  fakeElementConsume hm (\(Element k v) s -> insert k v s)
-  (contramap fa <$> (Box.liftC <$> Box.showStdout))
-  (Box.liftE <$> Box.toEmit (S.each vs))
-
-updateMapM :: (Show b, MonadState (HashMap Text Text) m, MonadIO m) => (Engine -> b -> IO a) -> (Either Text (HashMap Text Text) -> b) -> Event Value -> Engine -> m ()
-updateMapM cc fa ev e = do
-  hm <- get
-  res <- liftIO $ updateMap cc hm fa ev e
-  put res
-
-updateMapMFake :: (Show b, MonadState (HashMap Text Text) m, MonadIO m) => (Either Text (HashMap Text Text) -> b) -> [Value] -> m ()
-updateMapMFake fa vs = do
-  hm <- get
-  res <- liftIO $ updateMapFake hm fa vs
-  put res
-
 listify :: (Monad m) => (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
 listify sr labels as = foldr (\a x -> (:) <$> a <*> x) (pure []) (zipWith sr labels as)
 
-evalZero :: (Monad m) =>
-  HashMap Text Text -> SharedRep m a ->
-  m (HashMap Text Text, Either Text a)
-evalZero hm sr = do
-  (Rep _ fa) <- flip evalStateT (0, hm) $ unrep sr
-  pure (fa hm)
+execValue :: (FromJSON a, MonadState s m) => (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text s)) m ()
+execValue step s =
+  s &
+  S.map (toEither . fromJSON) &
+  S.partitionEithers &
+  hoist (S.chain (modify . step)) &
+  hoist (S.mapM (\_ -> get)) &
+  S.unseparate &
+  S.maps S.sumToEither
 
-testvs :: [Value]
-testvs =
-  [ Object (fromList [("element","1"),("value","button1")])
-  , Object (fromList [("element","2"),("value","button2")])
-  ]
+execValueConsume :: s -> (Element -> s -> s) -> Box.Cont IO (Box.Committer IO (Either Text s)) -> Event Value -> IO s
+execValueConsume init step comm ev = do
+  (c,e) <- atomically $ ends Unbounded
+  void $ addListener ev (atomically . c)
+  final <- etcM init (Transducer (execValue step))
+    (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
+  pure final
 
+shStep :: MonadState s m => (s -> (s, b)) -> (a -> s -> s) -> a -> m (s, b)
 shStep sr step v = do
   hm <- get
   let (hm',b) = sr $ step v hm
   put hm'
-  pure b
+  pure (hm', b)
 
 evalShared :: (FromJSON a, MonadState s m) => (s -> (s, Either Text b)) -> (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text b)) m ()
 evalShared sr step s =
   s &
   S.map (toEither . fromJSON) &
   S.partitionEithers &
-  hoist (S.mapM (shStep sr step)) &
+  hoist (S.mapM (fmap snd . shStep sr step)) &
   S.unseparate &
   S.maps S.sumToEither &
   S.map join
@@ -327,27 +340,31 @@ runShared sr step s =
   s &
   S.map (toEither . fromJSON) &
   S.partitionEithers &
-  hoist (S.mapM (\v -> do
-                    hm <- get
-                    let (hm',b) = sr $ step v hm
-                    put hm'
-                    pure (hm',b)
-                )) &
+  hoist (S.mapM (shStep sr step)) &
   S.unseparate &
   S.maps S.sumToEither
-
-testValues
-  :: (Monad m)
-  => SharedRep m a
-  -> [Value]
-  -> m [Either Text (HashMap Text Text, Either Text a)]
-testValues sr vs = S.fst' <$> do
-  (faStep, (_,hm)) <- flip runStateT (0, empty) $ do
-    (Rep _ fa) <- unrep sr
-    pure fa
-  flip evalStateT hm $
-    L.purely S.fold L.list
-    (runShared faStep (\(Element k v) s -> insert k v s) (S.each vs))
+ 
+runSharedRecord
+  :: FromJSON a
+  => MonadState (s, [Either Text (s, Either Text b)]) m
+  => (s -> (s, Either Text b))
+  -> (a -> s -> s)
+  -> S.Stream (S.Of Value) m ()
+  -> S.Stream (S.Of (Either Text (s, Either Text b))) m ()
+runSharedRecord sr step s =
+  s &
+  S.map (toEither . fromJSON) &
+  S.partitionEithers &
+  hoist (S.mapM (shStep' sr step)) &
+  S.unseparate &
+  S.maps S.sumToEither &
+  S.chain (\x -> modify (\(h,xs) -> (h, x:xs)))
+  where
+    shStep' sr' step' v = do
+      (hm, xs) <- get
+      let (hm',b) = sr' $ step' v hm
+      put (hm', xs)
+      pure (hm', b)
 
 evalSharedEventConsume :: (s -> (s,Either Text b)) -> s -> (Element -> s -> s) -> Box.Cont IO (Box.Committer IO (Either Text b)) -> Event Value -> IO s
 evalSharedEventConsume sh init step comm ev = do
@@ -371,9 +388,9 @@ evalOnEvent
   -> (Either Text a -> IO ())
   -> Event Value
   -> IO (HashMap Text Text)
-evalOnEvent sh init eaction ev =
+evalOnEvent sh init eaction =
   evalSharedEventConsume sh init (\(Element k v) s -> insert k v s)
-  (pure (Box.Committer (\v -> eaction v >> pure True))) ev
+  (pure (Box.Committer (\v -> eaction v >> pure True)))
 
 runOnEvent
   :: (HashMap Text Text -> (HashMap Text Text, Either Text a))
@@ -381,9 +398,9 @@ runOnEvent
   -> (Either Text (HashMap Text Text, Either Text a) -> IO ())
   -> Event Value
   -> IO (HashMap Text Text)
-runOnEvent sh init eaction ev =
+runOnEvent sh init eaction =
   runSharedEventConsume sh init (\(Element k v) s -> insert k v s)
-  (pure (Box.Committer (\v -> eaction v >> pure True))) ev
+  (pure (Box.Committer (\v -> eaction v >> pure True)))
 
 evalOnEventM
   :: (MonadState (HashMap Text Text) m)
@@ -423,10 +440,6 @@ evalSharedRepOnEvent sr hio finalio eaction ev = flip evalStateT (0, empty) $ do
   hio h fa
   zoom _2 $ evalOnEventM fa eaction ev
   finalio
-
-{-
-
--}
 
 runSharedRepOnEvent
   :: MonadIO m
