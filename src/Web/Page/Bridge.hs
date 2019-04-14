@@ -13,6 +13,7 @@ module Web.Page.Bridge
   , sendc
   , append
   , replace
+  , bridge
   ) where
 
 import Control.Lens
@@ -22,6 +23,8 @@ import Text.InterpolatedString.Perl6
 import Web.Page.Js
 import Web.Page.Types
 import qualified Data.Text.Lazy as Lazy
+import Data.Aeson (Value)
+import Box.Cont
 
 preventEnter :: PageJs
 preventEnter = PageJs $ fromText [q|
@@ -55,3 +58,6 @@ replace e d t = send e $ command $ Lazy.fromStrict $ "document.getElementById('"
 
 append :: Engine -> Text -> Text -> IO ()
 append e d t = send e $ command $ Lazy.fromStrict $ "document.getElementById('" <> d <> "').innerHTML += '" <> t <> "'"
+
+bridge :: Event Value -> Engine -> Cont_ IO Value
+bridge ev _ = Cont_ $ \vio -> void $ addListener ev vio

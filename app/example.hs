@@ -20,7 +20,7 @@ import Lucid hiding (b_)
 import Network.JavaScript
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, (>->))
 import Network.Wai.Middleware.RequestLogger
-import Protolude hiding (replace, Rep, log)
+import Protolude hiding (replace, Rep, log, empty)
 import Web.Page
 import Web.Page.Bootstrap
 import Web.Page.Examples
@@ -122,7 +122,7 @@ consumeBridgeTest ev e =
   execValueConsume initBridgeTest stepBridgeTest'
   ( (Box.liftC <$> Box.showStdout) <>
     pure (Box.Committer (\v -> sendBridgeTest e v >> pure True))
-  ) ev
+  ) (bridge ev e)
 
 midBridgeTest :: (Show a) => Html () -> (Event Value -> Engine -> IO a) -> Application -> Application
 midBridgeTest init eeio = start $ \ ev e -> do
@@ -159,7 +159,7 @@ midEvalShared s action = start $ \ ev e ->
       f <- get
       liftIO $ putStrLn $ ("final value was: " :: Text) <> show f)
   (action e)
-  ev
+  (bridge ev e)
 
 -- | evaluate the ShareRep a, and act on the results and state
 midRunShared ::
@@ -175,7 +175,7 @@ midRunShared s action = start $ \ ev e ->
       f <- get
       liftIO $ putStrLn $ ("final value was: " :: Text) <> show f)
   (action e)
-  ev
+  (bridge ev e)
 
 results :: (a -> Text) -> Engine -> a -> IO ()
 results r e x = replace e "results" (r x)
@@ -198,7 +198,7 @@ instance ParseRecord (Opts Wrapped)
 main :: IO ()
 main = do
   o :: Opts Unwrapped <- unwrapRecord "examples for web-page"
-  ah <- flip evalStateT 0 (accordion "acctest" Nothing $ (\x -> (show x, "filler")) <$> [1..3::Int])
+  (Rep ah _) <- flip evalStateT (0, empty) $ unrep devsr
   let tr = maybe False id
   scotty 3000 $ do
     middleware $ staticPolicy (noDots >-> addBase "other")
@@ -217,7 +217,7 @@ main = do
           (maybeRep "maybe" True repExamples) (logResults show)
       (_, _, True, _) -> midRunShared
           -- ((,) <$> button "button" <*> listifyExample) (logResults show)
-          ((,) <$> buttonB "button1" <*> buttonB "button2")
+          devsr
           (logResults show)
       (False, _, _, _) -> midEvalShared
           (maybeRep "maybe" True repExamples) (logResults show)
@@ -227,3 +227,7 @@ main = do
     servePageWith "/accordion" defaultPageConfig (testPage ah)
     servePageWith "/rep" defaultPageConfig
       (ioTestPage mempty (bool mempty (toHtml (show initBridgeTest :: Text)) (tr $ bridgeOnly o)))
+
+devsr :: (Monad m) => SharedRep m [Int]
+devsr = accordionListify (Just "accordionListify example") "prefix" (Just "[2]") (\l a -> sliderI l (0::Int) 10 1 a) ((\x -> "[" <> show x <> "]") <$> [0..10::Int] :: [Text]) [0..10]
+

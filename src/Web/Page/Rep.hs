@@ -34,6 +34,7 @@ module Web.Page.Rep
   , buttonB
   , maybeRep
   , listify
+  , accordionListify
   , execValue
   , execValueConsume
   , evalShared
@@ -56,13 +57,14 @@ import Data.Bifunctor (Bifunctor(..))
 import Data.HashMap.Strict hiding (foldr)
 import Data.Text (pack, Text)
 import Lucid
-import Network.JavaScript hiding (delete)
+-- import Network.JavaScript hiding (delete)
 import Numeric
 import Protolude hiding ((<<*>>), Rep, empty)
 import Web.Page.Bootstrap
 import Web.Page.Html
 import Web.Page.Html.Input
 import Box
+import Box.Cont ()
 -- import qualified Control.Foldl as L
 import qualified Streaming.Prelude as S
 -- import qualified Streaming as S
@@ -300,6 +302,16 @@ maybeRep label st sa = SharedRep $ do
 listify :: (Monad m) => (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
 listify sr labels as = foldr (\a x -> (:) <$> a <*> x) (pure []) (zipWith sr labels as)
 
+accordionListify :: (Monad m) => Maybe Text -> Text -> Maybe Text -> (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
+accordionListify title prefix open srf labels as = SharedRep $ do
+  (Rep h fa) <-
+    unrep $
+    first (accordion prefix open . zipWith (,) labels ) $
+    foldr (\a x -> bimap (:) (:) a <<*>> x)
+    (pure []) (zipWith srf labels as)
+  h' <- zoom _1 h
+  pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
+
 execValue :: (FromJSON a, MonadState s m) => (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text s)) m ()
 execValue step s =
   s &
@@ -310,10 +322,10 @@ execValue step s =
   S.unseparate &
   S.maps S.sumToEither
 
-execValueConsume :: s -> (Element -> s -> s) -> Box.Cont IO (Box.Committer IO (Either Text s)) -> Event Value -> IO s
-execValueConsume init step comm ev = do
+execValueConsume :: s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text s)) -> Cont_ IO Value -> IO s
+execValueConsume init step comm vio = do
   (c,e) <- atomically $ ends Unbounded
-  void $ addListener ev (atomically . c)
+  with_ vio (atomically . c)
   final <- etcM init (Transducer (execValue step))
     (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
   pure final
@@ -366,52 +378,52 @@ runSharedRecord sr step s =
       put (hm', xs)
       pure (hm', b)
 
-evalSharedEventConsume :: (s -> (s,Either Text b)) -> s -> (Element -> s -> s) -> Box.Cont IO (Box.Committer IO (Either Text b)) -> Event Value -> IO s
-evalSharedEventConsume sh init step comm ev = do
-  (c,e) <- atomically $ Box.ends Box.Unbounded
-  void $ addListener ev (atomically . c)
-  final <- Box.etcM init (Box.Transducer (evalShared sh step))
-    (Box.Box <$> comm <*> (Box.liftE <$> pure (Box.Emitter (Just <$> e))))
+evalSharedEventConsume :: (s -> (s,Either Text b)) -> s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text b)) -> Cont_ IO Value -> IO s
+evalSharedEventConsume sh init step comm vio = do
+  (c,e) <- atomically $ ends Unbounded
+  with_ vio (atomically . c)
+  final <- etcM init (Transducer (evalShared sh step))
+    (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
   pure final
 
-runSharedEventConsume :: (s -> (s, Either Text b)) -> s -> (Element -> s -> s) -> Box.Cont IO (Box.Committer IO (Either Text (s, Either Text b))) -> Event Value -> IO s
-runSharedEventConsume sh init step comm ev = do
-  (c,e) <- atomically $ Box.ends Box.Unbounded
-  void $ addListener ev (atomically . c)
-  final <- Box.etcM init (Box.Transducer (runShared sh step))
-    (Box.Box <$> comm <*> (Box.liftE <$> pure (Box.Emitter (Just <$> e))))
+runSharedEventConsume :: (s -> (s, Either Text b)) -> s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text (s, Either Text b))) -> Cont_ IO Value -> IO s
+runSharedEventConsume sh init step comm vio = do
+  (c,e) <- atomically $ ends Unbounded
+  with_ vio (atomically . c)
+  final <- etcM init (Transducer (runShared sh step))
+    (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
   pure final
 
 evalOnEvent
   :: (HashMap Text Text -> (HashMap Text Text, Either Text a))
   -> HashMap Text Text
   -> (Either Text a -> IO ())
-  -> Event Value
+  -> Cont_ IO Value
   -> IO (HashMap Text Text)
 evalOnEvent sh init eaction =
   evalSharedEventConsume sh init (\(Element k v) s -> insert k v s)
-  (pure (Box.Committer (\v -> eaction v >> pure True)))
+  (pure (Committer (\v -> eaction v >> pure True)))
 
 runOnEvent
   :: (HashMap Text Text -> (HashMap Text Text, Either Text a))
   -> HashMap Text Text
   -> (Either Text (HashMap Text Text, Either Text a) -> IO ())
-  -> Event Value
+  -> Cont_ IO Value
   -> IO (HashMap Text Text)
 runOnEvent sh init eaction =
   runSharedEventConsume sh init (\(Element k v) s -> insert k v s)
-  (pure (Box.Committer (\v -> eaction v >> pure True)))
+  (pure (Committer (\v -> eaction v >> pure True)))
 
 evalOnEventM
   :: (MonadState (HashMap Text Text) m)
   => (MonadIO m)
   => (HashMap Text Text -> (HashMap Text Text, Either Text a))
   -> (Either Text a -> IO ())
-  -> Event Value
+  -> Cont_ IO Value
   -> m ()
-evalOnEventM sh eaction ev = do
+evalOnEventM sh eaction vio = do
   hm <- get
-  res <- liftIO $ evalOnEvent sh hm eaction ev
+  res <- liftIO $ evalOnEvent sh hm eaction vio
   put res
 
 runOnEventM
@@ -419,7 +431,7 @@ runOnEventM
   => (MonadIO m)
   => (HashMap Text Text -> (HashMap Text Text, Either Text a))
   -> (Either Text (HashMap Text Text, Either Text a) -> IO ())
-  -> Event Value
+  -> Cont_ IO Value
   -> m ()
 runOnEventM sh eaction ev = do
   hm <- get
@@ -433,7 +445,7 @@ evalSharedRepOnEvent
      -> StateT (Int, HashMap Text Text) m ())
   -> StateT (Int, HashMap Text Text) m ()
   -> (Either Text a -> IO ())
-  -> Event Value
+  -> Cont_ IO Value
   -> m ()
 evalSharedRepOnEvent sr hio finalio eaction ev = flip evalStateT (0, empty) $ do
   Rep h fa <- unrep sr
@@ -448,7 +460,7 @@ runSharedRepOnEvent
      -> StateT (Int, HashMap Text Text) m ())
   -> StateT (Int, HashMap Text Text) m ()
   -> (Either Text (HashMap Text Text, Either Text a) -> IO ())
-  -> Event Value
+  -> Cont_ IO Value
   -> m ()
 runSharedRepOnEvent sr hio finalio eaction ev = flip evalStateT (0, empty) $ do
   Rep h fa <- unrep sr

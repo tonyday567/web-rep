@@ -17,4 +17,4 @@ extra-deps:
       - numhask-prelude
       - numhask-space
   - git: https://github.com/tonyday567/box.git
-    commit: 2feffe99e90df498ff6f6b3587bb9a4b4b4c50f8
+    commit: 542dec0c31060e4d12c5aa949ced8d5813827b7e

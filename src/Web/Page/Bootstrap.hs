@@ -93,5 +93,3 @@ accordion pre x hs = do
         idh <- genNamePre pre
         idb <- genNamePre pre
         pure $ accordianCard (maybe True (/=t) x) [] par idh idb t b
-
-
