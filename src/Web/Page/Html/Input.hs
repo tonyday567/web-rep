@@ -72,8 +72,8 @@ instance ( ) => ToHtml (InputType a) where
   toHtml (Toggle pushed lab) =
     input_ [ type_ "button", class_ "btn btn-primary btn-sm", data_ "toggle" "button",
            makeAttribute "aria-pressed" (bool "false" "true" pushed), value_ lab]
-  toHtml (Button lab) =
-    input_ [ type_ "button", class_ "btn btn-primary btn-sm", value_ lab]
+  toHtml (Button v) =
+    input_ [ type_ "button", class_ "btn btn-primary btn-sm", value_ v]
   toHtml (Dropdown opts mv) =
     select_ (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
   toHtml (Checkbox checked) =

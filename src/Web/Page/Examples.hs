@@ -15,8 +15,8 @@ import Control.Lens
 -- | simple page examples
 page1 :: Page
 page1 =
-  #htmlBody .~ button $
-  #cssBody .~ css $
+  #htmlBody .~ button1 $
+  #cssBody .~ css1 $
   #jsGlobal .~ mempty $
   #jsOnLoad .~ click $
   #libsCss .~ (libCss <$> cssLibs) $
@@ -51,8 +51,8 @@ jsLibs = ["http://code.jquery.com/jquery-1.6.3.min.js"]
 jsLibsLocal :: [Text]
 jsLibsLocal = ["jquery-2.1.3.min.js"]
 
-css :: Css
-css = do
+css1 :: Css
+css1 = do
   Clay.fontSize (Clay.px 10)
   Clay.fontFamily ["Arial", "Helvetica"] [Clay.sansSerif]
   "#btnGo" Clay.? do
@@ -69,8 +69,8 @@ $('#btnGo').click( function() {
 });
 |]
 
-button :: Html ()
-button =
+button1 :: Html ()
+button1 =
   with
     button_
     [id_ "btnGo", Lucid.type_ "button"]

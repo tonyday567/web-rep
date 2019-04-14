@@ -79,11 +79,19 @@ testsBootstrap =
           (\x -> (Protolude.show x, "filler")) <$> [1..2::Int]) `shouldBe`
         "<div id=\"acctest1\" class=\"accordion\"><div class=\"card\"><div id=\"acctest2\" class=\"card-header\"><h2 class=\"mb-0\"><button data-toggle=\"collapse\" data-target=\"#acctest3\" aria-controls=\"acctest3\" type=\"button\" class=\"btn btn-link collapsed\" aria-expanded=\"false\">1</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest3\" aria-labelledby=\"acctest2\" class=\"collapse\"><div class=\"card-body\">filler</div></div></div><div class=\"card\"><div id=\"acctest4\" class=\"card-header\"><h2 class=\"mb-0\"><button data-toggle=\"collapse\" data-target=\"#acctest5\" aria-controls=\"acctest5\" type=\"button\" class=\"btn btn-link collapsed\" aria-expanded=\"false\">2</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest5\" aria-labelledby=\"acctest4\" class=\"collapse\"><div class=\"card-body\">filler</div></div></div></div>"
 
+testsRep :: IO (SpecWith ())
+testsRep =
+  return $
+    describe "Web.Page.Bridge.Rep" $ do
+      it "renderPage mempty" $ True
+        -- `shouldBe`
+
 -- The tests
 tests :: IO TestTree
 tests = testGroup "the tests" <$> sequence
   [ testSpec "Web.Page.Render" =<< testsRender
   , testSpec "Web.Page.Bootstrap" =<< testsBootstrap
+  , testSpec "Web.Page.Bridge.Rep" =<< testsRep
   ]
 
 main :: IO ()

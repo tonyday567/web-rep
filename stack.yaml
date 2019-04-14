@@ -4,7 +4,6 @@ resolver: nightly-2019-03-22
 
 packages:
 - '.'
-- '../box'
 
 extra-deps:
   - generic-lens-1.1.0.0
@@ -17,3 +16,5 @@ extra-deps:
       - numhask
       - numhask-prelude
       - numhask-space
+  - git: https://github.com/tonyday567/box.git
+    commit: 2feffe99e90df498ff6f6b3587bb9a4b4b4c50f8

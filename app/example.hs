@@ -16,7 +16,7 @@ import Control.Category (id)
 import Data.Aeson (Value)
 import Data.Attoparsec.Text
 import Data.HashMap.Strict
-import Lucid hiding (b_, button_)
+import Lucid hiding (b_)
 import Network.JavaScript
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, (>->))
 import Network.Wai.Middleware.RequestLogger
@@ -27,13 +27,15 @@ import Web.Page.Examples
 import Web.Page.Html.Input
 import Web.Page.Bridge
 import Web.Page.Bridge.Rep
-import Web.Scotty
+import Web.Scotty hiding (get, put)
 import qualified Box
 import qualified Control.Exception as E
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
 import Options.Generic
 import Network.Wai
+import qualified Control.Foldl as L
+import qualified Streaming.Prelude as S
 
 testPage :: Html () -> Page
 testPage h =
@@ -132,27 +134,86 @@ midBridgeTest init eeio = start $ \ ev e -> do
 
 repTest :: (Monad m) => SharedRep m (Int, Text)
 repTest = do
-  n <- sliderI_ "slider" 0 5 1 3
-  t <- textbox_ "textbox" "sometext"
+  n <- sliderI "slider" 0 5 1 3
+  t <- textbox "textbox" "sometext"
   pure (n, t)
 
 repTest' :: (Monad m) => SharedRep m (Maybe (Int, Text))
-repTest' = maybeRep "testMaybe" "wrapper" True repTest
+repTest' = maybeRep "testMaybe" True repTest
 
-midRepTest :: (Show a) => SharedRep IO a -> (a -> Text) -> Application -> Application
-midRepTest s rend = start $ \ ev e -> do
-  (Rep h fa, (_, hm)) <- flip runStateT (0,empty) (unrep s)
-  append e "inputs" (Lazy.toStrict $ renderText h)
-  final <- updateMap (logResults rend) hm (either Left fa) ev e
-    `E.finally` putStrLn ("midTestFinalled finalled" :: Text)
-  putStrLn $ ("final value was: " :: Text) <> show final
-
-midRepTest' :: (Show a) => SharedRep IO a -> (a -> Text) -> Application -> Application
-midRepTest' s rend = start $ \ ev e -> flip evalStateT (0, empty) $ do
+midRepTest :: (Show a) => SharedRep IO a -> (Engine -> Either Text a -> IO ()) ->
+  Application -> Application
+midRepTest s action = start $ \ ev e -> flip evalStateT (0, empty) $ do
   Rep h fa <- unrep s
   liftIO $ append e "inputs" (Lazy.toStrict $ renderText h)
-  final <- zoom _2 $ updateMapM (logResults rend) (either Left fa) ev e
+  final <- zoom _2 $ updateMapM action (either Left (snd . fa)) ev e
   liftIO $ putStrLn $ ("final value was: " :: Text) <> show final
+
+midRepTestFake :: (Show a) => SharedRep IO a -> [Value] -> IO ()
+midRepTestFake s vs = flip evalStateT (0, empty) $ do
+  Rep _ fa <- unrep s
+  hm <- zoom _2 get
+  liftIO $ putStrLn (show (hm, fa hm) :: Text)
+  final <- zoom _2 $ updateMapMFake (fmap fa) vs
+  pure final
+
+-- | output the ShareRep a, and the shared HashMap
+midDebug ::
+  (Show a) =>
+  SharedRep IO a ->
+  (Engine -> Either Text (HashMap Text Text, Either Text a) -> IO ()) ->
+  Application -> Application
+midDebug s action = start $ \ ev e -> flip evalStateT (0, empty) $ do
+  Rep h fa <- unrep s
+  liftIO $ append e "inputs" (Lazy.toStrict $ renderText h)
+  (i, hm0) <- get
+  let (hm1, sr) = fa hm0
+  put (i, hm1)
+  liftIO $ replace e "results" (show (hm1, sr))
+  final <- zoom _2 $ updateMapM action (fmap fa) ev e
+  liftIO $ putStrLn $ ("final value was: " :: Text) <> show final
+
+-- | evaluate the ShareRep a, and act
+midEvalShared ::
+  (Show a) =>
+  SharedRep IO a ->
+  (Engine -> Either Text a -> IO ()) ->
+  Application -> Application
+midEvalShared s action = start $ \ ev e ->
+  evalSharedRepOnEvent
+  s
+  (\h fa -> do
+      liftIO $ append e "inputs" (Lazy.toStrict $ renderText h)
+      (i, hm0) <- get
+      let (hm1, r) = fa hm0
+      put (i, hm1)
+      liftIO $ replace e "results" (show r))
+  (do
+      f <- get
+      liftIO $ putStrLn $ ("final value was: " :: Text) <> show f)
+  (action e)
+  ev
+
+-- | evaluate the ShareRep a, and act on the results and state
+midRunShared ::
+  (Show a) =>
+  SharedRep IO a ->
+  (Engine -> Either Text (HashMap Text Text, Either Text a) -> IO ()) ->
+  Application -> Application
+midRunShared s action = start $ \ ev e ->
+  runSharedRepOnEvent
+  s
+  (\h fa -> do
+      liftIO $ append e "inputs" (Lazy.toStrict $ renderText h)
+      (i, hm0) <- get
+      let (hm1, r) = fa hm0
+      put (i, hm1)
+      liftIO $ replace e "results" (show (hm1, r)))
+  (do
+      f <- get
+      liftIO $ putStrLn $ ("final value was: " :: Text) <> show f)
+  (action e)
+  ev
 
 results :: (a -> Text) -> Engine -> a -> IO ()
 results r e x = replace e "results" (r x)
@@ -161,6 +222,10 @@ logResults :: (a -> Text) -> Engine -> Either Text a -> IO ()
 logResults _ e (Left err) = append e "log" err
 logResults r e (Right x) = results r e x
 
+buttonPress :: (Show a) => Engine -> Either Text a -> IO ()
+buttonPress e (Left _) = sendc e "alert('I have an error')"
+buttonPress e (Right a) = sendc e $ "alert('I have " <> show a <> "')"
+
 data RepExamples =
   RepExamples
   { repTextbox :: Text
@@ -168,27 +233,30 @@ data RepExamples =
   , repSlider :: Double
   , repCheckbox :: Bool
   , repToggle :: Bool
-  , repButton :: ()
   , repDropdown :: Int
   , repColor :: PixelRGB8
   } deriving (Show, Eq)
 
 repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
-  t <- textbox_ "textbox" "sometext"
-  n <- sliderI_ "int slider" 0 5 1 3
-  ds <- slider_ "double slider" 0 1 0.1 0.5
-  c <- checkbox_ "checkbox" True
-  tog <- toggle_ "toggle" False
-  b <- button_ "button"
-  dr <- dropdown_ decimal show "dropdown" (show <$> [1..5]) 3
-  col <- color_ "color" (PixelRGB8 56 128 200)
-  pure (RepExamples t n ds c tog b dr col)
+  t <- textbox "textbox" "sometext"
+  n <- sliderI "int slider" 0 5 1 3
+  ds <- slider "double slider" 0 1 0.1 0.5
+  c <- checkbox "checkbox" True
+  tog <- toggle "toggle" False
+  dr <- dropdown decimal show "dropdown" (show <$> [1..5]) 3
+  col <- color "color" (PixelRGB8 56 128 200)
+  pure (RepExamples t n ds c tog dr col)
+
+listifyExample :: (Monad m) => SharedRep m [Int]
+listifyExample = listify (\l a -> sliderI l (0::Int) 10 1 a) (show <$> [0..10]) [0..10]
 
 data Opts w = Opts
   { log :: w ::: Maybe Bool <?> "server log to stdout"
   , logPath :: w ::: Maybe Bool <?> "log raw path"
   , bridgeOnly :: w ::: Maybe Bool <?> "bridge-only test (no rep test)"
+  , dev :: w ::: Maybe Bool <?> "rando development"
+  , debug :: w ::: Maybe Bool <?> "debug mode"
   } deriving (Generic)
 
 instance ParseRecord (Opts Wrapped)
@@ -208,12 +276,17 @@ main = do
         print (rawPathInfo req) >> app req res
   -- Only one middleware servicing the web socket can be run at a time.  Simply switching on based on paths doesn't work because socket comms comes through "/"
   -- so that the first bridge middleware consumes all the elements
-    middleware $ bool
-        (midRepTest
-          (maybeRep "wrapped examples" "wrapper" True repExamples) show)
-        (midBridgeTest (toHtml rangeTest <> toHtml textTest)
-          consumeBridgeTest)
-        (tr $ bridgeOnly o)
+    middleware $ case (tr $ bridgeOnly o, tr $ debug o, tr $ dev o) of
+      (_, True, _) -> midRunShared
+          (maybeRep "maybe" True repExamples) (logResults show)
+      (_, _, True) -> midRunShared
+          -- ((,) <$> button "button" <*> listifyExample) (logResults show)
+          ((,) <$> buttonB "button1" <*> buttonB "button2")
+          (logResults show)
+      (False, _, _) -> midRepTest
+          (maybeRep "maybe" True repExamples) (logResults show)
+      _ -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
+           consumeBridgeTest
     servePageWith "/simple" defaultPageConfig page1
     servePageWith "/accordion" defaultPageConfig (testPage ah)
     servePageWith "/rep" defaultPageConfig

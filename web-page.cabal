@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c5e1680b7457e98aba1cb9cf49547701be854850ccf830afa9da38dff04762c7
+-- hash: 709bdadb3be9bf684f417b949f0cbf7caa84ced5a7d1fc09df098296d2458c2c
 
 name:           web-page
 version:        0.1.0
@@ -30,6 +30,7 @@ library
     , box
     , clay
     , colour
+    , foldl
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -82,6 +83,7 @@ executable page-example
     , box
     , clay
     , colour
+    , foldl
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -121,6 +123,7 @@ test-suite test
     , box
     , clay
     , colour
+    , foldl
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge

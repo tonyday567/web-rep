@@ -17,6 +17,7 @@ dependencies:
   - box
   - clay
   - colour
+  - foldl
   - generic-lens
   - interpolatedstring-perl6
   - javascript-bridge

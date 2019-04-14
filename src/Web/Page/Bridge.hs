@@ -11,15 +11,20 @@
 
 module Web.Page.Bridge
   ( Element(..)
+  , toEither
   , bridgePage
+  , sendc
   , append
   , replace
+  , elementModel
   , elementConsume
+  , fakeElementConsume
   ) where
 
 import Box
 import Control.Monad.Morph
 import Data.Aeson
+import Data.HashMap.Strict
 import Control.Lens
 import Network.JavaScript
 import Protolude hiding (replace)
@@ -53,6 +58,9 @@ bridgePage =
   mempty &
   #jsGlobal .~ jsbPreventEnter &
   #jsOnLoad .~ jsbWebSocket
+
+sendc :: Engine -> Text -> IO ()
+sendc e = send e . command . Lazy.fromStrict
 
 replace :: Engine -> Text -> Text -> IO ()
 replace e d t = send e $ command $ Lazy.fromStrict $ "document.getElementById('" <> d <> "').innerHTML = '" <> t <> "'"
@@ -89,7 +97,7 @@ elementModel step s =
   S.unseparate &
   S.maps S.sumToEither
 
--- | eventConsume
+-- | elementConsume
 elementConsume :: s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text s)) -> Event Value -> Engine -> IO s
 elementConsume init step comm ev _ = do
   (c,e) <- atomically $ ends Unbounded
@@ -97,3 +105,14 @@ elementConsume init step comm ev _ = do
   final <- etcM init (Transducer (elementModel step))
     (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
   pure final
+
+-- | elementConsume
+fakeElementConsume :: s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text s)) -> Cont IO (Emitter IO Value) -> IO s
+fakeElementConsume init step comm e = do
+  final <- etcM init (Transducer (elementModel step))
+    (Box <$> comm <*> e)
+  pure final
+
+faker init step comm vs = fakeElementConsume init step comm (liftE <$> toEmit (S.each vs))
+
+-- testFake hm fa vs = faker hm (\(Element k v) s -> insert k v s) (contramap fa <$> (liftC <$> showStdout)) vs
