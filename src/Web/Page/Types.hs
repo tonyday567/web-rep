@@ -31,7 +31,7 @@ data Page =
     Page
     { libsCss :: [Html ()]
     , libsJs :: [Html ()]
-    , cssBody :: Css.Css
+    , cssBody :: Css.PageCss
     , jsGlobal :: Js.PageJs
     , jsOnLoad :: Js.PageJs
     , htmlHeader :: Html ()
@@ -95,6 +95,7 @@ data PageConcerns =
 data PageStructure =
   HeaderBody |
   Headless |
+  Snippet |
   Svg
   deriving (Show, Eq, Generic)
 

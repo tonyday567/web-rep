@@ -48,6 +48,13 @@ testPage h =
     , b_ "row" (with div_ [id_ "log"] (h2_ "server log"))
     ])
 
+repConcerns :: (Monad m) => Concerns Text -> SharedRep m (Concerns Text)
+repConcerns (Concerns c j h) = do
+  hrep <- textarea 10 "html" h
+  crep <- textarea 10 "css" c
+  jrep <- textarea 10 "js" j
+  pure $ Concerns crep jrep hrep
+
 ioTestPage :: Html () -> Html () -> Page
 ioTestPage i r =
   showJs <>
@@ -184,13 +191,20 @@ logResults :: (a -> Text) -> Engine -> Either Text a -> IO ()
 logResults _ e (Left err) = append e "log" err
 logResults r e (Right x) = results r e x
 
+logConcerns :: (Concerns Text -> Text) -> Engine -> Either Text (Concerns Text) -> IO ()
+logConcerns _ e (Left err) = append e "log" err
+logConcerns _ e (Right x) = sendConcerns e "results" x
+
+data MidType = Dev | Prod | Debug | Bridge | Fiddle | NoMid deriving (Eq, Read, Show, Generic)
+
+instance ParseField MidType
+instance ParseRecord MidType
+instance ParseFields MidType
+
 data Opts w = Opts
-  { log :: w ::: Maybe Bool <?> "server log to stdout"
+  { midtype :: w ::: MidType <?> "type of middleware processing"
+  , log :: w ::: Maybe Bool <?> "server log to stdout"
   , logPath :: w ::: Maybe Bool <?> "log raw path"
-  , bridgeOnly :: w ::: Maybe Bool <?> "bridge-only test (no rep test)"
-  , dev :: w ::: Maybe Bool <?> "rando development"
-  , debug :: w ::: Maybe Bool <?> "debug mode"
-  , record :: w ::: Maybe Bool <?> "record events and state"
   } deriving (Generic)
 
 instance ParseRecord (Opts Wrapped)
@@ -210,23 +224,28 @@ main = do
         print (rawPathInfo req) >> app req res
   -- Only one middleware servicing the web socket can be run at a time.  Simply switching on based on paths doesn't work because socket comms comes through "/"
   -- so that the first bridge middleware consumes all the elements
-    middleware $ case (tr $ bridgeOnly o, tr $ debug o, tr $ dev o, tr $ record o) of
-      (_, _, _, True) -> midRunShared
+    middleware $ case midtype o of
+      NoMid -> id
+      Prod -> midRunShared
           (maybeRep "maybe" True repExamples) (logResults show)
-      (_, True, _, _) -> midRunShared
+      Debug -> midRunShared
           (maybeRep "maybe" True repExamples) (logResults show)
-      (_, _, True, _) -> midRunShared
+      Dev -> midRunShared
           -- ((,) <$> button "button" <*> listifyExample) (logResults show)
           devsr
           (logResults show)
-      (False, _, _, _) -> midEvalShared
-          (maybeRep "maybe" True repExamples) (logResults show)
-      _ -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
+      Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
            consumeBridgeTest
+      Fiddle -> midEvalShared
+          (repConcerns fiddleExample)
+          (logConcerns show)
     servePageWith "/simple" defaultPageConfig page1
+    servePageWith "/fiddle" defaultPageConfig (ioTestPage mempty mempty)
     servePageWith "/accordion" defaultPageConfig (testPage ah)
     servePageWith "/rep" defaultPageConfig
-      (ioTestPage mempty (bool mempty (toHtml (show initBridgeTest :: Text)) (tr $ bridgeOnly o)))
+      (ioTestPage mempty (bool mempty
+                          (toHtml (show initBridgeTest :: Text))
+                          (midtype o == Bridge))) 
 
 devsr :: (Monad m) => SharedRep m [Int]
 devsr = accordionListify (Just "accordionListify example") "prefix" (Just "[2]") (\l a -> sliderI l (0::Int) 10 1 a) ((\x -> "[" <> show x <> "]") <$> [0..10::Int] :: [Text]) [0..10]

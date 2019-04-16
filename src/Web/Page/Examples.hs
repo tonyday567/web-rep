@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-
+ 
 module Web.Page.Examples where
 
 import Control.Lens
@@ -12,6 +12,7 @@ import Lucid
 import Protolude
 import Text.InterpolatedString.Perl6
 import Web.Page
+import Web.Page.Css ()
 import Web.Page.Html
 import Web.Page.Rep
 import qualified Clay
@@ -20,7 +21,7 @@ import qualified Clay
 page1 :: Page
 page1 =
   #htmlBody .~ button1 $
-  #cssBody .~ css1 $
+  #cssBody .~ PageCss css1 $
   #jsGlobal .~ mempty $
   #jsOnLoad .~ click $
   #libsCss .~ (libCss <$> cssLibs) $
@@ -83,6 +84,7 @@ button1 =
 data RepExamples =
   RepExamples
   { repTextbox :: Text
+  , repTextarea :: Text
   , repSliderI :: Int
   , repSlider :: Double
   , repCheckbox :: Bool
@@ -94,13 +96,44 @@ data RepExamples =
 repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
   t <- textbox "textbox" "sometext"
+  ta <- textarea 3 "textarea" "no initial value & multi-line text\\nrenders is not ok?/"
   n <- sliderI "int slider" 0 5 1 3
   ds <- slider "double slider" 0 1 0.1 0.5
   c <- checkbox "checkbox" True
   tog <- toggle "toggle" False
   dr <- dropdown decimal show "dropdown" (show <$> [1..5::Int]) 3
   col <- color "color" (PixelRGB8 56 128 200)
-  pure (RepExamples t n ds c tog dr col)
+  pure (RepExamples t ta n ds c tog dr col)
 
 listifyExample :: (Monad m) => SharedRep m [Int]
 listifyExample = listify (\l a -> sliderI l (0::Int) 10 1 a) (show <$> [0..10::Int] :: [Text]) [0..10]
+
+fiddleExample :: Concerns Text
+fiddleExample = Concerns
+  [q|
+.menu{
+    margin:20px;
+    }
+|]
+    [q|
+$(".dropdown-menu li a").click(function(){
+  var selText = $(this).attr('data-value');
+    $(this).parents('.btn-group').siblings('.menu').html(selText)
+});
+      |]
+      [q|
+<form>
+   <div class="btn-group">
+      <a class="btn dropdown-toggle btn-select" data-toggle="dropdown" href="#">Select a Items <span class="caret"></span></a>
+      <ul class="dropdown-menu">
+        <li><a href="#" data-value="action 1">Item I</a></li>
+        <li><a href="#" data-value="action 2">Item II</a></li>
+        <li><a href="#" data-value="action 3">Item III</a></li>
+      </ul>
+   </div>
+   <p class="menu">Options:</p>
+</form>
+|]
+
+
+

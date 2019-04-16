@@ -28,6 +28,7 @@ module Web.Page.Rep
   , toHex
   , PixelRGB8(..)
   , textbox
+  , textarea
   , checkbox
   , toggle
   , button
@@ -204,6 +205,13 @@ textboxF label v = repInput takeText id
 textbox :: (Monad m) => Text -> Text -> SharedRep m Text
 textbox label v = closeRep (textboxF label v)
 
+textareaF :: (Monad m) => Int -> Text -> Text -> SharedRepF m (Input Text) Text
+textareaF rows label v = repInput takeText id
+  (Input v (TextArea rows v) (Just label) Nothing mempty []) v
+
+textarea :: (Monad m) => Int -> Text -> Text -> SharedRep m Text
+textarea rows label v = closeRep (textareaF rows label v)
+
 fromHex :: Parser PixelRGB8
 fromHex =
   (\((r,g),b) ->
@@ -282,6 +290,23 @@ checkboxShowJs label cl v =
         (s, join $
         maybe (Left "lookup failed") Right $
         either (Left . pack) Right . parseOnly ((=="true") <$> takeText) <$>
+        lookup name s))
+
+dropdownShowJs :: (Monad m) => [Text] -> Text -> Text -> Text -> SharedRepF m (Input Text) Text
+dropdownShowJs opts label cl v =
+  SharedRep $ do
+    name <- zoom _1 genName
+    zoom _2 (modify (insert name v))
+    pure $
+      Rep
+      ( showJsInput cl name $
+        bridgeify $
+        bootify
+        (Input v (Dropdown opts (Just v)) (Just label) Nothing name []))
+      (\s ->
+        (s, join $
+        maybe (Left "lookup failed") Right $
+        either (Left . pack) Right . parseOnly takeText <$>
         lookup name s))
 
 maybeRep :: (Monad m) => Text -> Bool -> SharedRep m a ->

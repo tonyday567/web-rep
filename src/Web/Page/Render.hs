@@ -72,6 +72,15 @@ renderPageWith pc p =
             , p ^. #htmlBody
             , jsInline
             ]
+        Snippet ->
+          mconcat
+            [ mconcat libsCss'
+            , cssInline
+            , mconcat libsJs'
+            , p ^. #htmlHeader
+            , p ^. #htmlBody
+            , jsInline
+            ]
         Svg ->
           Svg.doctype_ <>
           svg_
@@ -129,11 +138,12 @@ rendererJs _ (Js.PageJsText js) = js
 rendererJs Minified (Js.PageJs js) = toStrict . Js.renderToText . Js.minifyJS . Js.unJS $ js
 rendererJs Pretty (Js.PageJs js) = toStrict . Js.renderToText . Js.unJS $ js
 
-rendererCss :: PageRender -> Css.Css -> Text
-rendererCss Minified css = toStrict $ Css.renderWith Css.compact [] css
-rendererCss Pretty css = toStrict $ Css.render css
+rendererCss :: PageRender -> Css.PageCss -> Text
+rendererCss Minified (Css.PageCss css) = toStrict $ Css.renderWith Css.compact [] css
+rendererCss Pretty (Css.PageCss css) = toStrict $ Css.render css
+rendererCss _ (Css.PageCssText css) = css
 
-renderers :: PageRender -> (Js.PageJs -> Text, Css.Css -> Text)
+renderers :: PageRender -> (Js.PageJs -> Text, Css.PageCss -> Text)
 renderers p = (rendererJs p, rendererCss p)
 
 renderPageTextWith :: PageConfig -> PageText -> (Text, Text, Html ())
@@ -165,6 +175,15 @@ renderPageTextWith pc p =
             [ doctype_
             , meta_ [charset_ "utf-8"]
             , mconcat (toHtmlRaw <$> libsCss')
+            , toHtmlRaw cssInline
+            , mconcat (toHtmlRaw <$> libsJs')
+            , toHtmlRaw $ p ^. #htmlHeaderText
+            , toHtmlRaw $ p ^. #htmlBodyText
+            , toHtmlRaw jsInline
+            ]
+        Snippet ->
+          mconcat
+            [ mconcat (toHtmlRaw <$> libsCss')
             , toHtmlRaw cssInline
             , mconcat (toHtmlRaw <$> libsJs')
             , toHtmlRaw $ p ^. #htmlHeaderText

@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Web.Page.Css
@@ -15,14 +17,35 @@ module Web.Page.Css
   , render
   , renderWith
   , compact
+  , PageCss(..)
   ) where
 
 import Clay hiding (optimizeSpeed, geometricPrecision, PlayState)
 import Clay.Stylesheet (key)
 import Data.Text.Lazy (unpack)
+import Data.Text
+import Protolude
+import qualified GHC.Show
 
 instance Show Css where
-  show = unpack . render
+  show = Data.Text.Lazy.unpack . render
+
+instance Eq Css where
+  (==) a' b' = (Protolude.show a' :: Text) == Protolude.show b'
+
+data PageCss = PageCss Css | PageCssText Text deriving (Eq, Show, Generic)
+
+instance Semigroup PageCss where
+  (<>) (PageCss css) (PageCss css') = PageCss (css <> css')
+  (<>) (PageCssText css) (PageCssText css') = PageCssText (css <> css')
+  (<>) (PageCss css) (PageCssText css') =
+    PageCssText (show css <> css')
+  (<>) (PageCssText css) (PageCss css') =
+    PageCssText (css <> show css')
+
+instance Monoid PageCss where
+  mempty = PageCssText mempty
+  mappend = (<>)
 
 -- a few SVG css
 fill :: Color -> Css

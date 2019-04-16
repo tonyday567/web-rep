@@ -55,6 +55,7 @@ data InputType a =
   Toggle Bool Text |
   Button Text |
   Dropdown [Text] (Maybe Text) |
+  TextArea Int Text |
   MultiInput (MultiInputAttributes a)
   deriving (Eq, Show, Generic)
 
@@ -78,6 +79,8 @@ instance ( ) => ToHtml (InputType a) where
     select_ (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
   toHtml (Checkbox checked) =
     input_ ([type_ "checkbox"] <> bool [] [checked_] checked)
+  toHtml (TextArea rows v) =
+    with textarea_ [rows_ (show rows)] (toHtmlRaw v)
   toHtml (MultiInput (MultiInputAttributes miatts milabel)) =
     with div_ [class_ "input-group"] $
     with div_ [class_ "input-group-prepend"]
