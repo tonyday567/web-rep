@@ -6,6 +6,7 @@
  
 module Web.Page.Examples where
 
+import Control.Category (id)
 import Control.Lens
 import Data.Attoparsec.Text
 import Lucid
@@ -16,6 +17,7 @@ import Web.Page.Css ()
 import Web.Page.Html
 import Web.Page.Rep
 import qualified Clay
+-- import qualified Data.Text.Lazy as Lazy
 
 -- | simple page examples
 page1 :: Page
@@ -135,5 +137,66 @@ $(".dropdown-menu li a").click(function(){
 </form>
 |]
 
+
+fiddleExampleDev :: Int -> Concerns Text
+fiddleExampleDev n = Concerns
+  [q|
+|]
+    [q|
+$(".dropdown-menu li a").click(function(){
+  var selText = $(this).attr('data-value');
+    $(this).parents('.btn-group').siblings('.menu').html(selText)
+});
+      |]
+      ([q|
+<form>
+   <div class="btn-group">
+      <button class="btn btn-secondary dropdown-toggle btn-select" data-toggle="dropdown" href="#" aria-haspopup="true" aria-expanded="false" id="d1">Sum Type</button>
+      <ul class="dropdown-menu" aria-labelledby="d1">
+|]
+          <> mconcat ((\x -> [qc| <li><a href="#" data-value="action {show x :: Text}">Item {show x :: Text}</a></li>|]) <$> [1..n]) <>
+         [q|
+           </ul>
+   </div>
+   <p class="menu">Options:</p>
+</form>
+|])
+
+
+data SumTypeExample = SumInt Int | SumOnly | SumText Text deriving (Eq, Show)
+
+sumTypeText :: SumTypeExample -> Text
+sumTypeText (SumInt _) = "SumInt"
+sumTypeText SumOnly = "SumOnly"
+sumTypeText (SumText _) = "SumText"
+
+repSumTypeExample :: (Monad m) => Int -> Text -> SumTypeExample -> SharedRep m SumTypeExample
+repSumTypeExample defi deft defst = SharedRep $ do
+  (Rep hi fi) <- unrep $ sliderI "" 0 20 1 defInt
+  (Rep ht ft) <- unrep $ textbox "" defText
+  (Rep hdb fdb) <- unrep $ dropdownSum takeText id "SumTypeExample"
+    ["SumInt", "SumOnly", "SumText"]
+    (sumTypeText defst)
+  pure $ Rep (hdb <>
+              with hi [ data_ "sumtype" "SumInt"
+                      , style_
+                   ("display:" <> bool "block" "none" (sumTypeText defst /= "SumInt"))] <>
+              with ht [ data_ "sumtype" "SumText"
+                      , style_
+                   ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))])
+    (\m -> let (m', db) = fdb m in
+            case db of
+              Left e -> (m', Left e)
+              Right "SumInt" -> second (second SumInt) (fi m')
+              Right "SumOnly" -> (m', Right SumOnly)
+              Right "SumText" -> second (second SumText) (ft m')
+              Right _ -> (m', Left "bad sumtype text"))
+    where
+      defInt = case defst of
+        SumInt i -> i
+        _ -> defi
+      defText = case defst of
+        SumText t -> t
+        _ -> deft
 
 

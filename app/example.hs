@@ -188,7 +188,7 @@ results :: (a -> Text) -> Engine -> a -> IO ()
 results r e x = replace e "results" (r x)
 
 logResults :: (a -> Text) -> Engine -> Either Text a -> IO ()
-logResults _ e (Left err) = append e "log" err
+logResults _ e (Left err) = append e "log" (err <> "<br>")
 logResults r e (Right x) = results r e x
 
 logConcerns :: (Concerns Text -> Text) -> Engine -> Either Text (Concerns Text) -> IO ()
@@ -212,7 +212,7 @@ instance ParseRecord (Opts Wrapped)
 main :: IO ()
 main = do
   o :: Opts Unwrapped <- unwrapRecord "examples for web-page"
-  (Rep ah _) <- flip evalStateT (0, empty) $ unrep devsr
+  (Rep ah _) <- flip evalStateT (0, empty) $ unrep devlist
   let tr = maybe False id
   scotty 3000 $ do
     middleware $ staticPolicy (noDots >-> addBase "other")
@@ -232,12 +232,12 @@ main = do
           (maybeRep "maybe" True repExamples) (logResults show)
       Dev -> midRunShared
           -- ((,) <$> button "button" <*> listifyExample) (logResults show)
-          devsr
+          (repSumTypeExample 2 "text" (SumInt 11))
           (logResults show)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
            consumeBridgeTest
       Fiddle -> midEvalShared
-          (repConcerns fiddleExample)
+          (repConcerns (fiddleExampleDev 5))
           (logConcerns show)
     servePageWith "/simple" defaultPageConfig page1
     servePageWith "/fiddle" defaultPageConfig (ioTestPage mempty mempty)
@@ -247,6 +247,8 @@ main = do
                           (toHtml (show initBridgeTest :: Text))
                           (midtype o == Bridge))) 
 
-devsr :: (Monad m) => SharedRep m [Int]
-devsr = accordionListify (Just "accordionListify example") "prefix" (Just "[2]") (\l a -> sliderI l (0::Int) 10 1 a) ((\x -> "[" <> show x <> "]") <$> [0..10::Int] :: [Text]) [0..10]
+devlist :: (Monad m) => SharedRep m [Int]
+devlist = accordionListify (Just "accordionListify example") "prefix" (Just "[2]") (\l a -> sliderI l (0::Int) 10 1 a) ((\x -> "[" <> show x <> "]") <$> [0..10::Int] :: [Text]) [0..10]
+
+
 

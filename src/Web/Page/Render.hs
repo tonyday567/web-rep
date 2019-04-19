@@ -58,8 +58,8 @@ renderPageWith pc p =
           body_
           (mconcat
             [ p ^. #htmlBody
-            , jsInline
             , mconcat libsJs'
+            , jsInline
             ]))
         Headless ->
           mconcat
@@ -67,18 +67,18 @@ renderPageWith pc p =
             , meta_ [charset_ "utf-8"]
             , mconcat libsCss'
             , cssInline
-            , mconcat libsJs'
             , p ^. #htmlHeader
             , p ^. #htmlBody
+            , mconcat libsJs'
             , jsInline
             ]
         Snippet ->
           mconcat
             [ mconcat libsCss'
             , cssInline
-            , mconcat libsJs'
             , p ^. #htmlHeader
             , p ^. #htmlBody
+            , mconcat libsJs'
             , jsInline
             ]
         Svg ->
@@ -86,11 +86,11 @@ renderPageWith pc p =
           svg_
             (Svg.defs_ $
              mconcat
-               [ mconcat libsJs'
-               , mconcat libsCss'
+               [ mconcat libsCss'
                , cssInline
-               , jsInline
                , p ^. #htmlBody
+               , mconcat libsJs'
+               , jsInline
                ])
     css = rendercss (p ^. #cssBody)
     js = renderjs (p ^. #jsGlobal <> Js.onLoad (p ^. #jsOnLoad))
@@ -167,8 +167,8 @@ renderPageTextWith pc p =
           body_
           (mconcat
             [ toHtmlRaw $ p ^. #htmlBodyText
-            , toHtmlRaw jsInline
             , mconcat (toHtmlRaw <$> libsJs')
+            , toHtmlRaw jsInline
             ]))
         Headless ->
           mconcat
@@ -176,18 +176,18 @@ renderPageTextWith pc p =
             , meta_ [charset_ "utf-8"]
             , mconcat (toHtmlRaw <$> libsCss')
             , toHtmlRaw cssInline
-            , mconcat (toHtmlRaw <$> libsJs')
             , toHtmlRaw $ p ^. #htmlHeaderText
             , toHtmlRaw $ p ^. #htmlBodyText
+            , mconcat (toHtmlRaw <$> libsJs')
             , toHtmlRaw jsInline
             ]
         Snippet ->
           mconcat
             [ mconcat (toHtmlRaw <$> libsCss')
             , toHtmlRaw cssInline
-            , mconcat (toHtmlRaw <$> libsJs')
             , toHtmlRaw $ p ^. #htmlHeaderText
             , toHtmlRaw $ p ^. #htmlBodyText
+            , mconcat (toHtmlRaw <$> libsJs')
             , toHtmlRaw jsInline
             ]
         Svg ->
@@ -195,11 +195,11 @@ renderPageTextWith pc p =
           svg_
             (Svg.defs_ $
              mconcat
-               [ mconcat (toHtmlRaw <$> libsJs')
-               , mconcat (toHtmlRaw <$> libsCss')
+               [ mconcat (toHtmlRaw <$> libsCss')
                , toHtmlRaw cssInline
-               , toHtmlRaw jsInline
                , toHtmlRaw $ p ^. #htmlBodyText
+               , mconcat (toHtmlRaw <$> libsJs')
+               , toHtmlRaw jsInline
                ])
     css = p ^. #cssBodyText
     js = rendererJs Pretty (Js.PageJsText $ p ^. #jsGlobalText) <>

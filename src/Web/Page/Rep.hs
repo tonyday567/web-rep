@@ -23,6 +23,8 @@ module Web.Page.Rep
   , sliderI
   , slider
   , dropdown
+  , dropdownSum
+  , dropdownButton
   , color
   , fromHex
   , toHex
@@ -85,9 +87,10 @@ instance FromJSON Element
       v .: "element" <*>
       v .: "value"
 
-toEither :: Data.Aeson.Result a -> Either Text a
-toEither (Success a) = Right a
-toEither (Error e) = Left $ pack e
+fromJson' :: (FromJSON a) => Value -> Either Text a
+fromJson' v = case fromJSON v of
+  (Success a) -> Right a
+  (Error e) -> Left $ "Json conversion error: " <> pack e <> " of " <> show v
 
 data RepF r a = Rep
   { rep :: r
@@ -149,6 +152,21 @@ repInput p pr i a =
     pure $
       Rep
       (bridgeify $ bootify $ set #val a $ set #id' name i)
+      (\s ->
+        (s, join $
+        maybe (Left "lookup failed") Right $
+        either (Left . (\x -> name <> ": " <> x) . pack) Right . parseOnly p <$> lookup name s))
+
+
+-- | for dropdownButtons, the id needs to be injected into the InputType
+repInput' :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> (Text -> Input a) -> a -> SharedRepF m (Input a) a
+repInput' p pr i a =
+  SharedRep $ do
+    name <- zoom _1 genName
+    zoom _2 (modify (insert name (pr a)))
+    pure $
+      Rep
+      (bridgeify $ bootify $ set #val a $ set #id' name (i name))
       (\s ->
         (s, join $
         maybe (Left "lookup failed") Right $
@@ -243,6 +261,24 @@ dropdown :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRep m a
 dropdown p pr label opts v = closeRep (dropdownF p pr label opts v)
 
+dropdownSumF :: (Monad m, ToHtml a) =>
+  Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRepF m (Input a) a
+dropdownSumF p pr label opts v = repInput p pr 
+  (sumTypeShow $ Input v (Dropdown opts (Just (pr v))) (Just label) Nothing mempty []) v
+
+dropdownSum :: (Monad m, ToHtml a) =>
+  Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRep m a
+dropdownSum p pr label opts v = closeRep (dropdownSumF p pr label opts v)
+
+dropdownButtonF :: (Monad m, ToHtml a) =>
+  Parser a -> (a -> Text) -> Text -> [Text] -> [Text] -> a -> SharedRepF m (Input a) a
+dropdownButtonF p pr label sums values v = repInput' p pr
+  (\id'' -> Input v (DropdownButton sums values id'' label) (Just label) Nothing mempty []) v
+
+dropdownButton :: (Monad m, ToHtml a) =>
+  Parser a -> (a -> Text) -> Text -> [Text] -> [Text] -> a -> SharedRep m a
+dropdownButton p pr label sums values v = closeRep (dropdownButtonF p pr label sums values v)
+
 checkboxF :: (Monad m) => Text -> Bool -> SharedRepF m (Input Bool) Bool
 checkboxF label v = repInput ((=="true") <$> takeText) (bool "false" "true")
   (Input v (Checkbox v) (Just label) Nothing mempty []) v
@@ -292,23 +328,6 @@ checkboxShowJs label cl v =
         either (Left . pack) Right . parseOnly ((=="true") <$> takeText) <$>
         lookup name s))
 
-dropdownShowJs :: (Monad m) => [Text] -> Text -> Text -> Text -> SharedRepF m (Input Text) Text
-dropdownShowJs opts label cl v =
-  SharedRep $ do
-    name <- zoom _1 genName
-    zoom _2 (modify (insert name v))
-    pure $
-      Rep
-      ( showJsInput cl name $
-        bridgeify $
-        bootify
-        (Input v (Dropdown opts (Just v)) (Just label) Nothing name []))
-      (\s ->
-        (s, join $
-        maybe (Left "lookup failed") Right $
-        either (Left . pack) Right . parseOnly takeText <$>
-        lookup name s))
-
 maybeRep :: (Monad m) => Text -> Bool -> SharedRep m a ->
   SharedRep m (Maybe a)
 maybeRep label st sa = SharedRep $ do
@@ -340,7 +359,7 @@ accordionListify title prefix open srf labels as = SharedRep $ do
 execValue :: (FromJSON a, MonadState s m) => (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text s)) m ()
 execValue step s =
   s &
-  S.map (toEither . fromJSON) &
+  S.map fromJson' &
   S.partitionEithers &
   hoist (S.chain (modify . step)) &
   hoist (S.mapM (\_ -> get)) &
@@ -365,7 +384,7 @@ shStep sr step v = do
 evalShared :: (FromJSON a, MonadState s m) => (s -> (s, Either Text b)) -> (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text b)) m ()
 evalShared sr step s =
   s &
-  S.map (toEither . fromJSON) &
+  S.map fromJson' &
   S.partitionEithers &
   hoist (S.mapM (fmap snd . shStep sr step)) &
   S.unseparate &
@@ -375,7 +394,7 @@ evalShared sr step s =
 runShared :: (FromJSON a, MonadState s m) => (s -> (s, Either Text b)) -> (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text (s, Either Text b))) m ()
 runShared sr step s =
   s &
-  S.map (toEither . fromJSON) &
+  S.map fromJson' &
   S.partitionEithers &
   hoist (S.mapM (shStep sr step)) &
   S.unseparate &
@@ -390,7 +409,7 @@ runSharedRecord
   -> S.Stream (S.Of (Either Text (s, Either Text b))) m ()
 runSharedRecord sr step s =
   s &
-  S.map (toEither . fromJSON) &
+  S.map fromJson' &
   S.partitionEithers &
   hoist (S.mapM (shStep' sr step)) &
   S.unseparate &
