@@ -3,7 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NoImplicitPrelude #-}
- 
+{-# LANGUAGE FlexibleContexts #-}
+
 module Web.Page.Examples where
 
 import Control.Category (id)
@@ -17,7 +18,8 @@ import Web.Page.Css ()
 import Web.Page.Html
 import Web.Page.Rep
 import qualified Clay
--- import qualified Data.Text.Lazy as Lazy
+import Data.HashMap.Strict
+import qualified Data.Text.Lazy as Lazy
 
 -- | simple page examples
 page1 :: Page
@@ -81,7 +83,7 @@ button1 =
   with
     button_
     [id_ "btnGo", Lucid.type_ "button"]
-    ("Go " <> with i_ [class_ "fa fa-play"] mempty)
+    ("Go " <> with i_ [class__ "fa fa-play"] mempty)
 
 data RepExamples =
   RepExamples
@@ -108,60 +110,15 @@ repExamples = do
   pure (RepExamples t ta n ds c tog dr col)
 
 listifyExample :: (Monad m) => SharedRep m [Int]
-listifyExample = listify (\l a -> sliderI l (0::Int) 10 1 a) (show <$> [0..10::Int] :: [Text]) [0..10]
+listifyExample =
+  accordionListify (Just "accordianListify") "al" Nothing
+  (\l a -> sliderI l (0::Int) 10 1 a) ((\x -> "[" <> show x <> "]") <$> [0..10::Int] :: [Text]) [0..10]
 
 fiddleExample :: Concerns Text
-fiddleExample = Concerns
+fiddleExample = Concerns mempty mempty
   [q|
-.menu{
-    margin:20px;
-    }
+<div class=" form-group-sm "><label for="1">fiddle example</label><input max="10.0" value="3.0" oninput="jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});" step="1.0" min="0.0" id="1" type="range" class=" custom-range  form-control-range "></div>
 |]
-    [q|
-$(".dropdown-menu li a").click(function(){
-  var selText = $(this).attr('data-value');
-    $(this).parents('.btn-group').siblings('.menu').html(selText)
-});
-      |]
-      [q|
-<form>
-   <div class="btn-group">
-      <a class="btn dropdown-toggle btn-select" data-toggle="dropdown" href="#">Select a Items <span class="caret"></span></a>
-      <ul class="dropdown-menu">
-        <li><a href="#" data-value="action 1">Item I</a></li>
-        <li><a href="#" data-value="action 2">Item II</a></li>
-        <li><a href="#" data-value="action 3">Item III</a></li>
-      </ul>
-   </div>
-   <p class="menu">Options:</p>
-</form>
-|]
-
-
-fiddleExampleDev :: Int -> Concerns Text
-fiddleExampleDev n = Concerns
-  [q|
-|]
-    [q|
-$(".dropdown-menu li a").click(function(){
-  var selText = $(this).attr('data-value');
-    $(this).parents('.btn-group').siblings('.menu').html(selText)
-});
-      |]
-      ([q|
-<form>
-   <div class="btn-group">
-      <button class="btn btn-secondary dropdown-toggle btn-select" data-toggle="dropdown" href="#" aria-haspopup="true" aria-expanded="false" id="d1">Sum Type</button>
-      <ul class="dropdown-menu" aria-labelledby="d1">
-|]
-          <> mconcat ((\x -> [qc| <li><a href="#" data-value="action {show x :: Text}">Item {show x :: Text}</a></li>|]) <$> [1..n]) <>
-         [q|
-           </ul>
-   </div>
-   <p class="menu">Options:</p>
-</form>
-|])
-
 
 data SumTypeExample = SumInt Int | SumOnly | SumText Text deriving (Eq, Show)
 
@@ -178,10 +135,12 @@ repSumTypeExample defi deft defst = SharedRep $ do
     ["SumInt", "SumOnly", "SumText"]
     (sumTypeText defst)
   pure $ Rep (hdb <>
-              with hi [ data_ "sumtype" "SumInt"
+              with hi [ class__ "subtype "
+                      , data_ "sumtype" "SumInt"
                       , style_
                    ("display:" <> bool "block" "none" (sumTypeText defst /= "SumInt"))] <>
-              with ht [ data_ "sumtype" "SumText"
+              with ht [ class__ "subtype "
+                      , data_ "sumtype" "SumText"
                       , style_
                    ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))])
     (\m -> let (m', db) = fdb m in
@@ -198,5 +157,3 @@ repSumTypeExample defi deft defst = SharedRep $ do
       defText = case defst of
         SumText t -> t
         _ -> deft
-
-

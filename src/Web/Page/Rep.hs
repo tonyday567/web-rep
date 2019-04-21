@@ -44,6 +44,7 @@ module Web.Page.Rep
   , runShared
   , runSharedRecord
   , evalSharedRepOnEvent
+  , evalSharedRepOnEventF
   , runSharedRepOnEvent
   ) where
 
@@ -201,7 +202,7 @@ repMessage p _ i def a =
 sliderF :: (Monad m) => Text -> Double -> Double -> Double -> Double ->
   SharedRepF m (Input Double) Double
 sliderF label l u s v = repInput double show
-  (Input v Slider (Just label) Nothing mempty [("min", pack $ show l), ("max", pack $ show u), ("step", pack $ show s)]) v
+  (Input v Slider (Just label) Nothing mempty [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]) v
 
 slider :: (Monad m) => Text -> Double -> Double -> Double -> Double ->
   SharedRep m Double
@@ -210,7 +211,7 @@ slider label l u s v = closeRep (sliderF label l u s v)
 sliderIF :: (Monad m, ToHtml a, Integral a, Show a) => Text -> a -> a -> a -> a ->
   SharedRepF m (Input a) a
 sliderIF label l u s v = repInput decimal show 
-  (Input v Slider (Just label) Nothing mempty [("min", pack $ show l), ("max", pack $ show u), ("step", pack $ show s)]) v
+  (Input v Slider (Just label) Nothing mempty [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]) v
 
 sliderI :: (Monad m, ToHtml a, Integral a, Show a) => Text -> a -> a -> a -> a ->
   SharedRep m a
@@ -263,12 +264,15 @@ dropdown p pr label opts v = closeRep (dropdownF p pr label opts v)
 
 dropdownSumF :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRepF m (Input a) a
-dropdownSumF p pr label opts v = repInput p pr 
+dropdownSumF p pr label opts v =
+  repInput p pr 
   (sumTypeShow $ Input v (Dropdown opts (Just (pr v))) (Just label) Nothing mempty []) v
 
 dropdownSum :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRep m a
-dropdownSum p pr label opts v = closeRep (dropdownSumF p pr label opts v)
+dropdownSum p pr label opts v =
+  first (\x -> Lucid.with x [class__ "sumtype-group"]) $
+  closeRep (dropdownSumF p pr label opts v)
 
 dropdownButtonF :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> [Text] -> a -> SharedRepF m (Input a) a
@@ -303,7 +307,7 @@ buttonBF label = repMessage (pure True) (bool "false" "true")
 
 buttonB :: (Monad m) => Text -> SharedRep m Bool
 buttonB label = closeRep $ buttonBF label
-
+ 
 buttonF :: (Monad m) => Text -> Text -> SharedRepF m (Input Text) Text
 buttonF def label = repMessage takeText show
   (Input label (Button label) Nothing Nothing mempty []) def label
@@ -338,7 +342,7 @@ maybeRep label st sa = SharedRep $ do
     hmap cl a b =
       cardify [] a Nothing
        (Lucid.with div_
-        [class_ cl, style_
+        [class__ cl, style_
                    ("display:" <> bool "none" "block" st)]
         b)
     mmap a b = bool Nothing (Just b) a
@@ -492,6 +496,21 @@ evalSharedRepOnEvent
   -> Cont_ IO Value
   -> m ()
 evalSharedRepOnEvent sr hio finalio eaction ev = flip evalStateT (0, empty) $ do
+  Rep h fa <- unrep sr
+  hio h fa
+  zoom _2 $ evalOnEventM fa eaction ev
+  finalio
+
+evalSharedRepOnEventF
+  :: MonadIO m
+  => SharedRepF m h a
+  -> (h -> (HashMap Text Text -> (HashMap Text Text, Either Text a))
+     -> StateT (Int, HashMap Text Text) m ())
+  -> StateT (Int, HashMap Text Text) m ()
+  -> (Either Text a -> IO ())
+  -> Cont_ IO Value
+  -> m ()
+evalSharedRepOnEventF sr hio finalio eaction ev = flip evalStateT (0, empty) $ do
   Rep h fa <- unrep sr
   hio h fa
   zoom _2 $ evalOnEventM fa eaction ev

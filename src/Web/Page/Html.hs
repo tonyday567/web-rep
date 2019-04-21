@@ -13,6 +13,10 @@ import Protolude
 import qualified Data.Text.Lazy as Lazy
 import qualified GHC.Show
 
+
+class__ :: Text -> Attribute
+class__ t = class_ (" " <> t <> " ")
+
 toAtts :: [(Text, Text)] -> [Attribute]
 toAtts hatts = (\(t, av) -> makeAttribute t av) <$> hatts
 

@@ -64,29 +64,29 @@ bootstrapPage =
 
 cardify :: [(Text, Text)] -> Html () -> Maybe Text -> Html () -> Html ()
 cardify atts h t b =
-  with div_ ([class_ "card"] <> toAtts atts) $
+  with div_ ([class__ "card"] <> toAtts atts) $
    h <>
    with
-   div_ [class_ "card-body"]
-   (maybe mempty (with h5_ [class_ "card-title"] . toHtml) t <>
+   div_ [class__ "card-body"]
+   (maybe mempty (with h5_ [class__ "card-title"] . toHtml) t <>
     b)
 
 b_ :: Text -> Html () -> Html ()
-b_ t = with div_ [class_ t]
+b_ t = with div_ [class__ t]
 
 accordianCard :: Bool -> [(Text, Text)] -> Text -> Text -> Text -> Text -> Html () -> Html ()
 accordianCard collapse atts idp idh idb t0 b =
-  with div_ ([class_ "card"] <> toAtts atts) $
-    with div_ [class_ "card-header", id_ idh]
-      (with h2_ [class_ "mb-0"]
-        (with button_ [class_ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb ] (toHtml t0))) <>
-    with div_ [id_ idb, class_ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
-    (with div_ [class_ "card-body"] b)
+  with div_ ([class__ "card"] <> toAtts atts) $
+    with div_ [class__ "card-header", id_ idh]
+      (with h2_ [class__ "mb-0"]
+        (with button_ [class__ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb ] (toHtml t0))) <>
+    with div_ [id_ idb, class__ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
+    (with div_ [class__ "card-body"] b)
 
 accordion :: (MonadState Int m, Monad m) => Text -> Maybe Text -> [(Text, Html ())] -> m (Html ())
 accordion pre x hs = do
   idp' <- genNamePre pre
-  with div_ [class_ "accordion", id_ idp'] <$> aCards idp'
+  with div_ [class__ "accordion", id_ idp'] <$> aCards idp'
     where
       aCards par = mconcat <$> sequence (aCard par <$> hs)
       aCard par (t,b) = do

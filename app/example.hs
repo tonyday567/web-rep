@@ -20,10 +20,11 @@ import Lucid hiding (b_)
 import Network.JavaScript
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, (>->))
 import Network.Wai.Middleware.RequestLogger
-import Protolude hiding (replace, Rep, log, empty)
+import Protolude hiding ((<<*>>), replace, Rep, log)
 import Web.Page
 import Web.Page.Bootstrap
 import Web.Page.Examples
+import Web.Page.Html
 import Web.Page.Html.Input
 import Web.Page.Bridge
 import Web.Page.Rep
@@ -34,43 +35,46 @@ import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
 import Options.Generic
 import Network.Wai
+import Data.Biapplicative
 
-testPage :: Html () -> Page
-testPage h =
-  showJs <>
-  bootstrapPage <>
-  bridgePage &
-  #htmlHeader .~ title_ "testPage" &
-  #htmlBody .~ b_ "container"
-  (mconcat
-    [ b_ "row" (h1_ "testPage")
-    , b_ "row" (with div_ [id_ "test"] h)
-    , b_ "row" (with div_ [id_ "log"] (h2_ "server log"))
-    ])
-
-repConcerns :: (Monad m) => Concerns Text -> SharedRep m (Concerns Text)
-repConcerns (Concerns c j h) = do
-  hrep <- textarea 10 "html" h
-  crep <- textarea 10 "css" c
-  jrep <- textarea 10 "js" j
-  pure $ Concerns crep jrep hrep
-
-ioTestPage :: Html () -> Html () -> Page
-ioTestPage i r =
+ioTestPage :: Text -> Text -> Html () -> Html () -> Page
+ioTestPage title mid i r =
   showJs <>
   bootstrapPage <>
   bridgePage &
   #htmlHeader .~ title_ "ioTestPage" &
   #htmlBody .~ b_ "container"
   (mconcat
-    [ b_ "row" (h1_ "input-output test page")
-    , b_ "row" (b_ "col-sm" (h2_ "inputs" <> with form_ [id_ "inputs"] i) <>
+    [ b_ "row" (h1_ (toHtml title))
+    , b_ "row" (h2_ ("middleware: " <> toHtml mid))
+    , b_ "row" (b_ "col-sm" (h2_ "input" <> with form_ [id_ "input"] i) <>
            b_ "col-sm" (with div_ [id_ "output"]
                   (h2_ "output" <>
                    with div_ [id_ "results"] r)))
     , b_ "row" (with div_ [id_ "log"] (h2_ "server log"))
     ])
 
+iroTestPage :: Text -> Text -> Html () -> Html () -> Html () -> Page
+iroTestPage title mid input representation output =
+  showJs <>
+  bootstrapPage <>
+  bridgePage &
+  #htmlHeader .~ title_ "iroTestPage" &
+  #htmlBody .~ b_ "container"
+  (mconcat
+    [ b_ "row" (h1_ (toHtml title))
+    , b_ "row" (h2_ ("middleware: " <> toHtml mid))
+    , b_ "row" $ mconcat
+      [ b_ "col" (h2_ "input" <> with div_ [id_ "input"] input)
+      , b_ "col" $ mconcat
+        [ b_ "col" (h2_ "representation" <> with div_ [id_ "representation"] representation)
+        , b_ "col" (h2_ "output" <> with div_ [id_ "output"] output)
+        , b_ "col" (h2_ "log" <> with div_ [id_ "log"] mempty)
+        ]
+      ]
+    ])
+
+-- | bridge testing without the SharedRep method
 rangeTest :: Input Int
 rangeTest = bridgeify $ bootify $
   Input
@@ -79,10 +83,10 @@ rangeTest = bridgeify $ bootify $
   (Just "range example")
   Nothing
   "rangeid"
-  [ ("style", "max-width:15rem;")
-  , ("min", "0")
-  , ("max", "5")
-  , ("step", "1")
+  [ style_ "max-width:15rem;"
+  , min_ "0"
+  , max_ "5"
+  , step_ "1"
   ]
 
 textTest :: Input Text
@@ -93,8 +97,8 @@ textTest = bridgeify $ bootify $
   (Just "label")
   Nothing
   "textid"
-  [ ("style", "max-width:15rem;")
-  , ("placeholder", "test placeholder")
+  [ style_ "max-width:15rem;"
+  , placeholder_ "test placeholder"
   ]
 
 initBridgeTest :: (Int, Text)
@@ -133,10 +137,11 @@ consumeBridgeTest ev e =
 
 midBridgeTest :: (Show a) => Html () -> (Event Value -> Engine -> IO a) -> Application -> Application
 midBridgeTest init eeio = start $ \ ev e -> do
-  append e "inputs" (Lazy.toStrict $ renderText init)
+  append e "input" (Lazy.toStrict $ renderText init)
   final <- eeio ev e `E.finally` putStrLn ("midBridgeTest finalled" :: Text)
   putStrLn $ ("final value was: " :: Text) <> show final
 
+-- * SharedRep testing
 initShared
   :: (MonadIO m)
   => MonadState (HashMap Text Text) m
@@ -146,7 +151,7 @@ initShared
   -> Engine
   -> m ()
 initShared h fa f e = do
-  liftIO $ append e "inputs" (Lazy.toStrict $ renderText h)
+  liftIO $ append e "input" (Lazy.toStrict $ renderText h)
   hm0 <- get
   let (hm1, r) = fa hm0
   put hm1
@@ -167,6 +172,91 @@ midEvalShared s action = start $ \ ev e ->
       liftIO $ putStrLn $ ("final value was: " :: Text) <> show f)
   (action e)
   (bridge ev e)
+
+-- | evaluate a Fiddle, without attempting to downstream bridging
+midFiddle ::
+  Concerns Text ->
+  Application -> Application
+midFiddle cs = start $ \ ev e ->
+  evalSharedRepOnEvent
+  (repConcerns cs)
+  (\h _ ->
+      liftIO $ append e "input" (toText h))
+  (do
+      f <- get
+      liftIO $ putStrLn $ ("final value was: " :: Text) <> show f)
+  (logFiddle_ e)
+  (bridge ev e)
+
+logFiddle_ :: Engine -> Either Text (Concerns Text, Bool) -> IO ()
+logFiddle_ e (Left err) = append e "log" err
+logFiddle_ e (Right (c,u)) = bool (pure ()) (sendConcerns e "output" c) u
+
+repConcerns :: (Monad m) => Concerns Text -> SharedRep m (Concerns Text, Bool)
+repConcerns (Concerns c j h) =
+  bimap
+  (\c' j' h' up -> (with div_ [class__ "fiddle "] $ mconcat [up,h',j',c']))
+  (\c' j' h' up -> (Concerns c' j' h', up))
+  (textarea 10 "css" c) <<*>>
+  textarea 10 "js" j <<*>>
+  textarea 10 "html" h <<*>>
+  buttonB "update"
+
+viaFiddle
+  :: (Monad m)
+  => SharedRep m a
+  -> SharedRep m (Bool, Concerns Text, a)
+viaFiddle sr = SharedRep $ do
+  sr'@(Rep h _) <- unrep sr
+  hrep <- unrep $ textarea 10 "html" (Lazy.toStrict $ renderText h)
+  crep <- unrep $ textarea 10 "css" mempty
+  jrep <- unrep $ textarea 10 "js" mempty
+  u <- unrep $ buttonB "update"
+  pure $
+    bimap
+    (\up a b c _ -> (with div_ [class__ "fiddle "] $ mconcat [a, b, c, up]))
+    (\up a b c d -> (up, Concerns a b c, d))
+    u <<*>>
+    crep <<*>>
+    jrep <<*>>
+    hrep <<*>>
+    sr'
+
+initFiddle
+  :: (MonadIO m)
+  => MonadState (HashMap Text Text) m
+  => Html ()
+  -> (HashMap Text Text -> (HashMap Text Text, Either Text (Bool, Concerns Text, a)))
+  -> (a -> Text)
+  -> Engine
+  -> m ()
+initFiddle h fa showa e = do
+  liftIO $ append e "input" (Lazy.toStrict $ renderText h)
+  hm0 <- get
+  let (hm1, r) = fa hm0
+  put hm1
+  liftIO $ case r of
+    Left err -> append e "log" err
+    Right (_,c,a) -> do
+      sendConcerns e "representation" c
+      replace e "output" (showa a)
+
+midViaFiddle ::
+  (Show a) =>
+  SharedRep IO (Bool, Concerns Text, a) ->
+  (Engine -> Either Text (Bool, Concerns Text, a) -> IO ()) ->
+  Application -> Application
+midViaFiddle s action = start $ \ ev e ->
+  evalSharedRepOnEventF
+  s
+  (\h fa ->
+      zoom _2 $ initFiddle h fa show e)
+  (do
+      f <- get
+      liftIO $ putStrLn $ ("final value was: " :: Text) <> show f)
+  (action e)
+  (bridge ev e)
+
 
 -- | evaluate the ShareRep a, and act on the results and state
 midRunShared ::
@@ -191,11 +281,17 @@ logResults :: (a -> Text) -> Engine -> Either Text a -> IO ()
 logResults _ e (Left err) = append e "log" (err <> "<br>")
 logResults r e (Right x) = results r e x
 
-logConcerns :: (Concerns Text -> Text) -> Engine -> Either Text (Concerns Text) -> IO ()
-logConcerns _ e (Left err) = append e "log" err
-logConcerns _ e (Right x) = sendConcerns e "results" x
+logFiddle :: (a -> Text) -> Engine -> Either Text (Bool, Concerns Text, a) -> IO ()
+logFiddle _ e (Left err) = append e "log" err
+logFiddle r e (Right (u,c,a)) =
+  case u of
+    True ->
+      sendConcerns e "representation" c
+    False -> do
+      putStrLn (r a)
+      replace e "output" (r a)
 
-data MidType = Dev | Prod | Debug | Bridge | Fiddle | NoMid deriving (Eq, Read, Show, Generic)
+data MidType = Dev | Prod | Bridge | Listify | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
 
 instance ParseField MidType
 instance ParseRecord MidType
@@ -212,7 +308,6 @@ instance ParseRecord (Opts Wrapped)
 main :: IO ()
 main = do
   o :: Opts Unwrapped <- unwrapRecord "examples for web-page"
-  (Rep ah _) <- flip evalStateT (0, empty) $ unrep devlist
   let tr = maybe False id
   scotty 3000 $ do
     middleware $ staticPolicy (noDots >-> addBase "other")
@@ -228,27 +323,22 @@ main = do
       NoMid -> id
       Prod -> midRunShared
           (maybeRep "maybe" True repExamples) (logResults show)
-      Debug -> midRunShared
-          (maybeRep "maybe" True repExamples) (logResults show)
       Dev -> midRunShared
-          -- ((,) <$> button "button" <*> listifyExample) (logResults show)
-          (repSumTypeExample 2 "text" (SumInt 11))
-          (logResults show)
+          (maybeRep "maybe" True repExamples) (logResults show)
+      Listify -> midRunShared listifyExample (logResults show)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
            consumeBridgeTest
-      Fiddle -> midEvalShared
-          (repConcerns (fiddleExampleDev 5))
-          (logConcerns show)
+      Fiddle -> midFiddle fiddleExample
+      ViaFiddle -> midViaFiddle
+          (viaFiddle $ repSumTypeExample 2 "default text" SumOnly)
+          (logFiddle show)
     servePageWith "/simple" defaultPageConfig page1
-    servePageWith "/fiddle" defaultPageConfig (ioTestPage mempty mempty)
-    servePageWith "/accordion" defaultPageConfig (testPage ah)
-    servePageWith "/rep" defaultPageConfig
-      (ioTestPage mempty (bool mempty
+    servePageWith "/iro" defaultPageConfig (iroTestPage "iro" (show $ midtype o) mempty mempty mempty)
+    servePageWith "/" defaultPageConfig
+      (ioTestPage "prod" (show $ midtype o) mempty (bool mempty
                           (toHtml (show initBridgeTest :: Text))
                           (midtype o == Bridge))) 
 
-devlist :: (Monad m) => SharedRep m [Int]
-devlist = accordionListify (Just "accordionListify example") "prefix" (Just "[2]") (\l a -> sliderI l (0::Int) 10 1 a) ((\x -> "[" <> show x <> "]") <$> [0..10::Int] :: [Text]) [0..10]
 
 
-
+ 
