@@ -111,7 +111,7 @@ repExamples = do
   c <- checkbox "checkbox" True
   tog <- toggle "toggle" False
   dr <- dropdown decimal show "dropdown" (show <$> [1..5::Int]) 3
-  col <- color "color" (PixelRGB8 56 128 200)
+  col <- colorPicker "color" (PixelRGB8 56 128 200)
   pure (RepExamples t ta n ds c tog dr col)
 
 listifyExample :: (Monad m) => Int -> SharedRep m [Int]

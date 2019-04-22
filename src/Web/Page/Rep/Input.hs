@@ -15,7 +15,7 @@ module Web.Page.Rep.Input
   , dropdown
   , dropdownSum
   , dropdownButton
-  , color
+  , colorPicker
   , textbox
   , textarea
   , checkbox
@@ -44,7 +44,7 @@ import Web.Page.Types
 import Web.Page.Rep
 import Box.Cont ()
 
-repInput :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> Input a -> a -> SharedRepF m (Input a) a
+repInput :: (Monad m) => Parser a -> (a -> Text) -> Input a -> a -> SharedRepF m (Input a) a
 repInput p pr i a =
   SharedRep $ do
     name <- zoom _1 genName
@@ -58,7 +58,7 @@ repInput p pr i a =
         either (Left . (\x -> name <> ": " <> x) . pack) Right . parseOnly p <$> lookup name s))
 
 -- | for dropdownButtons, the id needs to be injected into the InputType
-repInput' :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> (Text -> Input a) -> a -> SharedRepF m (Input a) a
+repInput' :: (Monad m) => Parser a -> (a -> Text) -> (Text -> Input a) -> a -> SharedRepF m (Input a) a
 repInput' p pr i a =
   SharedRep $ do
     name <- zoom _1 genName
@@ -71,7 +71,7 @@ repInput' p pr i a =
         maybe (Left "lookup failed") Right $
         either (Left . (\x -> name <> ": " <> x) . pack) Right . parseOnly p <$> lookup name s))
 
-namedRepInput :: (ToHtml a, MonadState (Int, HashMap Text Text) m, Monad m) =>
+namedRepInput :: (MonadState (Int, HashMap Text Text) m) =>
   Parser a -> (a -> Text) -> Input a -> a -> SharedRepF m (Input a) (Text, a) 
 namedRepInput p pr i a = SharedRep $ do
     name <- zoom _1 genName
@@ -85,7 +85,7 @@ namedRepInput p pr i a = SharedRep $ do
               either (Left . pack) Right . parseOnly p <$> lookup name s))
 
 -- | does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
-repMessage :: (ToHtml a, Monad m) => Parser a -> (a -> Text) -> Input a -> a -> a -> SharedRepF m (Input a) a
+repMessage :: (Monad m) => Parser a -> (a -> Text) -> Input a -> a -> a -> SharedRepF m (Input a) a
 repMessage p _ i def a =
   SharedRep $ do
     name <- zoom _1 genName
@@ -106,7 +106,7 @@ slider :: (Monad m) => Text -> Double -> Double -> Double -> Double ->
   SharedRep m Double
 slider label l u s v = first toHtml (sliderF label l u s v)
 
-sliderIF :: (Monad m, ToHtml a, Integral a, Show a) => Text -> a -> a -> a -> a ->
+sliderIF :: (Monad m, Integral a, Show a) => Text -> a -> a -> a -> a ->
   SharedRepF m (Input a) a
 sliderIF label l u s v = repInput decimal show 
   (Input v Slider (Just label) Nothing mempty [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]) v
@@ -129,14 +129,14 @@ textareaF rows label v = repInput takeText id
 textarea :: (Monad m) => Int -> Text -> Text -> SharedRep m Text
 textarea rows label v = first toHtml (textareaF rows label v)
 
-colorF :: (Monad m) => Text -> PixelRGB8 -> SharedRepF m (Input PixelRGB8) PixelRGB8
-colorF label v = repInput fromHex toHex
+colorPickerF :: (Monad m) => Text -> PixelRGB8 -> SharedRepF m (Input PixelRGB8) PixelRGB8
+colorPickerF label v = repInput fromHex toHex
   (Input v ColorPicker (Just label) Nothing mempty []) v
 
-color :: (Monad m) => Text -> PixelRGB8 -> SharedRep m PixelRGB8
-color label v = first toHtml (colorF label v)
+colorPicker :: (Monad m) => Text -> PixelRGB8 -> SharedRep m PixelRGB8
+colorPicker label v = first toHtml (colorPickerF label v)
 
-dropdownF :: (Monad m, ToHtml a) =>
+dropdownF :: (Monad m) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRepF m (Input a) a
 dropdownF p pr label opts v = repInput p pr 
   (Input v (Dropdown opts (Just (pr v))) (Just label) Nothing mempty []) v
@@ -145,7 +145,7 @@ dropdown :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRep m a
 dropdown p pr label opts v = first toHtml (dropdownF p pr label opts v)
 
-dropdownSumF :: (Monad m, ToHtml a) =>
+dropdownSumF :: (Monad m) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRepF m (Input a) a
 dropdownSumF p pr label opts v =
   repInput p pr 
@@ -157,7 +157,7 @@ dropdownSum p pr label opts v =
   first (\x -> Lucid.with x [class__ "sumtype-group"]) $
   first toHtml (dropdownSumF p pr label opts v)
 
-dropdownButtonF :: (Monad m, ToHtml a) =>
+dropdownButtonF :: (Monad m) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> [Text] -> a -> SharedRepF m (Input a) a
 dropdownButtonF p pr label sums values v = repInput' p pr
   (\id'' -> Input v (DropdownButton sums values id'' label) (Just label) Nothing mempty []) v
