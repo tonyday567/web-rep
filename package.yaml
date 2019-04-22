@@ -8,50 +8,49 @@ license-file: LICENSE.md
 bug-reports: https://github.com/tonyday567/web-page/issues
 extra-source-files:
 - stack.yaml
-dependencies:
-  - JuicyPixels
-  - aeson
-  - attoparsec
-  - base
-  - bifunctors
-  - box
-  - clay
-  - colour
-  - foldl
-  - generic-lens
-  - interpolatedstring-perl6
-  - javascript-bridge
-  - language-javascript
-  - lens
-  - lucid
-  - lucid-svg
-  - mmorph
-  - mtl
-  - numhask-space
-  - protolude
-  - scotty
-  - streaming
-  - svg-tree
-  - text
-  - transformers
-  - unordered-containers
-  - wai
-  - wai-middleware-static
+dependencies: []
 library:
   source-dirs: src
   exposed-modules:
   - Web.Page
   - Web.Page.Bootstrap
   - Web.Page.Bridge
-  - Web.Page.Rep
   - Web.Page.Css
   - Web.Page.Examples
   - Web.Page.Html
   - Web.Page.Html.Input
   - Web.Page.Js
+  - Web.Page.Render
+  - Web.Page.Rep
+  - Web.Page.Rep.Input
   - Web.Page.Server
   - Web.Page.Types
-  - Web.Page.Render
+  dependencies:
+    - JuicyPixels
+    - aeson
+    - attoparsec
+    - base
+    - bifunctors
+    - box
+    - clay
+    - colour
+    - foldl
+    - generic-lens
+    - interpolatedstring-perl6
+    - javascript-bridge
+    - language-javascript
+    - lens
+    - lucid
+    - lucid-svg
+    - mmorph
+    - mtl
+    - protolude
+    - scotty
+    - streaming
+    - text
+    - transformers
+    - unordered-containers
+    - wai-middleware-static
 tests:
   test:
     main: test.hs
@@ -62,9 +61,14 @@ tests:
     - -O2
     - -threaded
     dependencies:
+    - base
     - web-page
     - tasty
     - tasty-hspec
+    - lens
+    - lucid
+    - protolude
+    - text
 executables:
   page-example:
     main: example.hs
@@ -76,6 +80,16 @@ executables:
       - -rtsopts
       - -with-rtsopts=-N
     dependencies:
+      - base
       - web-page
+      - attoparsec
+      - box
+      - lens
+      - lucid
+      - protolude
+      - scotty
+      - text
+      - wai
       - wai-extra
+      - wai-middleware-static
       - optparse-generic

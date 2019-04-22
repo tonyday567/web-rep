@@ -17,17 +17,17 @@ import Control.Lens
 import Control.Monad
 import Data.Monoid
 import Data.Text (Text)
-import qualified Data.Text as Text
-import Data.Text.Lazy (fromStrict, toStrict)
 import Data.Text.IO (writeFile)
+import Data.Text.Lazy (fromStrict, toStrict)
 import Data.Traversable
 import Lucid
-import qualified Lucid.Svg as Svg
 import Prelude hiding (writeFile)
+import Web.Page.Html
+import Web.Page.Types
+import qualified Data.Text as Text
+import qualified Lucid.Svg as Svg
 import qualified Web.Page.Css as Css
 import qualified Web.Page.Js as Js
-import Web.Page.Types
-import Web.Page.Html
 
 renderPage :: Page -> Html ()
 renderPage p =

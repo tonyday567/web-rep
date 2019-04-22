@@ -1,6 +1,6 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -15,19 +15,23 @@ module Web.Page.Bridge
   , replace
   , bridge
   , sendConcerns
+  , Engine
+  , Event
+  , start
   ) where
 
+import Box.Cont
 import Control.Lens
+import Data.Aeson (Value)
+import Lucid
 import Network.JavaScript
 import Protolude hiding (replace)
 import Text.InterpolatedString.Perl6
+import Web.Page.Html
 import Web.Page.Js
 import Web.Page.Types
-import qualified Data.Text.Lazy as Lazy
-import Data.Aeson (Value)
-import Box.Cont
-import Lucid
 import qualified Data.Text as Text
+import qualified Data.Text.Lazy as Lazy
 
 preventEnter :: PageJs
 preventEnter = PageJs $ fromText [q|
@@ -65,7 +69,7 @@ append e d t = send e $ command $ Lazy.fromStrict $ "document.getElementById('" 
 sendConcerns :: Engine -> Text -> Concerns Text -> IO ()
 sendConcerns e t (Concerns c j h) = do
   replace e t h
-  append e t (Lazy.toStrict $ renderText $ style_ c)
+  append e t (toText $ style_ c)
   sendc e j
 
 bridge :: Event Value -> Engine -> Cont_ IO Value

@@ -1,20 +1,20 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Server
   ( servePageWith
   ) where
 
-import Protolude hiding (get)
-import Web.Page.Types
-import Web.Page.Render
-import Lucid (renderText)
-import Web.Scotty
-import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, only)
-import qualified Control.Monad.State as State
 import Control.Lens hiding (only)
+import Lucid (renderText)
+import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, only)
+import Protolude hiding (get)
+import Web.Page.Render
+import Web.Page.Types
+import Web.Scotty
+import qualified Control.Monad.State as State
 
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
 servePageWith rp pc p =

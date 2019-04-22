@@ -4,7 +4,7 @@ cabal-version: >= 1.10
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 21ede2cf626d269f168a732ba456df0edda8cfbdff02c83db1f5f7dd8f67ea6b
+-- hash: 3eb0cf460b46ddb25475d02a42893aa3ffe9e5d88c130955682143aa776cada1
 
 name:           web-page
 version:        0.1.0
@@ -40,29 +40,27 @@ library
     , lucid-svg
     , mmorph
     , mtl
-    , numhask-space
     , protolude
     , scotty
     , streaming
-    , svg-tree
     , text
     , transformers
     , unordered-containers
-    , wai
     , wai-middleware-static
   exposed-modules:
       Web.Page
       Web.Page.Bootstrap
       Web.Page.Bridge
-      Web.Page.Rep
       Web.Page.Css
       Web.Page.Examples
       Web.Page.Html
       Web.Page.Html.Input
       Web.Page.Js
+      Web.Page.Render
+      Web.Page.Rep
+      Web.Page.Rep.Input
       Web.Page.Server
       Web.Page.Types
-      Web.Page.Render
   other-modules:
       Paths_web_page
   default-language: Haskell2010
@@ -75,33 +73,15 @@ executable page-example
       app
   ghc-options: -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      JuicyPixels
-    , aeson
-    , attoparsec
+      attoparsec
     , base
-    , bifunctors
     , box
-    , clay
-    , colour
-    , foldl
-    , generic-lens
-    , interpolatedstring-perl6
-    , javascript-bridge
-    , language-javascript
     , lens
     , lucid
-    , lucid-svg
-    , mmorph
-    , mtl
-    , numhask-space
     , optparse-generic
     , protolude
     , scotty
-    , streaming
-    , svg-tree
     , text
-    , transformers
-    , unordered-containers
     , wai
     , wai-extra
     , wai-middleware-static
@@ -115,36 +95,13 @@ test-suite test
       test
   ghc-options: -Wall -O2 -threaded
   build-depends:
-      JuicyPixels
-    , aeson
-    , attoparsec
-    , base
-    , bifunctors
-    , box
-    , clay
-    , colour
-    , foldl
-    , generic-lens
-    , interpolatedstring-perl6
-    , javascript-bridge
-    , language-javascript
+      base
     , lens
     , lucid
-    , lucid-svg
-    , mmorph
-    , mtl
-    , numhask-space
     , protolude
-    , scotty
-    , streaming
-    , svg-tree
     , tasty
     , tasty-hspec
     , text
-    , transformers
-    , unordered-containers
-    , wai
-    , wai-middleware-static
     , web-page
   other-modules:
       Paths_web_page

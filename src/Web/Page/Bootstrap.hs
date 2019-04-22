@@ -1,20 +1,25 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Web.Page.Bootstrap where
+module Web.Page.Bootstrap
+  ( bootstrapPage
+  , cardify
+  , b_
+  , accordion
+  ) where
 
-import Web.Page.Types
-import Web.Page.Html
-import Lucid
+import Lucid hiding (b_)
 import Lucid.Base
 import Protolude
+import Web.Page.Html
+import Web.Page.Types
 
 bootstrapCss :: [Html ()]
 bootstrapCss =
@@ -62,9 +67,9 @@ bootstrapPage =
   (mconcat bootstrapMeta)
   mempty
 
-cardify :: [(Text, Text)] -> Html () -> Maybe Text -> Html () -> Html ()
+cardify :: [Attribute] -> Html () -> Maybe Text -> Html () -> Html ()
 cardify atts h t b =
-  with div_ ([class__ "card"] <> toAtts atts) $
+  with div_ ([class__ "card"] <> atts) $
    h <>
    with
    div_ [class__ "card-body"]
@@ -74,9 +79,9 @@ cardify atts h t b =
 b_ :: Text -> Html () -> Html ()
 b_ t = with div_ [class__ t]
 
-accordianCard :: Bool -> [(Text, Text)] -> Text -> Text -> Text -> Text -> Html () -> Html ()
-accordianCard collapse atts idp idh idb t0 b =
-  with div_ ([class__ "card"] <> toAtts atts) $
+accordionCard :: Bool -> [Attribute] -> Text -> Text -> Text -> Text -> Html () -> Html ()
+accordionCard collapse atts idp idh idb t0 b =
+  with div_ ([class__ "card"] <> atts) $
     with div_ [class__ "card-header", id_ idh]
       (with h2_ [class__ "mb-0"]
         (with button_ [class__ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb ] (toHtml t0))) <>
@@ -92,4 +97,4 @@ accordion pre x hs = do
       aCard par (t,b) = do
         idh <- genNamePre pre
         idb <- genNamePre pre
-        pure $ accordianCard (maybe True (/=t) x) [] par idh idb t b
+        pure $ accordionCard (maybe True (/=t) x) [] par idh idb t b

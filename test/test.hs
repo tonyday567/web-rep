@@ -5,20 +5,12 @@ module Main where
 
 import Control.Lens
 import Lucid
-import Protolude hiding (empty)
+import Protolude
 import Test.Tasty
 import Test.Tasty.Hspec
 import Web.Page
-import Web.Page.Bootstrap
 import Web.Page.Examples
-import Web.Page.Html
-import Web.Page.Bridge
-import Web.Page.Rep
 import qualified Data.Text.IO as Text
-import Data.HashMap.Strict
-import Data.Aeson (Value(..))
-import qualified Control.Foldl as L
-import qualified Streaming.Prelude as S
 
 generatePage :: FilePath -> FilePath -> PageConfig -> Page -> IO ()
 generatePage dir stem pc =
@@ -93,33 +85,12 @@ testsBridge =
         toText (renderPage bridgePage) `shouldBe`
         "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>\nwindow.addEventListener('keydown',function(e) {\n  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {\n    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {\n      e.preventDefault();\n      return false;\n    }\n  }\n}, true);\n window.onload=function(){\nwindow.jsb = {ws: new WebSocket('ws://' + location.host + '/')};\njsb.ws.onmessage = (evt) => eval(evt.data);\n};</script></body></html>"
 
-testValues
-  :: (Monad m)
-  => SharedRep m a
-  -> [Value]
-  -> m [Either Text (HashMap Text Text, Either Text a)]
-testValues sr vs = S.fst' <$> do
-  (faStep, (_,hm)) <- flip runStateT (0, empty) $ do
-    (Rep _ fa) <- unrep sr
-    pure fa
-  flip evalStateT hm $
-    L.purely S.fold L.list
-    (runShared faStep (\(Element k v) s -> insert k v s) (S.each vs))
-
-runZero :: (Monad m) =>
-  HashMap Text Text -> SharedRep m a ->
-  m (HashMap Text Text, Either Text a)
-runZero hm sr = do
-  (Rep _ fa, (_, hm')) <- flip runStateT (0, hm) $ unrep sr
-  pure (fa hm')
-
 testbs :: [Value]
 testbs =
   [ Object (fromList [("element","1"),("value","b1")])
   , Object (fromList [("element","2"),("value","b2")])
   , Object (fromList [("element","3"),("value","b3")])
   ]
-
 
 testvs :: [Value]
 testvs =
@@ -140,27 +111,35 @@ testsRep =
   return $
     describe "Web.Page.Rep" $ do
       it "Rep mempty" $
-        testValues (pure (mempty :: Text)) [] `shouldBe` [[]]
+        runIdentity (runList (pure (mempty :: Text)) []) `shouldBe` []
       it "mempty passes values through to hashmap" $
-        testValues (pure (mempty :: Text)) testbs `shouldReturn`
+        runIdentity (runList (pure (mempty :: Text)) testbs) `shouldBe`
         [ Right (fromList [("1","b1")], Right "")
         , Right (fromList [("1","b1"),("2","b2")], Right "")
         , Right (fromList [("1","b1"),("2","b2"),("3","b3")], Right "")
         ]
       it "buttonB consumes an event and the value is transitory" $
-        testValues
+        runIdentity
+        (runList
         ((,) <$> buttonB "b1" <*> buttonB "b2")
-        testbs `shouldReturn`
+        testbs) `shouldBe`
         [ Right (fromList [],Right (True,False))
         , Right (fromList [],Right (False,True))
         , Right (fromList [("3","b3")],Right (False,False))
         ]
-      it "repExamples creates canned HashMap" $
-        runZero empty repExamples `shouldReturn`
+      it "repExamples versus canned" $
+        runIdentity (runOnce repExamples mempty) `shouldBe`
         (fromList [("7","3"),("1","sometext"),("4","0.5"),("2","no initial value & multi-line text\\nrenders is not ok?/"),("5","true"),("8","#3880c8"),("3","3"),("6","false")],Right (RepExamples {repTextbox = "sometext", repTextarea = "no initial value & multi-line text\\nrenders is not ok?/", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))
+      it "listifyExamples versus canned" $
+        runIdentity (runOnce (listifyExample 5) mempty) `shouldBe`
+        (fromList [("1","0"),("4","3"),("2","1"),("5","4"),("3","2"),("6","5")],Right [0,1,2,3,4,5])
+      it "fiddleExample versus canned" $
+        runIdentity (runOnce (repConcerns fiddleExample) mempty) `shouldBe`
+        (fromList [("1",""),("2",""),("3","\n<div class=\" form-group-sm \"><label for=\"1\">fiddle example</label><input max=\"10.0\" value=\"3.0\" oninput=\"jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});\" step=\"1.0\" min=\"0.0\" id=\"1\" type=\"range\" class=\" custom-range  form-control-range \"></div>\n")],Right (Concerns "" "" "\n<div class=\" form-group-sm \"><label for=\"1\">fiddle example</label><input max=\"10.0\" value=\"3.0\" oninput=\"jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});\" step=\"1.0\" min=\"0.0\" id=\"1\" type=\"range\" class=\" custom-range  form-control-range \"></div>\n",False))
+
       it "repExamples run through some canned events" $
-        testValues (maybeRep "" True repExamples) testvs `shouldReturn`
-        [Right (fromList [("7","true"),("4","no initial value & multi-line text\\nrenders is not ok?/"),("2","false"),("5","3"),("8","false"),("3","sometext"),("6","0.5"),("9","3"),("10","#3880c8")],Right Nothing),Right (fromList [("7","true"),("4","no initial value & multi-line text\\nrenders is not ok?/"),("2","true"),("5","3"),("8","false"),("3","sometext"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "sometext", repTextarea = "no initial value & multi-line text\\nrenders is not ok?/", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4","no initial value & multi-line text\\nrenders is not ok?/"),("2","true"),("5","3"),("8","false"),("3","x"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "no initial value & multi-line text\\nrenders is not ok?/", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4",""),("2","true"),("5","3"),("8","false"),("3","x"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4",""),("2","true"),("5","2"),("8","false"),("3","x"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4",""),("2","true"),("5","2"),("8","false"),("3","x"),("6","0.6"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","false"),("3","x"),("6","0.6"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","true"),("3","x"),("6","0.6"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","true"),("3","x"),("6","0.6"),("9","5"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 5, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","true"),("3","x"),("6","0.6"),("9","5"),("10","#00b4cc")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 5, repColor = PixelRGB8 0 180 204})))]
+        runIdentity (runList (maybeRep "" True repExamples) testvs) `shouldBe`
+        [Right (fromList [("7","true"),("4","no initial value & multi-line text\\nrenders is not ok?/"),("2","false"),("5","3"),("8","false"),("3","sometext"),("6","0.5"),("9","3"),("10","#3880c8")],Right Nothing),Right (fromList [("7","true"),("4","no initial value & multi-line text\\nrenders is not ok?/"),("2","true"),("5","3"),("8","false"),("3","sometext"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "sometext", repTextarea = "no initial value & multi-line text\\nrenders is not ok?/", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4","no initial value & multi-line text\\nrenders is not ok?/"),("2","true"),("5","3"),("8","false"),("3","x"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "no initial value & multi-line text\\nrenders is not ok?/", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4",""),("2","true"),("5","3"),("8","false"),("3","x"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4",""),("2","true"),("5","2"),("8","false"),("3","x"),("6","0.5"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","true"),("4",""),("2","true"),("5","2"),("8","false"),("3","x"),("6","0.6"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = True, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","false"),("3","x"),("6","0.6"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = False, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","true"),("3","x"),("6","0.6"),("9","3"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 3, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","true"),("3","x"),("6","0.6"),("9","5"),("10","#3880c8")],Right (Just (RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 5, repColor = PixelRGB8 56 128 200}))),Right (fromList [("7","false"),("4",""),("2","true"),("5","2"),("8","true"),("3","x"),("6","0.6"),("9","5"),("10","#00b4cc")],Right (Just RepExamples {repTextbox = "x", repTextarea = "", repSliderI = 2, repSlider = 0.6, repCheckbox = False, repToggle = True, repDropdown = 5, repColor = PixelRGB8 0 180 204}))]
 
 -- The tests
 tests :: IO TestTree

@@ -3,22 +3,29 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Web.Page.Html where
+module Web.Page.Html
+  ( class__
+  , toText
+  , genName
+  , genNamePre
+  , libCss
+  , libJs
+  , fromHex
+  , toHex
+ ) where
 
 import Data.Colour.SRGB (Colour, sRGB24show)
 import Data.Text
 import Lucid
-import Lucid.Base
 import Protolude
 import qualified Data.Text.Lazy as Lazy
 import qualified GHC.Show
-
+import Codec.Picture.Types (PixelRGB8(..))
+import Data.Attoparsec.Text
+import Numeric
 
 class__ :: Text -> Attribute
 class__ t = class_ (" " <> t <> " ")
-
-toAtts :: [(Text, Text)] -> [Attribute]
-toAtts hatts = (\(t, av) -> makeAttribute t av) <$> hatts
 
 toText :: Html a -> Text
 toText = Lazy.toStrict . renderText
@@ -42,6 +49,19 @@ libCss url = link_
 libJs :: Text -> Html ()
 libJs url = with (script_ mempty) [src_ url]
 
+fromHex :: Parser PixelRGB8
+fromHex =
+  (\((r,g),b) ->
+       PixelRGB8 (fromIntegral r) (fromIntegral g) (fromIntegral b)) .
+    (\(f,b) -> (f `divMod` (256 :: Int), b)) .
+    (`divMod` 256) <$>
+    (string "#" *> hexadecimal)
+
+toHex :: PixelRGB8 -> Text
+toHex (PixelRGB8 r g b) = pack $ "#" <> showHex r (showHex g $ showHex b "")
+
+-- `ToHtml a` is used throughout because `Show a` gives "\"text\"" for show "text", and hilarity ensues when rendering to the web page.
+-- hence orphans
 instance ToHtml Double where
   toHtml = toHtml . (show :: Double -> Text)
   toHtmlRaw = toHtmlRaw . (show :: Double -> Text)
@@ -56,4 +76,16 @@ instance (RealFrac a, Floating a) => Show (Colour a) where
 instance ToHtml Bool where
   toHtml = toHtml . bool ("false" :: Text) "true"
   toHtmlRaw = toHtmlRaw . bool ("false" :: Text) "true"
+
+instance ToHtml Int where
+  toHtml = toHtml . (show :: Int -> Text)
+  toHtmlRaw = toHtmlRaw . (show :: Int -> Text)
+
+instance ToHtml PixelRGB8 where
+  toHtml = toHtml . toHex
+  toHtmlRaw = toHtmlRaw . toHex
+
+instance ToHtml () where
+  toHtml = const "()"
+  toHtmlRaw = const "()"
 

@@ -1,8 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Web.Page.Css
@@ -22,8 +22,8 @@ module Web.Page.Css
 
 import Clay hiding (optimizeSpeed, geometricPrecision, PlayState)
 import Clay.Stylesheet (key)
-import Data.Text.Lazy (unpack)
 import Data.Text
+import Data.Text.Lazy (unpack)
 import Protolude
 import qualified GHC.Show
 

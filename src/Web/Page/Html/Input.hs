@@ -1,14 +1,13 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoPatternSynonyms #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Html.Input
   ( Input(Input)
@@ -64,10 +63,6 @@ data InputType a =
   MultiInput (MultiInputAttributes a)
   deriving (Eq, Show, Generic)
 
-instance ToHtml Int where
-  toHtml = toHtml . (show :: Int -> Text)
-  toHtmlRaw = toHtmlRaw . (show :: Int -> Text)
-
 instance ( ) => ToHtml (InputType a) where
   toHtml Slider =
     input_ [ type_ "range"]
@@ -122,10 +117,9 @@ includeValue (Toggle _ _) = False
 includeValue (Button _) = False
 includeValue _ = True
 
--- the instance here needs to be `ToHtml a` because `Show a` gives "\"text\"" for show "text", and hilarity ensues
 instance (ToHtml a) => ToHtml (Input a) where
   toHtml (Input v itype label' wrap' idh hatts) =
-    maybe identity (\c x ->  with div_ c x) wrap'
+    maybe identity (with div_) wrap'
     (bool (l <> i') (i' <> l) (isCheckbox itype))
     where
       l = maybe mempty (with label_ ([Lucid.for_ idh] <> maybe [] (\x -> [class__ x]) (formLabelClass itype)) . toHtml) label'
@@ -135,7 +129,7 @@ instance (ToHtml a) => ToHtml (Input a) where
           hatts <>
           bool [] [value_ (show $ toHtmlRaw v)] (includeValue itype))
   toHtmlRaw (Input v itype label' wrap' idh hatts) =
-    maybe identity (\c x ->  with div_ c x) wrap' (l <> i')
+    maybe identity (with div_) wrap' (l <> i')
     where
       l = maybe mempty (with label_ [Lucid.for_ idh] . toHtmlRaw) label'
       i' =

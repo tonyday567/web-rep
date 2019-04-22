@@ -1,25 +1,30 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wall #-}
 
-module Web.Page.Examples where
+module Web.Page.Examples
+  ( page1
+  , page2
+  , cfg2
+  , RepExamples(..)
+  , repExamples
+  , SumTypeExample(..)
+  , repSumTypeExample
+  , listifyExample
+  , fiddleExample
+  ) where
 
 import Control.Category (id)
 import Control.Lens
 import Data.Attoparsec.Text
 import Lucid
 import Protolude
-import Text.InterpolatedString.Perl6
 import Web.Page
-import Web.Page.Css ()
-import Web.Page.Html
-import Web.Page.Rep
 import qualified Clay
-import Data.HashMap.Strict
-import qualified Data.Text.Lazy as Lazy
 
 -- | simple page examples
 page1 :: Page
@@ -109,10 +114,10 @@ repExamples = do
   col <- color "color" (PixelRGB8 56 128 200)
   pure (RepExamples t ta n ds c tog dr col)
 
-listifyExample :: (Monad m) => SharedRep m [Int]
-listifyExample =
+listifyExample :: (Monad m) => Int -> SharedRep m [Int]
+listifyExample n =
   accordionListify (Just "accordianListify") "al" Nothing
-  (\l a -> sliderI l (0::Int) 10 1 a) ((\x -> "[" <> show x <> "]") <$> [0..10::Int] :: [Text]) [0..10]
+  (\l a -> sliderI l (0::Int) n 1 a) ((\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]) [0..n]
 
 fiddleExample :: Concerns Text
 fiddleExample = Concerns mempty mempty

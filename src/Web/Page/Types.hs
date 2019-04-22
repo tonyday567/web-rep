@@ -1,9 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Web.Page.Types
   ( Page(Page)
@@ -21,9 +20,9 @@ module Web.Page.Types
 
 import Control.Lens
 import Data.Generics.Labels()
+import Data.Semigroup ((<>))
 import Lucid
 import Protolude hiding ((<>))
-import Data.Semigroup ((<>))
 import qualified Web.Page.Css as Css
 import qualified Web.Page.Js as Js
 
