@@ -1,5 +1,3 @@
-#nightly-2018-01-29
-
 resolver: nightly-2019-03-22
 
 packages:
@@ -10,11 +8,7 @@ extra-deps:
   - git: https://github.com/ku-fpg/javascript-bridge.git
     commit: bb72dbb7d2f6376353f67aec6c251271ffb055d5
   - lucid-svg-0.7.0.0
-  - git: https://github.com/tonyday567/numhask.git
-    commit: 717b02421d57b61890f21b9102c262628a98c968
-    subdirs:
-      - numhask
-      - numhask-prelude
-      - numhask-space
   - git: https://github.com/tonyday567/box.git
     commit: 542dec0c31060e4d12c5aa949ced8d5813827b7e
+
+allow-newer: true
