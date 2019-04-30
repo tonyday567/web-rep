@@ -13,6 +13,7 @@ module Web.Page.Rep.Input
   , sliderI
   , slider
   , dropdown
+  , datalist
   , dropdownSum
   , dropdownButton
   , colorPicker
@@ -22,6 +23,7 @@ module Web.Page.Rep.Input
   , toggle
   , button
   , buttonB
+  , chooseFile
   , maybeRep
   , repConcerns
   , viaFiddle
@@ -145,6 +147,13 @@ dropdown :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRep m a
 dropdown p pr label opts v = first toHtml (dropdownF p pr label opts v)
 
+datalistF :: (Monad m) => Text -> [Text] -> Text -> SharedRepF m (Input Text) Text
+datalistF label opts v = repInput' takeText show
+  (\id'' -> Input v (Datalist opts (Just v) id'') (Just label) Nothing mempty []) v
+
+datalist :: (Monad m) => Text -> [Text] -> Text -> SharedRep m Text
+datalist label opts v = first toHtml (datalistF label opts v)
+
 dropdownSumF :: (Monad m) =>
   Parser a -> (a -> Text) -> Text -> [Text] -> a -> SharedRepF m (Input a) a
 dropdownSumF p pr label opts v =
@@ -193,6 +202,13 @@ buttonF def label = repMessage takeText show
 
 button :: (Monad m) => Text -> Text -> SharedRep m Text
 button def label = first toHtml $ buttonF def label
+
+chooseFileF :: (Monad m) => Text -> Text -> SharedRepF m (Input Text) Text
+chooseFileF label v = repInput takeText show
+  (Input v ChooseFile (Just label) Nothing mempty []) v
+
+chooseFile :: (Monad m) => Text -> Text -> SharedRep m Text
+chooseFile label v = first toHtml $ chooseFileF label v
 
 checkboxShowJs :: (Monad m) => Text -> Text -> Bool -> SharedRep m Bool
 checkboxShowJs label cl v =

@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
@@ -19,12 +20,13 @@ module Web.Page.Examples
   ) where
 
 import Control.Category (id)
-import Control.Lens
+import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
 import Lucid
 import Protolude
 import Web.Page
 import qualified Clay
+import Data.Aeson
 
 -- | simple page examples
 page1 :: Page
@@ -100,7 +102,20 @@ data RepExamples =
   , repToggle :: Bool
   , repDropdown :: Int
   , repColor :: PixelRGB8
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic)
+
+instance ToJSON PixelRGB8 where
+  toJSON (PixelRGB8 r g b) = object ["r" .= r, "g" .= g, "b" .= b]
+
+instance FromJSON PixelRGB8 where
+  parseJSON = withObject "Color" $ \v ->
+    PixelRGB8 <$>
+    v .: "r" <*>
+    v .: "g" <*>
+    v .: "b"
+
+instance ToJSON RepExamples
+instance FromJSON RepExamples
 
 repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
@@ -114,6 +129,9 @@ repExamples = do
   col <- colorPicker "color" (PixelRGB8 56 128 200)
   pure (RepExamples t ta n ds c tog dr col)
 
+-- encodeFile "saves/rep2.json" $ RepExamples "text1" "text2" 1 1.0 True True 2 (PixelRGB8 0 100 0)
+-- decodeFileStrict "saves/rep2.json" :: IO (Maybe RepExamples)
+
 listifyExample :: (Monad m) => Int -> SharedRep m [Int]
 listifyExample n =
   accordionListify (Just "accordianListify") "al" Nothing
@@ -125,7 +143,10 @@ fiddleExample = Concerns mempty mempty
 <div class=" form-group-sm "><label for="1">fiddle example</label><input max="10.0" value="3.0" oninput="jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});" step="1.0" min="0.0" id="1" type="range" class=" custom-range  form-control-range "></div>
 |]
 
-data SumTypeExample = SumInt Int | SumOnly | SumText Text deriving (Eq, Show)
+data SumTypeExample = SumInt Int | SumOnly | SumText Text deriving (Eq, Show, Generic)
+
+instance ToJSON SumTypeExample
+instance FromJSON SumTypeExample
 
 sumTypeText :: SumTypeExample -> Text
 sumTypeText (SumInt _) = "SumInt"

@@ -216,6 +216,7 @@ main = do
   let tr = maybe False id
   scotty 3000 $ do
     middleware $ staticPolicy (noDots >-> addBase "other")
+    middleware $ staticPolicy (noDots >-> addBase "saves")
     when (tr $ log o) $
       middleware logStdoutDev
     when (tr $ logPath o) $
@@ -229,7 +230,8 @@ main = do
       Prod -> midShared
           (maybeRep "maybe" True repExamples) (logResults show)
       Dev -> midShared
-          (maybeRep "maybe" True repExamples) (logResults show)
+              (datalist "label" ["first", "2", "3"] "2") (logResults show)
+      --    (chooseFile "Save Button" "") (logResults show)
       Listify -> midShared (listifyExample 5) (logResults show)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
            consumeBridgeTest
@@ -251,3 +253,5 @@ main = do
             (toHtml (show initBridgeTest :: Text))
             (midtype o == Bridge)))
        ])
+
+-- window.open("/", "window.open test title", "menubar=yes,location=yes,resizable=yes,scrollbars=yes,status=yes")

@@ -18,7 +18,9 @@ module Web.Page.Rep
   , SharedRep
   , runOnce
   , listify
+  , listify'
   , accordionListify
+  , defaultListifyLabels
   , valueModel
   , valueConsume
   , sharedModel
@@ -141,6 +143,12 @@ accordionListify title prefix open srf labels as = SharedRep $ do
     (pure []) (zipWith srf labels as)
   h' <- zoom _1 h
   pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
+
+listify' :: (Monad m) => Maybe Text -> Text -> (Text -> a -> SharedRep m a) -> [a] -> SharedRep m [a]
+listify' t p srf as = accordionListify t p Nothing srf (defaultListifyLabels (length as)) as
+
+defaultListifyLabels :: Int -> [Text]
+defaultListifyLabels n = (\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]
 
 valueModel :: (FromJSON a, MonadState s m) => (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text s)) m ()
 valueModel step s =

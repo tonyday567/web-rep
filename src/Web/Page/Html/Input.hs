@@ -60,6 +60,8 @@ data InputType a =
   DropdownSum [Text] (Maybe Text) |
   DropdownButton [Text] [Text] Text Text |
   TextArea Int Text |
+  ChooseFile |
+  Datalist [Text] (Maybe Text) Text |
   MultiInput (MultiInputAttributes a)
   deriving (Eq, Show, Generic)
 
@@ -101,6 +103,11 @@ instance ( ) => ToHtml (InputType a) where
     input_ ([type_ "checkbox"] <> bool [] [checked_] checked)
   toHtml (TextArea rows v) =
     with textarea_ [rows_ (show rows)] (toHtmlRaw v)
+  toHtml ChooseFile =
+    input_ [ type_ "file"]
+  toHtml (Datalist opts mv id'') =
+    input_ [type_ "text", list_ id''] <>
+    with datalist_ [id_ id''] (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
   toHtml (MultiInput (MultiInputAttributes miatts milabel)) =
     with div_ [class__ "input-group"] $
     with div_ [class__ "input-group-prepend"]
@@ -115,6 +122,7 @@ includeValue DropdownButton{} = False
 includeValue (Checkbox _) = False
 includeValue (Toggle _ _) = False
 includeValue (Button _) = False
+includeValue ChooseFile{} = False
 includeValue _ = True
 
 instance (ToHtml a) => ToHtml (Input a) where
@@ -146,6 +154,7 @@ formClass inp =
     (Toggle _ _) -> ""
     (Button _) -> ""
     DropdownButton{} -> ""
+    ChooseFile{} -> "form-control-file"
     _ -> "form-control"
 
 formGroupClass :: InputType a -> Text
@@ -153,7 +162,6 @@ formGroupClass inp =
   case inp of
     Slider -> "form-group-sm"
     (Checkbox _) -> "form-check"
-    DropdownButton{} -> "form-group"
     _ -> "form-group"
 
 formLabelClass :: InputType a -> Maybe Text
@@ -191,6 +199,7 @@ inputElement t =
   case t of
     Checkbox _ -> "this.checked.toString()"
     Toggle _ _ -> "(\"true\" !== this.getAttribute(\"aria-pressed\")).toString()"
+    ChooseFile{} -> "this.files[0].path"
     _ -> "this.value"
 
 bridgeify :: Input a -> Input a
@@ -225,20 +234,6 @@ sumTypeShow :: Input a -> Input a
 sumTypeShow = #atts %~ (<> [
     ( onchange_
     $ [q|var v = this.value;$(this).parent('.sumtype-group').siblings('.subtype').each(function(i) {if (this.dataset.sumtype === v) {this.style.display = 'block';} else {this.style.display = 'none';}})|]
-{-
-      [q|
-function () {
-  var v = $(this).value;
-  $(this).parent().siblings().each(function(i) {
-    if (this.data-settype === v) {
-      this.stype.display = "block";
-    } else {
-      this.style.display = "none";
-    }
-  })
-}
-|]
--}
         )])
 
 -- https://eager.io/blog/everything-I-know-about-the-script-tag/
