@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Web.Page.Examples
   ( page1
@@ -119,14 +120,14 @@ instance FromJSON RepExamples
 
 repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
-  t <- textbox "textbox" "sometext"
-  ta <- textarea 3 "textarea" "no initial value & multi-line text\\nrenders is not ok?/"
-  n <- sliderI "int slider" 0 5 1 3
-  ds <- slider "double slider" 0 1 0.1 0.5
-  c <- checkbox "checkbox" True
-  tog <- toggle "toggle" False
-  dr <- dropdown decimal show "dropdown" (show <$> [1..5::Int]) 3
-  col <- colorPicker "color" (PixelRGB8 56 128 200)
+  t <- textbox (Just "textbox") "sometext"
+  ta <- textarea 3 (Just "textarea") "no initial value & multi-line text\\nrenders is not ok?/"
+  n <- sliderI (Just "int slider") 0 5 1 3
+  ds <- slider (Just "double slider") 0 1 0.1 0.5
+  c <- checkbox (Just "checkbox") True
+  tog <- toggle (Just "toggle") False
+  dr <- dropdown decimal show (Just "dropdown") (show <$> [1..5::Int]) 3
+  col <- colorPicker (Just "color") (PixelRGB8 56 128 200)
   pure (RepExamples t ta n ds c tog dr col)
 
 -- encodeFile "saves/rep2.json" $ RepExamples "text1" "text2" 1 1.0 True True 2 (PixelRGB8 0 100 0)
@@ -135,7 +136,7 @@ repExamples = do
 listifyExample :: (Monad m) => Int -> SharedRep m [Int]
 listifyExample n =
   accordionListify (Just "accordianListify") "al" Nothing
-  (\l a -> sliderI l (0::Int) n 1 a) ((\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]) [0..n]
+  (\l a -> sliderI (Just l) (0::Int) n 1 a) ((\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]) [0..n]
 
 fiddleExample :: Concerns Text
 fiddleExample = Concerns mempty mempty
@@ -155,9 +156,9 @@ sumTypeText (SumText _) = "SumText"
 
 repSumTypeExample :: (Monad m) => Int -> Text -> SumTypeExample -> SharedRep m SumTypeExample
 repSumTypeExample defi deft defst = SharedRep $ do
-  (Rep hi fi) <- unrep $ sliderI "" 0 20 1 defInt
-  (Rep ht ft) <- unrep $ textbox "" defText
-  (Rep hdb fdb) <- unrep $ dropdownSum takeText id "SumTypeExample"
+  (Rep hi fi) <- unrep $ sliderI Nothing 0 20 1 defInt
+  (Rep ht ft) <- unrep $ textbox Nothing defText
+  (Rep hdb fdb) <- unrep $ dropdownSum takeText id (Just "SumTypeExample")
     ["SumInt", "SumOnly", "SumText"]
     (sumTypeText defst)
   pure $ Rep (hdb <>

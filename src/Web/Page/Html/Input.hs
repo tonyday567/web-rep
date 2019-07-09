@@ -11,22 +11,22 @@
 
 module Web.Page.Html.Input
   ( Input(Input)
-  , MultiInputAttributes(MultiInputAttributes)
+  , Input'(Input')
   , InputType(..)
   , bootify
   , bridgeify
   , showJsInput
   , showJs
-  , dropdownButtonPage
   , dbScript
   , sumTypeShow
   ) where
 
+import Control.Category (id)
 import Control.Lens
 import Data.Text
 import Lucid
 import Lucid.Base
-import Protolude
+import Protolude hiding (for_)
 import Text.InterpolatedString.Perl6
 import Web.Page.Html
 import Web.Page.Js
@@ -35,55 +35,72 @@ import Web.Page.Types
 data Input a =
   Input
   { val :: a
-  , inputType :: InputType a
+  , inputType :: InputType
   , label :: Maybe Text
-  , wrap :: Maybe [Attribute]
   , id' :: Text
   , atts :: [Attribute]
   } deriving (Eq, Show, Generic)
 
-data MultiInputAttributes a =
-  MultiInputAttributes
-  { miAtts :: [InputType a]
-  , miLabel :: Text
-  }
-  deriving (Eq, Show, Generic)
+data Input' a =
+  Input'
+  { inputVal :: a
+  , inputLabel :: Maybe Text
+  , inputId :: Text
+  , inputType' :: InputType
+  } deriving (Eq, Show, Generic)
 
-data InputType a =
-  Slider |
+data InputType =
+  Slider [Attribute] |
   TextBox |
   ColorPicker |
   Checkbox Bool |
-  Toggle Bool Text |
-  Button Text |
+  Toggle Bool (Maybe Text) |
+  Button (Maybe Text) Text |
   Dropdown [Text] (Maybe Text) |
   DropdownSum [Text] (Maybe Text) |
-  DropdownButton [Text] [Text] Text Text |
+  DropdownButton [Text] [Text] Text (Maybe Text) |
   TextArea Int Text |
   ChooseFile |
-  Datalist [Text] (Maybe Text) Text |
-  MultiInput (MultiInputAttributes a)
+  Datalist [Text] (Maybe Text) Text
   deriving (Eq, Show, Generic)
 
-instance ( ) => ToHtml (InputType a) where
-  toHtml Slider =
+instance (ToHtml a) => ToHtml (Input' a) where
+  toHtml (Input' v l i (Slider satts)) =
+    with div_ [class__ "form-group"]
+    (input_
+      ([ type_ "range"
+       , class__ "islider form-control-range custom-range"
+       , id_ i
+       , value_ (show $ toHtml v)
+       ] <> satts) <>
+    maybe mempty (with label_ [for_ i] . toHtml) l) <>
+    jsbScript "islider"
+  toHtmlRaw = toHtml
+
+instance ( ) => ToHtml InputType where
+  toHtml (Slider _) =
     input_ [ type_ "range"]
   toHtml TextBox =
     input_ [ type_ "text"]
   toHtml ColorPicker =
     input_ [ type_ "color"]
   toHtml (Toggle pushed lab) =
-    input_ [ type_ "button", class__ "btn btn-primary btn-sm", data_ "toggle" "button",
-           makeAttribute "aria-pressed" (bool "false" "true" pushed), value_ lab]
-  toHtml (Button v) =
-    input_ [ type_ "button", class__ "btn btn-primary btn-sm", value_ v]
+    input_ ([ type_ "button", class__ "btn btn-primary btn-sm", data_ "toggle" "button",
+           makeAttribute "aria-pressed" (bool "false" "true" pushed)] <> (maybe [] (\l->[value_ l]) lab))
+  toHtml (Button label0 id'') =
+    input_
+    [ type_ "button"
+    , class__ "btn btn-primary btn-sm"
+    , value_ (maybe "button" id label0)
+    , name_ id''
+    ]
   toHtml (Dropdown opts mv) =
     select_ (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
   toHtml (DropdownSum opts mv) =
     select_ (mconcat $
              (\v -> with option_
                (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
-  toHtml (DropdownButton sums values id'' label') =
+  toHtml (DropdownButton sums values id'' label0) =
     with div_ [class__ "btn-group"]
       (button_ [ class__ "btn btn-secondary dropdown-toggle btn-select"
             , data_ "toggle" "dropdown"
@@ -91,8 +108,8 @@ instance ( ) => ToHtml (InputType a) where
             , makeAttribute "aria-haspopup" "true"
             , makeAttribute "aria-expanded" "false"
             , id_ id''
-            ] (toHtml label') <>
-    ul_ [ class__ "dropdown-menu"
+            ] (maybe mempty toHtml label0) <>
+    ul_ [ class__ "dropdown-button"
         , makeAttribute "aria-labelledby" id'']
        (mconcat $ Protolude.zipWith
         (\s v -> (with li_ [ href_ "#", data_ "value" v
@@ -108,93 +125,86 @@ instance ( ) => ToHtml (InputType a) where
   toHtml (Datalist opts mv id'') =
     input_ [type_ "text", list_ id''] <>
     with datalist_ [id_ id''] (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
-  toHtml (MultiInput (MultiInputAttributes miatts milabel)) =
-    with div_ [class__ "input-group"] $
-    with div_ [class__ "input-group-prepend"]
-    ( with span_ [class__ "input-group-text"] $
-      toHtml milabel) <>
-    mconcat (toHtml <$> miatts)
   toHtmlRaw = toHtml
 
-includeValue :: InputType a -> Bool
+includeValue :: InputType -> Bool
 includeValue (Dropdown _ _) = False
 includeValue DropdownButton{} = False
 includeValue (Checkbox _) = False
 includeValue (Toggle _ _) = False
-includeValue (Button _) = False
+includeValue Button{} = False
 includeValue ChooseFile{} = False
 includeValue _ = True
 
 instance (ToHtml a) => ToHtml (Input a) where
-  toHtml (Input v itype label' wrap' idh hatts) =
-    maybe identity (with div_) wrap'
-    (bool (l <> i') (i' <> l) (isCheckbox itype))
+  toHtml (Input v itype label0 idh hatts) =
+    with div_ [class__ (formGroupClass itype)]
+      (bool (l <> i') (i' <> l) (isCheckbox itype))
     where
-      l = maybe mempty (with label_ ([Lucid.for_ idh] <> maybe [] (\x -> [class__ x]) (formLabelClass itype)) . toHtml) label'
+      l = maybe mempty (with label_ ([Lucid.for_ idh] <> maybe [] (\x -> [class__ x]) (formLabelClass itype)) . toHtml) label0
       i' =
         with (toHtml itype)
         ( [id_ idh] <>
           hatts <>
           bool [] [value_ (show $ toHtmlRaw v)] (includeValue itype))
-  toHtmlRaw (Input v itype label' wrap' idh hatts) =
-    maybe identity (with div_) wrap' (l <> i')
+  toHtmlRaw (Input v itype label0 idh hatts) =
+    (l <> i')
     where
-      l = maybe mempty (with label_ [Lucid.for_ idh] . toHtmlRaw) label'
+      l = maybe mempty (with label_ [Lucid.for_ idh] . toHtmlRaw) label0
       i' =
         with (toHtmlRaw itype)
         ( [id_ idh] <>
           hatts <>
           bool [] [value_ (show $ toHtmlRaw v)] (includeValue itype))
 
-formClass :: InputType a -> Text
+formClass :: InputType -> Text
 formClass inp =
   case inp of
-    Slider -> "form-control-range"
+    Slider{} -> "form-control-range"
     (Checkbox _) -> "form-check-input"
     (Toggle _ _) -> ""
-    (Button _) -> ""
+    Button{} -> ""
     DropdownButton{} -> ""
     ChooseFile{} -> "form-control-file"
     _ -> "form-control"
 
-formGroupClass :: InputType a -> Text
+formGroupClass :: InputType -> Text
 formGroupClass inp =
   case inp of
-    Slider -> "form-group-sm"
+    Slider{} -> "form-group-sm"
     (Checkbox _) -> "form-check"
     _ -> "form-group"
 
-formLabelClass :: InputType a -> Maybe Text
+formLabelClass :: InputType -> Maybe Text
 formLabelClass inp =
   case inp of
-    Slider -> Nothing
+    Slider{} -> Nothing
     (Checkbox _) -> Just "form-check-label"
     _ -> Nothing
 
-isRange :: InputType a -> Bool
+isRange :: InputType -> Bool
 isRange inp =
   case inp of
-    Slider -> True
+    Slider{} -> True
     _ -> False
 
-isCheckbox :: InputType a -> Bool
+isCheckbox :: InputType -> Bool
 isCheckbox inp =
   case inp of
     Checkbox _ -> True
     Toggle _ _ -> True
-    Button _ -> True
+    Button{} -> True
     _ -> False
 
 bootify :: Input a -> Input a
-bootify inp@(Input _ itype _ _ _ _) =
+bootify inp@(Input _ itype _ _ _) =
   (#atts %~
    (<>
     [class__ (formClass itype)] <>
-    bool mempty [class__ "custom-range"] (isRange itype))) .
-  (#wrap %~ (<> Just [class__ (formGroupClass itype)])) $
+    bool mempty [class__ "custom-range"] (isRange itype)))
   inp
 
-inputElement :: IsString p => InputType a -> p
+inputElement :: IsString p => InputType -> p
 inputElement t =
   case t of
     Checkbox _ -> "this.checked.toString()"
@@ -205,7 +215,7 @@ inputElement t =
 bridgeify :: Input a -> Input a
 bridgeify i = case i ^. #inputType of
   DropdownButton{} -> i
-  _ -> 
+  _ ->
     #atts %~ (<> [
     ( funk (i ^. #inputType) $ "jsb.event({ 'element': this.id, 'value': " <>
       inputElement (i ^. #inputType)
@@ -213,7 +223,7 @@ bridgeify i = case i ^. #inputType of
     )]) $ i
   where
     funk (Toggle _ _) = onclick_
-    funk (Button _) = onclick_
+    funk Button{} = onclick_
     funk _ = oninput_
 
 showJsInput :: Text -> Text -> Input a -> Input a
@@ -237,23 +247,18 @@ sumTypeShow = #atts %~ (<> [
         )])
 
 -- https://eager.io/blog/everything-I-know-about-the-script-tag/
-dropdownButtonPage :: Page
-dropdownButtonPage = mempty & #jsOnLoad .~ PageJsText
-  [q|
-$(document).ready(function() {
-  alert("document ready!")
-  $(".dropdown-menu li a").click(function(){
-    var selText = $(this).attr('data-value');
-      $(this).parents('.btn-group').siblings('.menu').html(selText)
-  });
-});
-|]
 
 dbScript :: (Monad m) => HtmlT m ()
 dbScript = script_ [q|
-$(".dropdown-menu li").click(function(){
+$(".dropdown-button li").click(function(){
   var selText = $(this).attr('data-value');
   $(this).parents('.btn-group').siblings('.menu').html(selText)
 });
 |]
 
+jsbScript :: (Monad m) => Text -> HtmlT m ()
+jsbScript cl = script_ [qq|
+$('.{cl}').on('input', (function()\{
+  jsb.event(\{ 'element': this.id, 'value': this.value\});
+\}));
+|]

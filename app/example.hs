@@ -42,15 +42,15 @@ rangeTest :: Input Int
 rangeTest = bridgeify $ bootify $
   Input
   3
-  Slider
-  (Just "range example")
-  Nothing
-  "rangeid"
+  (Slider
   [ style_ "max-width:15rem;"
   , min_ "0"
   , max_ "5"
   , step_ "1"
-  ]
+  ])
+  (Just "range example")
+  "rangeid"
+  []
 
 textTest :: Input Text
 textTest = bridgeify $ bootify $
@@ -58,7 +58,6 @@ textTest = bridgeify $ bootify $
   "abc"
   TextBox
   (Just "label")
-  Nothing
   "textid"
   [ style_ "max-width:15rem;"
   , placeholder_ "test placeholder"
@@ -228,16 +227,17 @@ main = do
     middleware $ case midtype o of
       NoMid -> id
       Prod -> midShared
-          (maybeRep "maybe" True repExamples) (logResults show)
+          (maybeRep (Just "maybe") True repExamples) (logResults show)
       Dev -> midShared
-              (datalist "label" ["first", "2", "3"] "2") (logResults show)
+              (datalist (Just "label") ["first", "2", "3"] "2") (logResults show)
       --    (chooseFile "Save Button" "") (logResults show)
       Listify -> midShared (listifyExample 5) (logResults show)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
            consumeBridgeTest
       Fiddle -> midFiddle fiddleExample
       ViaFiddle -> midViaFiddle
-          (repSumTypeExample 2 "default text" SumOnly)
+          (slider' Nothing 0 10 0.01 4)
+          -- (repSumTypeExample 2 "default text" SumOnly)
     servePageWith "/simple" defaultPageConfig page1
     servePageWith "/iro" defaultPageConfig
       (testPage "iro" (show $ midtype o)

@@ -1,14 +1,14 @@
-cabal-version: >= 1.10
+cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.29.6.
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3eb0cf460b46ddb25475d02a42893aa3ffe9e5d88c130955682143aa776cada1
+-- hash: 5039f940dbe55a66ded6e600f6c473340e56943ad1fbe42843d633db2bcdc84f
 
-name:           web-page
+name:           web-rep
 version:        0.1.0
-synopsis:       a web-page type
+synopsis:       representations of a web pag
 description:    See readme.md for verbage (if any)
 bug-reports:    https://github.com/tonyday567/web-page/issues
 maintainer:     Tony Day <tonyday567@gmail.com>
@@ -19,6 +19,22 @@ extra-source-files:
     stack.yaml
 
 library
+  exposed-modules:
+      Web.Page
+      Web.Page.Bootstrap
+      Web.Page.Bridge
+      Web.Page.Css
+      Web.Page.Examples
+      Web.Page.Html
+      Web.Page.Html.Input
+      Web.Page.Js
+      Web.Page.Render
+      Web.Page.Rep
+      Web.Page.Rep.Input
+      Web.Page.Server
+      Web.Page.Types
+  other-modules:
+      Paths_web_rep
   hs-source-dirs:
       src
   build-depends:
@@ -47,28 +63,12 @@ library
     , transformers
     , unordered-containers
     , wai-middleware-static
-  exposed-modules:
-      Web.Page
-      Web.Page.Bootstrap
-      Web.Page.Bridge
-      Web.Page.Css
-      Web.Page.Examples
-      Web.Page.Html
-      Web.Page.Html.Input
-      Web.Page.Js
-      Web.Page.Render
-      Web.Page.Rep
-      Web.Page.Rep.Input
-      Web.Page.Server
-      Web.Page.Types
-  other-modules:
-      Paths_web_page
   default-language: Haskell2010
 
 executable page-example
   main-is: example.hs
   other-modules:
-      Paths_web_page
+      Paths_web_rep
   hs-source-dirs:
       app
   ghc-options: -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
@@ -85,12 +85,14 @@ executable page-example
     , wai
     , wai-extra
     , wai-middleware-static
-    , web-page
+    , web-rep
   default-language: Haskell2010
 
 test-suite test
   type: exitcode-stdio-1.0
   main-is: test.hs
+  other-modules:
+      Paths_web_rep
   hs-source-dirs:
       test
   ghc-options: -Wall -O2 -threaded
@@ -102,7 +104,5 @@ test-suite test
     , tasty
     , tasty-hspec
     , text
-    , web-page
-  other-modules:
-      Paths_web_page
+    , web-rep
   default-language: Haskell2010

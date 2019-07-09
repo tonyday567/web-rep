@@ -1,6 +1,6 @@
-name: web-page
+name: web-rep
 version: '0.1.0'
-synopsis: a web-page type
+synopsis: representations of a web pag
 description: See readme.md for verbage (if any)
 maintainer: Tony Day <tonyday567@gmail.com>
 license: MIT
@@ -62,7 +62,7 @@ tests:
     - -threaded
     dependencies:
     - base
-    - web-page
+    - web-rep
     - tasty
     - tasty-hspec
     - lens
@@ -81,7 +81,7 @@ executables:
       - -with-rtsopts=-N
     dependencies:
       - base
-      - web-page
+      - web-rep
       - attoparsec
       - box
       - lens

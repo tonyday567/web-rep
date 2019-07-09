@@ -1,20 +1,15 @@
-[web-page](https://tonyday567.github.io/web-page/index.html) [![Build Status](https://travis-ci.org/tonyday567/web-page.svg)](https://travis-ci.org/tonyday567/web-page)
+[web-rep](https://github.com/tonyday567/web-rep) [![Build Status](https://travis-ci.org/tonyday567/web-rep.svg)](https://travis-ci.org/tonyday567/web-rep)
 ===
 
-Various functions and data type for a web page.
+Various functions and representations for a web page.
 
-A web page is a product type consisting of:
-
-  - html
-  - css
-  - js
 
 recipes
 ---
 
 ```
-stack build --test --exec "$(stack path --local-install-root)/bin/page-example" --file-watch
-stack build web-page:test:test --file-watch --ghc-options -freverse-errors
+stack build --test --exec "$(stack path --local-install-root)/bin/page-example --midtype Prod" --file-watch
+stack build web-rep:test:test --file-watch --ghc-options -freverse-errors
 ```
 
 reference
@@ -28,6 +23,3 @@ reference
 - [lucid](http://hackage.haskell.org/package/lucid)
 - [clay](https://www.stackage.org/clay)
 - [javascript-bridge](https://github.com/ku-fpg/javascript-bridge)
-
-
-
