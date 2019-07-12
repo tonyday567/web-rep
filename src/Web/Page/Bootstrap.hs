@@ -13,7 +13,6 @@ module Web.Page.Bootstrap
   , cardify
   , b_
   , accordion
-  , accordion_
   ) where
 
 import Lucid hiding (b_)
@@ -68,6 +67,7 @@ bootstrapPage =
   (mconcat bootstrapMeta)
   mempty
 
+-- | wrap some Html with the bootstrap card class
 cardify :: [Attribute] -> Html () -> Maybe Text -> Html () -> Html ()
 cardify atts h t b =
   with div_ ([class__ "card"] <> atts) $
@@ -77,6 +77,7 @@ cardify atts h t b =
    (maybe mempty (with h5_ [class__ "card-title"] . toHtml) t <>
     b)
 
+-- | wrap some html with a classed div
 b_ :: Text -> Html () -> Html ()
 b_ t = with div_ [class__ t]
 
@@ -89,6 +90,7 @@ accordionCard collapse atts idp idh idb t0 b =
     with div_ [id_ idb, class__ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
     (with div_ [class__ "card-body"] b)
 
+-- | create a bootstrapped accordian class
 accordion :: (MonadState Int m, Monad m) => Text -> Maybe Text -> [(Text, Html ())] -> m (Html ())
 accordion pre x hs = do
   idp' <- genNamePre pre
@@ -99,7 +101,4 @@ accordion pre x hs = do
         idh <- genNamePre pre
         idb <- genNamePre pre
         pure $ accordionCard (maybe True (/=t) x) [] par idh idb t b
-
-accordion_ :: Text -> Maybe Text -> [(Text, Html ())] -> Html ()
-accordion_ pre x hs = runIdentity $ flip evalStateT 0 (accordion pre x hs)
 

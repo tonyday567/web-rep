@@ -13,6 +13,8 @@ module Web.Page.Bridge
   , sendc
   , append
   , replace
+  , appendWithScript
+  , replaceWithScript
   , bridge
   , sendConcerns
   , Engine
@@ -51,24 +53,81 @@ window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
 jsb.ws.onmessage = (evt) => eval(evt.data);
 |]
 
+-- see https://ghinda.net/article/script-tags/
+runScriptJs :: PageJs
+runScriptJs = PageJsText [q|
+
+function insertScript ($script) {
+  var s = document.createElement('script')
+  s.type = 'text/javascript'
+  if ($script.src) {
+    s.onload = callback
+    s.onerror = callback
+    s.src = $script.src
+  } else {
+    s.textContent = $script.innerText
+  }
+
+  // re-insert the script tag so it executes.
+  document.head.appendChild(s)
+
+  // clean-up
+  $script.parentNode.removeChild($script)
+}
+
+function runScripts ($container) {
+  // get scripts tags from a node
+  var $scripts = $container.querySelectorAll('script')
+  $scripts.forEach(function ($script) {
+    insertScript($script)
+  })
+}
+|]
+
 bridgePage :: Page
 bridgePage =
   mempty &
-  #jsGlobal .~ preventEnter &
+  #jsGlobal .~ (preventEnter <> runScriptJs) &
   #jsOnLoad .~ webSocket
 
 sendc :: Engine -> Text -> IO ()
 sendc e = send e . command . Lazy.fromStrict
 
 replace :: Engine -> Text -> Text -> IO ()
-replace e d t = send e $ command $ Lazy.fromStrict $ "document.getElementById('" <> d <> "').innerHTML = '" <> clean t <> "'"
+replace e d t = send e $ command $ Lazy.fromStrict $
+  [qc|
+     var $container = document.getElementById('{d}')
+     $container.innerHTML = '{clean t}'
+     runScripts($container)
+     |]
 
 append :: Engine -> Text -> Text -> IO ()
-append e d t = send e $ command $ Lazy.fromStrict $ "document.getElementById('" <> d <> "').innerHTML += '" <> clean t <> "'"
+append e d t = send e $ command $ Lazy.fromStrict $
+    [qc|
+     var $container = document.getElementById('{d}')
+     $container.innerHTML += '{clean t}'
+     runScripts($container)
+     |]
+
+replaceWithScript :: Engine -> Text -> Text -> IO ()
+replaceWithScript e d t = send e $ command $ Lazy.fromStrict $
+  [qc|
+     var $container = document.getElementById('{d}')
+     $container.innerHTML = '{clean t}'
+     runScripts($container)
+     |]
+
+appendWithScript :: Engine -> Text -> Text -> IO ()
+appendWithScript e d t = send e $ command $ Lazy.fromStrict $
+    [qc|
+     var $container = document.getElementById('{d}')
+     $container.innerHTML += '{clean t}'
+     runScripts($container)
+     |]
 
 sendConcerns :: Engine -> Text -> Concerns Text -> IO ()
 sendConcerns e t (Concerns c j h) = do
-  replace e t h
+  replaceWithScript e t h
   append e t (toText $ style_ c)
   sendc e j
 

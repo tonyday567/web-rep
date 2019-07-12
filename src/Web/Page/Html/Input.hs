@@ -11,254 +11,218 @@
 
 module Web.Page.Html.Input
   ( Input(Input)
-  , Input'(Input')
   , InputType(..)
-  , bootify
-  , bridgeify
-  , showJsInput
-  , showJs
-  , dbScript
-  , sumTypeShow
   ) where
 
 import Control.Category (id)
-import Control.Lens
 import Data.Text
 import Lucid
 import Lucid.Base
 import Protolude hiding (for_)
 import Text.InterpolatedString.Perl6
 import Web.Page.Html
-import Web.Page.Js
-import Web.Page.Types
 
+-- | something that might exist on a web page and be a front-end input to computations.
 data Input a =
   Input
-  { val :: a
-  , inputType :: InputType
-  , label :: Maybe Text
-  , id' :: Text
-  , atts :: [Attribute]
-  } deriving (Eq, Show, Generic)
-
-data Input' a =
-  Input'
   { inputVal :: a
   , inputLabel :: Maybe Text
   , inputId :: Text
-  , inputType' :: InputType
+  , inputType :: InputType
   } deriving (Eq, Show, Generic)
 
+-- | various types of Inputs, that encapsulate practical bootstrap class functionality
 data InputType =
   Slider [Attribute] |
   TextBox |
+  TextArea Int |
   ColorPicker |
+  ChooseFile |
+  Dropdown [Text] |
+  DropdownSum [Text] |
+  Datalist [Text] Text |
   Checkbox Bool |
   Toggle Bool (Maybe Text) |
-  Button (Maybe Text) Text |
-  Dropdown [Text] (Maybe Text) |
-  DropdownSum [Text] (Maybe Text) |
-  DropdownButton [Text] [Text] Text (Maybe Text) |
-  TextArea Int Text |
-  ChooseFile |
-  Datalist [Text] (Maybe Text) Text
+  Button
   deriving (Eq, Show, Generic)
 
-instance (ToHtml a) => ToHtml (Input' a) where
-  toHtml (Input' v l i (Slider satts)) =
+instance (ToHtml a) => ToHtml (Input a) where
+  toHtml (Input v l i (Slider satts)) =
     with div_ [class__ "form-group"]
-    (input_
+    ((maybe mempty (with label_ [for_ i] . toHtml) l) <>
+     input_
       ([ type_ "range"
-       , class__ "islider form-control-range custom-range"
+       , class__ " form-control-range custom-range"
        , id_ i
        , value_ (show $ toHtml v)
        ] <> satts) <>
-    maybe mempty (with label_ [for_ i] . toHtml) l) <>
-    jsbScript "islider"
-  toHtmlRaw = toHtml
-
-instance ( ) => ToHtml InputType where
-  toHtml (Slider _) =
-    input_ [ type_ "range"]
-  toHtml TextBox =
-    input_ [ type_ "text"]
-  toHtml ColorPicker =
-    input_ [ type_ "color"]
-  toHtml (Toggle pushed lab) =
-    input_ ([ type_ "button", class__ "btn btn-primary btn-sm", data_ "toggle" "button",
-           makeAttribute "aria-pressed" (bool "false" "true" pushed)] <> (maybe [] (\l->[value_ l]) lab))
-  toHtml (Button label0 id'') =
+      scriptJsbEvent i "change")
+  toHtml (Input v l i TextBox) =
+    with div_ [class__ "form-group"]
+    ((maybe mempty (with label_ [for_ i] . toHtml) l) <>
     input_
-    [ type_ "button"
-    , class__ "btn btn-primary btn-sm"
-    , value_ (maybe "button" id label0)
-    , name_ id''
-    ]
-  toHtml (Dropdown opts mv) =
-    select_ (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
-  toHtml (DropdownSum opts mv) =
-    select_ (mconcat $
-             (\v -> with option_
-               (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
-  toHtml (DropdownButton sums values id'' label0) =
-    with div_ [class__ "btn-group"]
-      (button_ [ class__ "btn btn-secondary dropdown-toggle btn-select"
-            , data_ "toggle" "dropdown"
-            , href_ "#"
-            , makeAttribute "aria-haspopup" "true"
-            , makeAttribute "aria-expanded" "false"
-            , id_ id''
-            ] (maybe mempty toHtml label0) <>
-    ul_ [ class__ "dropdown-button"
-        , makeAttribute "aria-labelledby" id'']
-       (mconcat $ Protolude.zipWith
-        (\s v -> (with li_ [ href_ "#", data_ "value" v
-                         , onclick_ ("jsb.event({ 'element': '" <> id'' <> "', 'value': '" <> s <> "'});")] (toHtml s))) sums values)) <>
-    p_ [class__ "menu"] mempty <>
-    dbScript
-  toHtml (Checkbox checked) =
-    input_ ([type_ "checkbox"] <> bool [] [checked_] checked)
-  toHtml (TextArea rows v) =
-    with textarea_ [rows_ (show rows)] (toHtmlRaw v)
-  toHtml ChooseFile =
-    input_ [ type_ "file"]
-  toHtml (Datalist opts mv id'') =
-    input_ [type_ "text", list_ id''] <>
-    with datalist_ [id_ id''] (mconcat $ (\v -> with option_ (bool [] [selected_ "selected"] (maybe False (== v) mv)) (toHtml v)) <$> opts)
+      ([ type_ "text"
+       , class__ "form-control"
+       , id_ i
+       , value_ (show $ toHtml v)
+       ]) <>
+      scriptJsbEvent i "input")
+  toHtml (Input v l i (TextArea rows)) =
+    with div_ [class__ "form-group"]
+    (maybe mempty (with label_ [for_ i] . toHtml) l <>
+     (with textarea_
+     [ rows_ (show rows)
+     , class__ "form-control"
+     , id_ i
+     ] (toHtmlRaw v)
+    ) <>
+     scriptJsbEvent i "input")
+  toHtml (Input v l i ColorPicker) =
+    with div_ [class__ "form-group"]
+    ((maybe mempty (with label_ [for_ i] . toHtml) l) <>
+    input_
+      ([ type_ "color"
+       , class__ "form-control"
+       , id_ i
+       , value_ (show $ toHtml v)
+       ]) <>
+     scriptJsbEvent i "input")
+  toHtml (Input _ l i ChooseFile) =
+    with div_ [class__ "form-group"]
+    (maybe mempty (with label_ [for_ i] . toHtml) l) <>
+     input_
+      ([ type_ "file"
+       , class__ "form-control-file"
+       , id_ i
+       ]) <>
+    scriptJsbChooseFile i
+  toHtml (Input v l i (Dropdown opts)) =
+    with div_ [class__ "form-group"]
+    ((maybe mempty (with label_ [for_ i] . toHtml) l) <>
+    (with select_
+      [ class__ "form-control"
+      , id_ i
+      ] opts') <>
+     scriptJsbEvent i "input")
+    where
+      opts' = mconcat $
+        (\o -> with option_ (bool [] [selected_ "selected"]
+                            (toText (toHtml o) == toText (toHtml v)))
+               (toHtml o)) <$> opts
+  toHtml (Input v l i (DropdownSum opts)) =
+    with div_ [class__ "form-group sumtype-group"]
+    ((maybe mempty (with label_ [for_ i] . toHtml) l) <>
+    (with select_
+      [ class__ "form-control"
+      , id_ i
+      ] opts') <>
+    scriptShowSum i <>
+     scriptJsbEvent i "input")
+    where
+      opts' = mconcat $
+        (\o -> with option_
+          (bool [] [selected_ "selected"] (toText (toHtml o) == toText (toHtml v)))
+               (toHtml o)) <$> opts
+  toHtml (Input v l i (Datalist opts listId)) =
+    with div_ [class__ "form-group"]
+    ((maybe mempty (with label_ [for_ i] . toHtml) l) <>
+    input_
+      [ type_ "text"
+       , class__ "form-control"
+       , id_ i
+       , list_ listId
+       -- the datalist concept in html assumes initial state is a null
+       -- and doesn't present the list if it has a value alreadyx
+       -- , value_ (show $ toHtml v)
+       ] <>
+     with datalist_ [id_ listId] (mconcat $ (\o ->
+       with option_ (bool [] [selected_ "selected"]
+                     (toText (toHtml o) == toText (toHtml v)))
+       (toHtml o)) <$> opts) <>
+     scriptJsbEvent i "input")
+  -- FIXME: How can you refactor to eliminate this polymorphic wart?
+  toHtml (Input _ l i (Checkbox checked)) =
+    with div_ [class__ "form-check"]
+    (input_
+      ([ type_ "checkbox"
+       , class__ "form-check-input"
+       , id_ i
+       ] <>
+       bool [] [checked_] checked) <>
+      (maybe mempty (with label_ [for_ i, class__ "form-check-label"] . toHtml) l) <>
+    scriptJsbCheckbox i)
+  toHtml (Input _ l i (Toggle pushed lab)) =
+    with div_ [class__ "form-group"]
+    (( maybe mempty (with label_ [for_ i] . toHtml) l) <>
+    input_
+     ([ type_ "button"
+      , class__ "btn btn-primary btn-sm"
+      , data_ "toggle" "button"
+      , id_ i
+      , makeAttribute "aria-pressed" (bool "false" "true" pushed)
+      ] <>
+      (maybe [] (\l' -> [value_ l']) lab) <>
+      bool [] [checked_] pushed) <>
+      scriptJsbToggle i)
+  toHtml (Input _ l i Button) =
+    with div_ [class__ "form-group"]
+    (input_
+     ( [ type_ "button"
+       , id_ i
+       , class__ "btn btn-primary btn-sm"
+       , value_ (maybe "button" id l)
+       ]) <>
+    scriptJsbButton i)
+
   toHtmlRaw = toHtml
 
-includeValue :: InputType -> Bool
-includeValue (Dropdown _ _) = False
-includeValue DropdownButton{} = False
-includeValue (Checkbox _) = False
-includeValue (Toggle _ _) = False
-includeValue Button{} = False
-includeValue ChooseFile{} = False
-includeValue _ = True
-
-instance (ToHtml a) => ToHtml (Input a) where
-  toHtml (Input v itype label0 idh hatts) =
-    with div_ [class__ (formGroupClass itype)]
-      (bool (l <> i') (i' <> l) (isCheckbox itype))
-    where
-      l = maybe mempty (with label_ ([Lucid.for_ idh] <> maybe [] (\x -> [class__ x]) (formLabelClass itype)) . toHtml) label0
-      i' =
-        with (toHtml itype)
-        ( [id_ idh] <>
-          hatts <>
-          bool [] [value_ (show $ toHtmlRaw v)] (includeValue itype))
-  toHtmlRaw (Input v itype label0 idh hatts) =
-    (l <> i')
-    where
-      l = maybe mempty (with label_ [Lucid.for_ idh] . toHtmlRaw) label0
-      i' =
-        with (toHtmlRaw itype)
-        ( [id_ idh] <>
-          hatts <>
-          bool [] [value_ (show $ toHtmlRaw v)] (includeValue itype))
-
-formClass :: InputType -> Text
-formClass inp =
-  case inp of
-    Slider{} -> "form-control-range"
-    (Checkbox _) -> "form-check-input"
-    (Toggle _ _) -> ""
-    Button{} -> ""
-    DropdownButton{} -> ""
-    ChooseFile{} -> "form-control-file"
-    _ -> "form-control"
-
-formGroupClass :: InputType -> Text
-formGroupClass inp =
-  case inp of
-    Slider{} -> "form-group-sm"
-    (Checkbox _) -> "form-check"
-    _ -> "form-group"
-
-formLabelClass :: InputType -> Maybe Text
-formLabelClass inp =
-  case inp of
-    Slider{} -> Nothing
-    (Checkbox _) -> Just "form-check-label"
-    _ -> Nothing
-
-isRange :: InputType -> Bool
-isRange inp =
-  case inp of
-    Slider{} -> True
-    _ -> False
-
-isCheckbox :: InputType -> Bool
-isCheckbox inp =
-  case inp of
-    Checkbox _ -> True
-    Toggle _ _ -> True
-    Button{} -> True
-    _ -> False
-
-bootify :: Input a -> Input a
-bootify inp@(Input _ itype _ _ _) =
-  (#atts %~
-   (<>
-    [class__ (formClass itype)] <>
-    bool mempty [class__ "custom-range"] (isRange itype)))
-  inp
-
-inputElement :: IsString p => InputType -> p
-inputElement t =
-  case t of
-    Checkbox _ -> "this.checked.toString()"
-    Toggle _ _ -> "(\"true\" !== this.getAttribute(\"aria-pressed\")).toString()"
-    ChooseFile{} -> "this.files[0].path"
-    _ -> "this.value"
-
-bridgeify :: Input a -> Input a
-bridgeify i = case i ^. #inputType of
-  DropdownButton{} -> i
-  _ ->
-    #atts %~ (<> [
-    ( funk (i ^. #inputType) $ "jsb.event({ 'element': this.id, 'value': " <>
-      inputElement (i ^. #inputType)
-      <> "});"
-    )]) $ i
-  where
-    funk (Toggle _ _) = onclick_
-    funk Button{} = onclick_
-    funk _ = oninput_
-
-showJsInput :: Text -> Text -> Input a -> Input a
-showJsInput cl name = #atts %~ (<> [
-    ( onchange_ $ "showJs('" <> cl <> "','" <> name <> "');"
-    )])
-
-showJs :: Page
-showJs = mempty & #jsGlobal .~ PageJsText
-  [qc|
-function showJs (cl, box) \{
-  var vis = (document.getElementById(box).checked) ? "block" : "none";
-  Array.from(document.getElementsByClassName(cl)).forEach(x => x.style.display = vis);
-};
-|]
-
-sumTypeShow :: Input a -> Input a
-sumTypeShow = #atts %~ (<> [
-    ( onchange_
-    $ [q|var v = this.value;$(this).parent('.sumtype-group').siblings('.subtype').each(function(i) {if (this.dataset.sumtype === v) {this.style.display = 'block';} else {this.style.display = 'none';}})|]
-        )])
-
+-- scripts attached to Inputs
 -- https://eager.io/blog/everything-I-know-about-the-script-tag/
 
-dbScript :: (Monad m) => HtmlT m ()
-dbScript = script_ [q|
-$(".dropdown-button li").click(function(){
-  var selText = $(this).attr('data-value');
-  $(this).parents('.btn-group').siblings('.menu').html(selText)
-});
-|]
-
-jsbScript :: (Monad m) => Text -> HtmlT m ()
-jsbScript cl = script_ [qq|
-$('.{cl}').on('input', (function()\{
+scriptJsbEvent :: (Monad m) => Text -> Text -> HtmlT m ()
+scriptJsbEvent name event = script_ [qq|
+$('#{name}').on('{event}', (function()\{
   jsb.event(\{ 'element': this.id, 'value': this.value\});
 \}));
+|]
+
+scriptJsbButton :: (Monad m) => Text -> HtmlT m ()
+scriptJsbButton name = script_ [qq|
+$('#{name}').on('click', (function()\{
+  jsb.event(\{ 'element': this.id, 'value': this.value\});
+\}));
+|]
+
+scriptJsbToggle :: (Monad m) => Text -> HtmlT m ()
+scriptJsbToggle name = script_ [qq|
+$('#{name}').on('click', (function()\{
+  jsb.event(\{ 'element': this.id, 'value': (\"true\" !== this.getAttribute(\"aria-pressed\")).toString()\});
+\}));
+|]
+
+scriptJsbCheckbox :: (Monad m) => Text -> HtmlT m ()
+scriptJsbCheckbox name = script_ [qq|
+$('#{name}').on('click', (function()\{
+  jsb.event(\{ 'element': this.id, 'value': this.checked.toString()\});
+\}));
+|]
+
+scriptJsbChooseFile :: (Monad m) => Text -> HtmlT m ()
+scriptJsbChooseFile name = script_ [qq|
+$('#{name}').on('input', (function()\{
+  jsb.event(\{ 'element': this.id, 'value': this.files[0].name\});
+\}));
+|]
+
+scriptShowSum :: (Monad m) => Text -> HtmlT m ()
+scriptShowSum name = script_ [qq|
+$('#{name}').on('change', (function()\{
+  var v = this.value;
+  $(this).parent('.sumtype-group').siblings('.subtype').each(function(i) \{
+    if (this.dataset.sumtype === v) \{
+      this.style.display = 'block';
+      \} else \{
+      this.style.display = 'none';
+      \}\})
+  \}));
 |]

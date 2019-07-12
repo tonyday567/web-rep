@@ -123,12 +123,12 @@ repExamples = do
   t <- textbox (Just "textbox") "sometext"
   ta <- textarea 3 (Just "textarea") "no initial value & multi-line text\\nrenders is not ok?/"
   n <- sliderI (Just "int slider") 0 5 1 3
-  ds <- slider (Just "double slider") 0 1 0.1 0.5
+  ds' <- slider (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
   dr <- dropdown decimal show (Just "dropdown") (show <$> [1..5::Int]) 3
   col <- colorPicker (Just "color") (PixelRGB8 56 128 200)
-  pure (RepExamples t ta n ds c tog dr col)
+  pure (RepExamples t ta n ds' c tog dr col)
 
 -- encodeFile "saves/rep2.json" $ RepExamples "text1" "text2" 1 1.0 True True 2 (PixelRGB8 0 100 0)
 -- decodeFileStrict "saves/rep2.json" :: IO (Maybe RepExamples)

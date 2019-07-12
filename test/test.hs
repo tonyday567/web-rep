@@ -83,7 +83,7 @@ testsBridge =
     describe "Web.Page.Bridge" $
       it "bridgePage versus canned" $
         toText (renderPage bridgePage) `shouldBe`
-        "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>\nwindow.addEventListener('keydown',function(e) {\n  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {\n    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {\n      e.preventDefault();\n      return false;\n    }\n  }\n}, true);\n window.onload=function(){\nwindow.jsb = {ws: new WebSocket('ws://' + location.host + '/')};\njsb.ws.onmessage = (evt) => eval(evt.data);\n};</script></body></html>"
+                "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>\nwindow.addEventListener('keydown',function(e) {\n  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {\n    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {\n      e.preventDefault();\n      return false;\n    }\n  }\n}, true);\n\n\nfunction insertScript ($script) {\n  var s = document.createElement('script')\n  s.type = 'text/javascript'\n  if ($script.src) {\n    s.onload = callback\n    s.onerror = callback\n    s.src = $script.src\n  } else {\n    s.textContent = $script.innerText\n  }\n\n  // re-insert the script tag so it executes.\n  document.head.appendChild(s)\n\n  // clean-up\n  $script.parentNode.removeChild($script)\n}\n\nfunction runScripts ($container) {\n  // get scripts tags from a node\n  var $scripts = $container.querySelectorAll('script')\n  $scripts.forEach(function ($script) {\n    insertScript($script)\n  })\n}\n window.onload=function(){\nwindow.jsb = {ws: new WebSocket('ws://' + location.host + '/')};\njsb.ws.onmessage = (evt) => eval(evt.data);\n};</script></body></html>"
 
 testbs :: [Value]
 testbs =
@@ -134,7 +134,7 @@ testsRep =
         runIdentity (runOnce (listifyExample 5) mempty) `shouldBe`
         (fromList [("1","0"),("4","3"),("2","1"),("5","4"),("3","2"),("6","5")],Right [0,1,2,3,4,5])
       it "fiddleExample versus canned" $
-        runIdentity (runOnce (repConcerns fiddleExample) mempty) `shouldBe`
+        runIdentity (runOnce (fiddle fiddleExample) mempty) `shouldBe`
         (fromList [("1",""),("2",""),("3","\n<div class=\" form-group-sm \"><label for=\"1\">fiddle example</label><input max=\"10.0\" value=\"3.0\" oninput=\"jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});\" step=\"1.0\" min=\"0.0\" id=\"1\" type=\"range\" class=\" custom-range  form-control-range \"></div>\n")],Right (Concerns "" "" "\n<div class=\" form-group-sm \"><label for=\"1\">fiddle example</label><input max=\"10.0\" value=\"3.0\" oninput=\"jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});\" step=\"1.0\" min=\"0.0\" id=\"1\" type=\"range\" class=\" custom-range  form-control-range \"></div>\n",False))
 
       it "repExamples run through some canned events" $

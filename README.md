@@ -23,3 +23,10 @@ reference
 - [lucid](http://hackage.haskell.org/package/lucid)
 - [clay](https://www.stackage.org/clay)
 - [javascript-bridge](https://github.com/ku-fpg/javascript-bridge)
+
+
+todo
+---
+
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!
+

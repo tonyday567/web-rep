@@ -27,7 +27,6 @@ import qualified Data.Text as Text
 
 testPage :: Text -> Text -> [(Text, Html ())] -> Page
 testPage title mid sections =
-  showJs <>
   bootstrapPage <>
   bridgePage &
   #htmlHeader .~ title_ "iroTestPage" &
@@ -39,67 +38,59 @@ testPage title mid sections =
 
 -- | bridge testing without the SharedRep method
 rangeTest :: Input Int
-rangeTest = bridgeify $ bootify $
+rangeTest =
   Input
   3
+  (Just "range example")
+  "rangeid"
   (Slider
   [ style_ "max-width:15rem;"
   , min_ "0"
   , max_ "5"
   , step_ "1"
   ])
-  (Just "range example")
-  "rangeid"
-  []
 
 textTest :: Input Text
-textTest = bridgeify $ bootify $
+textTest =
   Input
   "abc"
-  TextBox
   (Just "label")
   "textid"
-  [ style_ "max-width:15rem;"
-  , placeholder_ "test placeholder"
-  ]
+  TextBox
 
 initBridgeTest :: (Int, Text)
-initBridgeTest = (rangeTest ^. #val, textTest ^. #val)
+initBridgeTest = (rangeTest ^. #inputVal, textTest ^. #inputVal)
 
-stepBridgeTest :: Element -> (Int, Text) -> Either Text (Int, Text)
-stepBridgeTest (Element "rangeid" v) (_, t) =
-  either
-  (Left . Text.pack)
-  (\x -> Right (x,t))
-  p
-  where
-    p = parseOnly decimal v
-stepBridgeTest (Element "textid" v) (n, _) = Right (n,v)
-stepBridgeTest e _ = Left $ "unknown id: " <> show e
-
-stepBridgeTest' :: Element -> (Int, Text) -> (Int,Text)
-stepBridgeTest' e s =
-  case stepBridgeTest e s of
+stepBridgeTest :: Element -> (Int, Text) -> (Int,Text)
+stepBridgeTest e s =
+  case step e s of
     Left _ -> s
     Right x -> x
+  where
+    step (Element "rangeid" v) (_, t) = either
+      (Left . Text.pack)
+      (\x -> Right (x,t))
+      (parseOnly decimal v)
+    step (Element "textid" v) (n, _) = Right (n,v)
+    step e' _ = Left $ "unknown id: " <> show e'
 
 sendBridgeTest :: (Show a) => Engine -> Either Text a -> IO ()
 sendBridgeTest e (Left err) = append e "log" err
 sendBridgeTest e (Right a) =
   replace e "output"
-  (toText $ cardify [] mempty (Just "output")
+  (toText $ cardify [] mempty (Just "output was:")
     (toHtml  (show a :: Text)))
 
 consumeBridgeTest :: Event Value -> Engine -> IO (Int, Text)
 consumeBridgeTest ev e =
-  valueConsume initBridgeTest stepBridgeTest'
+  valueConsume initBridgeTest stepBridgeTest
   ( (Box.liftC <$> Box.showStdout) <>
     pure (Box.Committer (\v -> sendBridgeTest e v >> pure True))
   ) (bridge ev e)
 
 midBridgeTest :: (Show a) => Html () -> (Event Value -> Engine -> IO a) -> Application -> Application
 midBridgeTest init eeio = start $ \ ev e -> do
-  append e "input" (toText init)
+  appendWithScript e "input" (toText init)
   final <- eeio ev e `finally` putStrLn ("midBridgeTest finalled" :: Text)
   putStrLn $ ("final value was: " :: Text) <> show final
 
@@ -124,7 +115,7 @@ initRep
 initRep e rend r =
   void $ oneRep r
   (\(Rep h fa) m -> do
-      append e "input" (toText h)
+      appendWithScript e "input" (toText h)
       replace e "output" (rend (fa m)))
 
 results :: (a -> Text) -> Engine -> a -> IO ()
@@ -140,7 +131,7 @@ midFiddle ::
   Application -> Application
 midFiddle cs = start $ \ ev e ->
   void $ runOnEvent
-  (repConcerns cs)
+  (fiddle cs)
   (zoom _2 . initFiddleRep e show)
   (logFiddle e . second snd)
   (bridge ev e)
@@ -153,7 +144,7 @@ initFiddleRep
 initFiddleRep e _ r =
   void $ oneRep r
   (\(Rep h _) _ ->
-      append e "input" (toText h))
+      appendWithScript e "input" (toText h))
 
 logFiddle :: Engine -> Either Text (Either Text (Concerns Text, Bool)) -> IO ()
 logFiddle e (Left err) = append e "log" ("map error: " <> err)
@@ -180,7 +171,7 @@ initViaFiddleRep
 initViaFiddleRep e rend r =
   void $ oneRep r
   (\(Rep h fa) m -> do
-      append e "input" (toText h)
+      appendWithScript e "input" (toText h)
       case (snd $ fa m) of
         Left err -> append e "log" ("map error: " <> err)
         Right (_,c,a) -> do
@@ -195,7 +186,7 @@ logViaFiddle e r (Right (Right (True,c,a))) = do
   replace e "output" (r a)
 logViaFiddle e r (Right (Right (False,_,a))) = replace e "output" (r a)
 
-data MidType = Dev | Prod | Bridge | Listify | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
+data MidType = Dev | Prod | ChooseFileExample | DataListExample | SumTypeExample | Bridge | Listify | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
 
 instance ParseField MidType
 instance ParseRecord MidType
@@ -226,18 +217,24 @@ main = do
   -- so that the first bridge middleware consumes all the elements
     middleware $ case midtype o of
       NoMid -> id
+      -- WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: Unexpected response code: 200
       Prod -> midShared
-          (maybeRep (Just "maybe") True repExamples) (logResults show)
+        (maybeRep (Just "maybe") True repExamples) (logResults show)
       Dev -> midShared
-              (datalist (Just "label") ["first", "2", "3"] "2") (logResults show)
-      --    (chooseFile "Save Button" "") (logResults show)
+        (repSumTypeExample 2 "default text" SumOnly) (logResults show)
+      ChooseFileExample -> midShared
+        (chooseFile (Just "ChooseFile Label") "") (logResults show)
+      DataListExample -> midShared
+        (datalist (Just "label") ["first", "2", "3"] "2" "idlist")
+        (logResults show)
+      SumTypeExample -> midShared
+        (repSumTypeExample 2 "default text" SumOnly) (logResults show)
       Listify -> midShared (listifyExample 5) (logResults show)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
-           consumeBridgeTest
+        consumeBridgeTest
       Fiddle -> midFiddle fiddleExample
       ViaFiddle -> midViaFiddle
-          (slider' Nothing 0 10 0.01 4)
-          -- (repSumTypeExample 2 "default text" SumOnly)
+        (slider Nothing 0 10 0.01 4)
     servePageWith "/simple" defaultPageConfig page1
     servePageWith "/iro" defaultPageConfig
       (testPage "iro" (show $ midtype o)

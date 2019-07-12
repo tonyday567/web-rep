@@ -17,8 +17,7 @@ module Web.Page.Rep
   , SharedRepF(..)
   , SharedRep
   , runOnce
-  , listify
-  , listify'
+  , zeroState
   , accordionListify
   , defaultListifyLabels
   , valueModel
@@ -131,8 +130,13 @@ runOnce sr action = do
   action h m
   pure (fa m)
 
-listify :: (Monad m) => (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
-listify sr labels as = foldr (\a x -> (:) <$> a <*> x) (pure []) (zipWith sr labels as)
+zeroState
+  :: (Monad m)
+  => SharedRep m a
+  -> m (Html (), (HashMap Text Text, Either Text a))
+zeroState sr = do
+  (Rep h fa, (_, m)) <- flip runStateT (0, empty) $ unrep sr
+  pure (h, fa m)
 
 accordionListify :: (Monad m) => Maybe Text -> Text -> Maybe Text -> (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
 accordionListify title prefix open srf labels as = SharedRep $ do
@@ -143,9 +147,6 @@ accordionListify title prefix open srf labels as = SharedRep $ do
     (pure []) (zipWith srf labels as)
   h' <- zoom _1 h
   pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
-
-listify' :: (Monad m) => Maybe Text -> Text -> (Text -> a -> SharedRep m a) -> [a] -> SharedRep m [a]
-listify' t p srf as = accordionListify t p Nothing srf (defaultListifyLabels (length as)) as
 
 defaultListifyLabels :: Int -> [Text]
 defaultListifyLabels n = (\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]
@@ -160,6 +161,7 @@ valueModel step s =
   S.unseparate &
   S.maps S.sumToEither
 
+-- | consume an Element using a Committer and a Value continuation
 valueConsume :: s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text s)) -> Cont_ IO Value -> IO s
 valueConsume init step comm vio = do
   (c,e) <- atomically $ ends Unbounded
@@ -217,4 +219,3 @@ runOnEvent sr hio eaction cv = flip evalStateT (0, empty) $ do
   m <- zoom _2 get
   liftIO $ sharedConsume fa m (\(Element k v) s -> insert k v s)
     (pure (Committer (\v -> eaction v >> pure True))) cv
-
