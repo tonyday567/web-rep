@@ -26,7 +26,7 @@ import Box.Cont
 import Control.Lens
 import Data.Aeson (Value)
 import Lucid
-import Network.JavaScript
+import Network.JavaScript (Engine, Event, start, send, command, addListener)
 import Protolude hiding (replace)
 import Text.InterpolatedString.Perl6
 import Web.Page.Html

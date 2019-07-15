@@ -13,6 +13,7 @@ module Web.Page.Bootstrap
   , cardify
   , b_
   , accordion
+  , accordion_
   ) where
 
 import Lucid hiding (b_)
@@ -101,4 +102,7 @@ accordion pre x hs = do
         idh <- genNamePre pre
         idb <- genNamePre pre
         pure $ accordionCard (maybe True (/=t) x) [] par idh idb t b
+
+accordion_ :: Text -> Maybe Text -> [(Text, Html ())] -> Html ()
+accordion_ pre x hs = runIdentity $ flip evalStateT 0 (accordion pre x hs)
 

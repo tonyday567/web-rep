@@ -18,7 +18,9 @@ module Web.Page.Rep
   , SharedRep
   , runOnce
   , zeroState
+  , listify
   , accordionListify
+  , listifyDefault
   , defaultListifyLabels
   , valueModel
   , valueConsume
@@ -138,6 +140,9 @@ zeroState sr = do
   (Rep h fa, (_, m)) <- flip runStateT (0, empty) $ unrep sr
   pure (h, fa m)
 
+listify :: (Monad m) => (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
+listify sr labels as = foldr (\a x -> (:) <$> a <*> x) (pure []) (zipWith sr labels as)
+
 accordionListify :: (Monad m) => Maybe Text -> Text -> Maybe Text -> (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
 accordionListify title prefix open srf labels as = SharedRep $ do
   (Rep h fa) <-
@@ -147,6 +152,9 @@ accordionListify title prefix open srf labels as = SharedRep $ do
     (pure []) (zipWith srf labels as)
   h' <- zoom _1 h
   pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
+
+listifyDefault :: (Monad m) => Maybe Text -> Text -> (Text -> a -> SharedRep m a) -> [a] -> SharedRep m [a]
+listifyDefault t p srf as = accordionListify t p Nothing srf (defaultListifyLabels (length as)) as
 
 defaultListifyLabels :: Int -> [Text]
 defaultListifyLabels n = (\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]
