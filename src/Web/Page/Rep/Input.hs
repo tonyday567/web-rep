@@ -4,7 +4,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wall #-}
 
@@ -38,7 +37,6 @@ import Data.HashMap.Strict
 import Data.Text (pack, Text)
 import Lucid
 import Protolude hiding ((<<*>>), Rep)
-import Text.InterpolatedString.Perl6
 import Web.Page.Bootstrap
 import Web.Page.Html
 import Web.Page.Html.Input
@@ -132,19 +130,12 @@ checkboxShowJs label cl v =
     zoom _2 (modify (insert name (bool "false" "true" v)))
     pure $
       Rep
-      (toHtml (Input v label name (Checkbox v)) <> scriptCheckedShow name cl)
+      (toHtml (Input v label name (Checkbox v)) <> scriptToggleShow name cl)
       (\s ->
         (s, join $
         maybe (Left "lookup failed") Right $
         either (Left . pack) Right . parseOnly ((=="true") <$> takeText) <$>
         lookup name s))
-      where
-        scriptCheckedShow checkName checkClass = script_ [qc|
-$('#{checkName}').on('change', (function()\{
-  var vis = this.checked ? "block" : "none";
-  Array.from(document.getElementsByClassName({checkClass})).forEach(x => x.style.display = vis);
-\}));
-|]
 
 -- | represent a Maybe type using a checkbox hiding the underlying content on Nothing
 maybeRep :: (Monad m) => Maybe Text -> Bool -> SharedRep m a ->

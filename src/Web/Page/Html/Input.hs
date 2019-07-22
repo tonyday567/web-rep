@@ -12,6 +12,7 @@
 module Web.Page.Html.Input
   ( Input(Input)
   , InputType(..)
+  , scriptToggleShow
   ) where
 
 import Control.Category (id)
@@ -225,4 +226,12 @@ $('#{name}').on('change', (function()\{
       this.style.display = 'none';
       \}\})
   \}));
+|]
+
+scriptToggleShow :: (Monad m) => Text -> Text -> HtmlT m ()
+scriptToggleShow checkName toggleClass = script_ [qq|
+$('#{checkName}').on('change', (function()\{
+  var vis = this.checked ? "block" : "none";
+  Array.from(document.getElementsByClassName({toggleClass})).forEach(x => x.style.display = vis);
+\}));
 |]
