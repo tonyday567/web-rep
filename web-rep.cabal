@@ -33,8 +33,6 @@ library
       Web.Page.Rep.Input
       Web.Page.Server
       Web.Page.Types
-  other-modules:
-      Paths_web_rep
   hs-source-dirs:
       src
   build-depends:
@@ -67,8 +65,6 @@ library
 
 executable page-example
   main-is: example.hs
-  other-modules:
-      Paths_web_rep
   hs-source-dirs:
       app
   ghc-options: -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
@@ -91,8 +87,6 @@ executable page-example
 test-suite test
   type: exitcode-stdio-1.0
   main-is: test.hs
-  other-modules:
-      Paths_web_rep
   hs-source-dirs:
       test
   ghc-options: -Wall -O2 -threaded
