@@ -81,17 +81,17 @@ sendBridgeTest e (Right a) =
   (toText $ cardify [] mempty (Just "output was:")
     (toHtml  (show a :: Text)))
 
-consumeBridgeTest :: Event Value -> Engine -> IO (Int, Text)
-consumeBridgeTest ev e =
+consumeBridgeTest :: Engine -> IO (Int, Text)
+consumeBridgeTest e =
   valueConsume initBridgeTest stepBridgeTest
   ( (Box.liftC <$> Box.showStdout) <>
     pure (Box.Committer (\v -> sendBridgeTest e v >> pure True))
-  ) (bridge ev e)
+  ) (bridge e)
 
-midBridgeTest :: (Show a) => Html () -> (Event Value -> Engine -> IO a) -> Application -> Application
-midBridgeTest init eeio = start $ \ ev e -> do
+midBridgeTest :: (Show a) => Html () -> (Engine -> IO a) -> Application -> Application
+midBridgeTest init eeio = start $ \ e -> do
   appendWithScript e "input" (toText init)
-  final <- eeio ev e `finally` putStrLn ("midBridgeTest finalled" :: Text)
+  final <- eeio e `finally` putStrLn ("midBridgeTest finalled" :: Text)
   putStrLn $ ("final value was: " :: Text) <> show final
 
 -- * SharedRep testing
@@ -100,12 +100,12 @@ midShared ::
   SharedRep IO a ->
   (Engine -> Either Text (HashMap Text Text, Either Text a) -> IO ()) ->
   Application -> Application
-midShared sr action = start $ \ ev e ->
+midShared sr action = start $ \e ->
   void $ runOnEvent
   sr
   (zoom _2 . initRep e show)
   (action e)
-  (bridge ev e)
+  (bridge e)
 
 initRep
   :: Engine
@@ -129,12 +129,12 @@ logResults r e (Right x) = results r e x
 midFiddle ::
   Concerns Text ->
   Application -> Application
-midFiddle cs = start $ \ ev e ->
+midFiddle cs = start $ \e ->
   void $ runOnEvent
   (fiddle cs)
   (zoom _2 . initFiddleRep e show)
   (logFiddle e . second snd)
-  (bridge ev e)
+  (bridge e)
 
 initFiddleRep
   :: Engine
@@ -156,12 +156,12 @@ midViaFiddle
   :: Show a
   => SharedRep IO a
   -> Application -> Application
-midViaFiddle sr = start $ \ ev e ->
+midViaFiddle sr = start $ \e ->
   void $ runOnEvent
   (viaFiddle sr)
   (zoom _2 . initViaFiddleRep e show)
   (logViaFiddle e show . second snd)
-  (bridge ev e)
+  (bridge e)
 
 initViaFiddleRep
   :: Engine

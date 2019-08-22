@@ -18,7 +18,6 @@ module Web.Page.Bridge
   , bridge
   , sendConcerns
   , Engine
-  , Event
   , start
   ) where
 
@@ -26,14 +25,14 @@ import Box.Cont
 import Control.Lens
 import Data.Aeson (Value)
 import Lucid
-import Network.JavaScript (Engine, Event, start, send, command, addListener)
+import Network.JavaScript (Engine, start, send, command, addListener, JavaScript(..))
 import Protolude hiding (replace)
 import Text.InterpolatedString.Perl6
 import Web.Page.Html
 import Web.Page.Js
 import Web.Page.Types
 import qualified Data.Text as Text
-import qualified Data.Text.Lazy as Lazy
+-- import qualified Data.Text.Lazy as Lazy
 
 preventEnter :: PageJs
 preventEnter = PageJs $ fromText [q|
@@ -91,10 +90,10 @@ bridgePage =
   #jsOnLoad .~ webSocket
 
 sendc :: Engine -> Text -> IO ()
-sendc e = send e . command . Lazy.fromStrict
+sendc e = send e . command . JavaScript . fromStrict
 
 replace :: Engine -> Text -> Text -> IO ()
-replace e d t = send e $ command $ Lazy.fromStrict $
+replace e d t = send e $ command $
   [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML = '{clean t}'
@@ -102,7 +101,7 @@ replace e d t = send e $ command $ Lazy.fromStrict $
      |]
 
 append :: Engine -> Text -> Text -> IO ()
-append e d t = send e $ command $ Lazy.fromStrict $
+append e d t = send e $ command $
     [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML += '{clean t}'
@@ -110,7 +109,7 @@ append e d t = send e $ command $ Lazy.fromStrict $
      |]
 
 replaceWithScript :: Engine -> Text -> Text -> IO ()
-replaceWithScript e d t = send e $ command $ Lazy.fromStrict $
+replaceWithScript e d t = send e $ command $ 
   [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML = '{clean t}'
@@ -118,7 +117,7 @@ replaceWithScript e d t = send e $ command $ Lazy.fromStrict $
      |]
 
 appendWithScript :: Engine -> Text -> Text -> IO ()
-appendWithScript e d t = send e $ command $ Lazy.fromStrict $
+appendWithScript e d t = send e $ command $
     [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML += '{clean t}'
@@ -131,8 +130,8 @@ sendConcerns e t (Concerns c j h) = do
   append e t (toText $ style_ c)
   sendc e j
 
-bridge :: Event Value -> Engine -> Cont_ IO Value
-bridge ev _ = Cont_ $ \vio -> void $ addListener ev vio
+bridge :: Engine -> Cont_ IO Value
+bridge e = Cont_ $ \vio -> void $ addListener e vio
 
 clean :: Text -> Text
 clean =
