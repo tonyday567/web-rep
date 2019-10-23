@@ -14,9 +14,15 @@ module Web.Page.Examples
   , cfg2
   , RepExamples(..)
   , repExamples
+  , Shape(..)
+  , fromShape
+  , toShape
   , SumTypeExample(..)
   , repSumTypeExample
+  , SumType2Example(..)
+  , repSumType2Example
   , listifyExample
+  , listifyMaybeExample
   , fiddleExample
   ) where
 
@@ -24,7 +30,8 @@ import Control.Category (id)
 import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
 import Lucid
-import Protolude
+import Protolude hiding ((<<*>>))
+import Data.Biapplicative
 import Web.Page
 import qualified Clay
 import Data.Aeson
@@ -102,6 +109,7 @@ data RepExamples =
   , repCheckbox :: Bool
   , repToggle :: Bool
   , repDropdown :: Int
+  , repShape :: Shape
   , repColor :: PixelRGB8
   } deriving (Show, Eq, Generic)
 
@@ -118,6 +126,21 @@ instance FromJSON PixelRGB8 where
 instance ToJSON RepExamples
 instance FromJSON RepExamples
 
+data Shape = SquareShape | CircleShape deriving (Eq, Show, Generic)
+
+instance ToJSON Shape
+instance FromJSON Shape
+
+toShape :: Text -> Shape
+toShape t = case t of
+  "Circle" -> CircleShape
+  "Square" -> SquareShape
+  _ -> CircleShape
+
+fromShape :: Shape -> Text
+fromShape CircleShape = "Circle"
+fromShape SquareShape = "Square"
+
 repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
   t <- textbox (Just "textbox") "sometext"
@@ -127,8 +150,9 @@ repExamples = do
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
   dr <- dropdown decimal show (Just "dropdown") (show <$> [1..5::Int]) 3
+  drt <- toShape <$> dropdown takeText id (Just "shape") (["Circle", "Square"]) (fromShape SquareShape)
   col <- colorPicker (Just "color") (PixelRGB8 56 128 200)
-  pure (RepExamples t ta n ds' c tog dr col)
+  pure (RepExamples t ta n ds' c tog dr drt col)
 
 -- encodeFile "saves/rep2.json" $ RepExamples "text1" "text2" 1 1.0 True True 2 (PixelRGB8 0 100 0)
 -- decodeFileStrict "saves/rep2.json" :: IO (Maybe RepExamples)
@@ -137,6 +161,11 @@ listifyExample :: (Monad m) => Int -> SharedRep m [Int]
 listifyExample n =
   accordionListify (Just "accordianListify") "al" Nothing
   (\l a -> sliderI (Just l) (0::Int) n 1 a) ((\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]) [0..n]
+
+listifyMaybeExample :: (Monad m) => Int -> SharedRep m [Int]
+listifyMaybeExample n =
+  listifyMaybe' (Just "listifyMaybe") "alm" (checkbox Nothing)
+    (sliderI Nothing (0::Int) n 1) n 3 [0..4]
 
 fiddleExample :: Concerns Text
 fiddleExample = Concerns mempty mempty
@@ -155,32 +184,86 @@ sumTypeText SumOnly = "SumOnly"
 sumTypeText (SumText _) = "SumText"
 
 repSumTypeExample :: (Monad m) => Int -> Text -> SumTypeExample -> SharedRep m SumTypeExample
-repSumTypeExample defi deft defst = SharedRep $ do
-  (Rep hi fi) <- unrep $ sliderI Nothing 0 20 1 defInt
-  (Rep ht ft) <- unrep $ textbox Nothing defText
-  (Rep hdb fdb) <- unrep $ dropdownSum takeText id (Just "SumTypeExample")
-    ["SumInt", "SumOnly", "SumText"]
-    (sumTypeText defst)
-  pure $ Rep (hdb <>
-              with hi [ class__ "subtype "
-                      , data_ "sumtype" "SumInt"
-                      , style_
-                   ("display:" <> bool "block" "none" (sumTypeText defst /= "SumInt"))] <>
-              with ht [ class__ "subtype "
-                      , data_ "sumtype" "SumText"
-                      , style_
-                   ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))])
-    (\m -> let (m', db) = fdb m in
-            case db of
-              Left e -> (m', Left e)
-              Right "SumInt" -> second (second SumInt) (fi m')
-              Right "SumOnly" -> (m', Right SumOnly)
-              Right "SumText" -> second (second SumText) (ft m')
-              Right _ -> (m', Left "bad sumtype text"))
-    where
-      defInt = case defst of
-        SumInt i -> i
-        _ -> defi
-      defText = case defst of
-        SumText t -> t
-        _ -> deft
+repSumTypeExample defi deft defst =
+  bimap hmap mmap repst <<*>> repi <<*>> rept
+  where
+    repi = sliderI Nothing 0 20 1 defInt
+    rept = textbox Nothing defText
+    repst = dropdownSum takeText id (Just "SumTypeExample")
+      ["SumInt", "SumOnly", "SumText"]
+      (sumTypeText defst)
+    hmap repst' repi' rept' =
+      div_
+      (repst' <>
+      with repi'
+        [ class__ "subtype "
+        , data_ "sumtype" "SumInt"
+        , style_
+          ("display:" <>
+           bool "block" "none" (sumTypeText defst /= "SumInt"))
+        ] <>
+      with rept'
+        [ class__ "subtype "
+        , data_ "sumtype" "SumText"
+        , style_
+          ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))
+        ])
+
+    mmap repst' repi' rept' =
+      case repst' of
+        "SumInt" -> SumInt repi'
+        "SumOnly" -> SumOnly
+        "SumText" -> SumText rept'
+        _ -> SumOnly
+
+    defInt = case defst of
+      SumInt i -> i
+      _ -> defi
+    defText = case defst of
+      SumText t -> t
+      _ -> deft
+
+data SumType2Example = SumOutside Int | SumInside SumTypeExample deriving (Eq, Show, Generic)
+
+sumType2Text :: SumType2Example -> Text
+sumType2Text (SumOutside _) = "SumOutside"
+sumType2Text (SumInside _) = "SumInside"
+
+repSumType2Example :: (Monad m) => Int -> Text -> SumTypeExample -> SumType2Example -> SharedRep m SumType2Example
+repSumType2Example defi deft defst defst2 =
+  bimap hmap mmap repst2 <<*>> repst <<*>> repoi
+  where
+    repoi = sliderI Nothing 0 20 1 defInt
+    repst = repSumTypeExample defi deft SumOnly
+    repst2 = dropdownSum takeText id (Just "SumType2Example")
+      ["SumOutside", "SumInside"]
+      (sumType2Text defst2)
+    hmap repst2' repst' repoi' =
+      div_
+      (repst2' <>
+      with repst'
+        [ class__ "subtype "
+        , data_ "sumtype" "SumInside"
+        , style_
+          ("display:" <>
+           bool "block" "none" (sumType2Text defst2 /= "SumInside"))
+        ] <>
+      with repoi'
+        [ class__ "subtype "
+        , data_ "sumtype" "SumOutside"
+        , style_
+          ("display:" <>
+           bool "block" "none" (sumType2Text defst2 /= "SumOutside"))
+        ])
+
+    mmap repst2' repst' repoi' =
+      case repst2' of
+        "SumOutside" -> SumOutside repoi'
+        "SumInside" -> SumInside repst'
+        _ -> SumOutside repoi'
+
+    defInt = case defst of
+      SumInt i -> i
+      _ -> defi
+
+

@@ -13,6 +13,8 @@ module Web.Page.Bootstrap
   , cardify
   , b_
   , accordion
+  , accordionChecked
+  , accordionCardChecked
   , accordion_
   ) where
 
@@ -69,12 +71,12 @@ bootstrapPage =
   mempty
 
 -- | wrap some Html with the bootstrap card class
-cardify :: [Attribute] -> Html () -> Maybe Text -> Html () -> Html ()
-cardify atts h t b =
-  with div_ ([class__ "card"] <> atts) $
+cardify :: (Html (), [Attribute]) -> Maybe Text -> (Html (), [Attribute]) -> Html ()
+cardify (h, hatts) t (b, batts) =
+  with div_ ([class__ "card"] <> hatts) $
    h <>
    with
-   div_ [class__ "card-body"]
+   div_ ([class__ "card-body"] <> batts)
    (maybe mempty (with h5_ [class__ "card-title"] . toHtml) t <>
     b)
 
@@ -91,6 +93,16 @@ accordionCard collapse atts idp idh idb t0 b =
     with div_ [id_ idb, class__ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
     (with div_ [class__ "card-body"] b)
 
+accordionCardChecked :: Bool -> Text -> Text -> Text -> Text -> Html () -> Html () -> Html ()
+accordionCardChecked collapse idp idh idb label bodyhtml checkhtml =
+  with div_ ([class__ "card"]) $
+    with div_ ([class__ "card-header", id_ idh])
+      (checkhtml <>
+       with h2_ [class__ "mb-0"]
+        (with button_ [class__ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb ] (toHtml label))) <>
+    with div_ [id_ idb, class__ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
+    (with div_ ([class__ "card-body"]) bodyhtml)
+
 -- | create a bootstrapped accordian class
 accordion :: (MonadState Int m, Monad m) => Text -> Maybe Text -> [(Text, Html ())] -> m (Html ())
 accordion pre x hs = do
@@ -102,6 +114,18 @@ accordion pre x hs = do
         idh <- genNamePre pre
         idb <- genNamePre pre
         pure $ accordionCard (maybe True (/=t) x) [] par idh idb t b
+
+-- | create a bootstrapped accordian class
+accordionChecked :: (MonadState Int m, Monad m) => Text -> [(Text, Html (), Html ())] -> m (Html ())
+accordionChecked pre hs = do
+  idp' <- genNamePre pre
+  with div_ [class__ "accordion", id_ idp'] <$> aCards idp'
+    where
+      aCards par = mconcat <$> sequence (aCard par <$> hs)
+      aCard par (l,bodyhtml,checkhtml) = do
+        idh <- genNamePre pre
+        idb <- genNamePre pre
+        pure $ accordionCardChecked True par idh idb l bodyhtml checkhtml
 
 accordion_ :: Text -> Maybe Text -> [(Text, Html ())] -> Html ()
 accordion_ pre x hs = runIdentity $ flip evalStateT 0 (accordion pre x hs)

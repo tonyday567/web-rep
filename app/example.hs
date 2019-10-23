@@ -78,8 +78,8 @@ sendBridgeTest :: (Show a) => Engine -> Either Text a -> IO ()
 sendBridgeTest e (Left err) = append e "log" err
 sendBridgeTest e (Right a) =
   replace e "output"
-  (toText $ cardify [] mempty (Just "output was:")
-    (toHtml  (show a :: Text)))
+  (toText $ cardify (mempty, []) (Just "output was:")
+    (toHtml (show a :: Text), []))
 
 consumeBridgeTest :: Engine -> IO (Int, Text)
 consumeBridgeTest e =
@@ -186,7 +186,7 @@ logViaFiddle e r (Right (Right (True,c,a))) = do
   replace e "output" (r a)
 logViaFiddle e r (Right (Right (False,_,a))) = replace e "output" (r a)
 
-data MidType = Dev | Prod | ChooseFileExample | DataListExample | SumTypeExample | Bridge | Listify | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
+data MidType = Dev | Prod | ChooseFileExample | DataListExample | SumTypeExample | SumType2Example | Bridge | Listify | ListifyMaybe | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
 
 instance ParseField MidType
 instance ParseRecord MidType
@@ -229,7 +229,10 @@ main = do
         (logResults show)
       SumTypeExample -> midShared
         (repSumTypeExample 2 "default text" SumOnly) (logResults show)
+      SumType2Example -> midShared
+        (repSumType2Example 2 "default text" SumOnly (SumOutside 2)) (logResults show)
       Listify -> midShared (listifyExample 5) (logResults show)
+      ListifyMaybe -> midShared (listifyMaybeExample 10) (logResults show)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
         consumeBridgeTest
       Fiddle -> midFiddle fiddleExample

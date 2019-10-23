@@ -5,6 +5,8 @@ module Web.Page
   , Value(..)
   , finally
   , PixelRGB8(..)
+  , HashMap.HashMap(..)
+  , fromList
   ) where
 
 import Protolude hiding (Selector)
@@ -20,9 +22,10 @@ import Web.Page.Html as X
 import Web.Page.Html.Input as X
 import Web.Page.Bootstrap as X
 import Text.InterpolatedString.Perl6 as X
-import Data.HashMap.Strict as X
 import Control.Exception (finally)
 
+import GHC.Exts (fromList)
+import qualified Data.HashMap.Strict as HashMap
 import qualified Web.Page.Css as Css (render)
 import qualified Web.Page.Js as Js
 import Data.Aeson (Value(..))

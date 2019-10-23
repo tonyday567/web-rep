@@ -20,7 +20,10 @@ module Web.Page.Rep
   , zeroState
   , listify
   , accordionListify
+  , accordionListifyMaybe
   , listifyDefault
+  , listifyMaybe
+  , listifyMaybe'
   , defaultListifyLabels
   , valueModel
   , valueConsume
@@ -153,8 +156,28 @@ accordionListify title prefix open srf labels as = SharedRep $ do
   h' <- zoom _1 h
   pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
 
+accordionListifyMaybe :: (Monad m) => Maybe Text -> Text -> (a -> SharedRep m a) -> (Bool -> SharedRep m Bool) -> [Text] -> [(Bool, a)] -> SharedRep m [(Bool,a)]
+accordionListifyMaybe title prefix bodyf checkf labels xs = SharedRep $ do
+  (Rep h fa) <-
+    unrep $
+    first (accordionChecked prefix) $
+    first (zipWith (\l (ch,a) -> (l,a,ch)) labels) $
+    foldr (\a x -> bimap (:) (:) a <<*>> x)
+    (pure [])
+    ((\(ch, a) ->
+         (bimap (,) (,)
+          (checkf ch) <<*>> bodyf a)) <$> xs)
+  h' <- zoom _1 h
+  pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
+
 listifyDefault :: (Monad m) => Maybe Text -> Text -> (Text -> a -> SharedRep m a) -> [a] -> SharedRep m [a]
 listifyDefault t p srf as = accordionListify t p Nothing srf (defaultListifyLabels (length as)) as
+
+listifyMaybe :: (Monad m) => Maybe Text -> Text -> (Text -> Maybe a -> SharedRep m (Maybe a)) -> Int -> [a] -> SharedRep m [Maybe a]
+listifyMaybe t p srf n as = accordionListify t p Nothing srf (defaultListifyLabels n) (take n ((Just <$> as) <> repeat Nothing)) 
+
+listifyMaybe' :: (Monad m) => Maybe Text -> Text -> (Bool -> SharedRep m Bool) -> (a -> SharedRep m a) -> Int -> a -> [a] -> SharedRep m [a]
+listifyMaybe' t p brf srf n defa as = second (mconcat . fmap (\(b,a) -> bool [] [a] b)) $ accordionListifyMaybe t p srf brf (defaultListifyLabels n) (take n (((\x -> (True,x)) <$> as) <> repeat (False, defa)))
 
 defaultListifyLabels :: Int -> [Text]
 defaultListifyLabels n = (\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]

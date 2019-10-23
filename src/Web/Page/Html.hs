@@ -14,15 +14,16 @@ module Web.Page.Html
   , toHex
  ) where
 
-import Data.Colour.SRGB (Colour, sRGB24show)
+-- import Data.Colour.SRGB (Colour, sRGB24show)
 import Data.Text
 import Lucid
-import Protolude
+import Protolude hiding ((%))
 import qualified Data.Text.Lazy as Lazy
 import qualified GHC.Show
 import Codec.Picture.Types (PixelRGB8(..))
 import Data.Attoparsec.Text
 import Numeric
+import Formatting hiding (string)
 
 class__ :: Text -> Attribute
 class__ t = class_ (" " <> t <> " ")
@@ -58,7 +59,7 @@ fromHex =
     (string "#" *> hexadecimal)
 
 toHex :: PixelRGB8 -> Text
-toHex (PixelRGB8 r g b) = pack $ "#" <> showHex r (showHex g $ showHex b "")
+toHex (PixelRGB8 r g b) = sformat ("#" % ((left 2 '0') %. hex) % ((left 2 '0') %. hex) % ((left 2 '0') %. hex)) r g b
 
 -- `ToHtml a` is used throughout because `Show a` gives "\"text\"" for show "text", and hilarity ensues when rendering to the web page.
 -- hence orphans
@@ -66,12 +67,15 @@ instance ToHtml Double where
   toHtml = toHtml . (show :: Double -> Text)
   toHtmlRaw = toHtmlRaw . (show :: Double -> Text)
 
+{-
 instance (RealFrac a, Floating a) => ToHtml (Colour a) where
   toHtml = toHtml . sRGB24show
   toHtmlRaw = toHtmlRaw . sRGB24show
 
 instance (RealFrac a, Floating a) => Show (Colour a) where
   show = sRGB24show
+
+-}
 
 instance ToHtml Bool where
   toHtml = toHtml . bool ("false" :: Text) "true"

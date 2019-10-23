@@ -146,12 +146,33 @@ maybeRep label st sa = SharedRep $ do
   pure sr
   where
     hmap cl a b =
-      cardify [] a Nothing
-       (Lucid.with div_
+      cardify (a, []) Nothing
+       ((Lucid.with div_
         [class__ cl, style_
                    ("display:" <> bool "none" "block" st)]
-        b)
+        b),
+        [style_ "padding-top: 0.25rem; padding-bottom: 0.25rem;"])
     mmap a b = bool Nothing (Just b) a
+
+{-
+maybeRepAccordion :: (Monad m) => Text -> Text -> Text -> Bool -> Maybe Text -> Bool -> SharedRep m a ->
+  SharedRep m (Maybe a)
+maybeRepAccordion idp idh idb collapse label st sa = SharedRep $ do
+  className <- zoom _1 genName
+  sr <- unrep $ bimap (hmap className) mmap (checkboxShowJs label className st) <<*>> sa
+  pure sr
+  where
+    hmap cl a b =
+      accordionCard' collapse idp idh idb
+      (a, [])
+      ((Lucid.with div_
+        [class__ cl, style_
+                   ("display:" <> bool "none" "block" st)]
+        b),
+       [style_ "padding-top: 0.25rem; padding-bottom: 0.25rem;"])
+    mmap a b = bool Nothing (Just b) a
+
+-}
 
 
 -- | representation of web concerns (css, js & html)

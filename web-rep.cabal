@@ -1,11 +1,4 @@
 cabal-version: 1.12
-
--- This file has been generated from package.yaml by hpack version 0.31.1.
---
--- see: https://github.com/sol/hpack
---
--- hash: 5039f940dbe55a66ded6e600f6c473340e56943ad1fbe42843d633db2bcdc84f
-
 name:           web-rep
 version:        0.1.0
 synopsis:       representations of a web pag
@@ -45,6 +38,7 @@ library
     , clay
     , colour
     , foldl
+    , formatting
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
