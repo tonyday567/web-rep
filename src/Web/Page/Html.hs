@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Web.Page.Html
   ( class__
@@ -12,14 +11,14 @@ module Web.Page.Html
   , libJs
   , fromHex
   , toHex
+  , Html
  ) where
 
--- import Data.Colour.SRGB (Colour, sRGB24show)
 import Data.Text
 import Lucid
 import Protolude hiding ((%))
 import qualified Data.Text.Lazy as Lazy
-import qualified GHC.Show
+-- import qualified GHC.Show
 import Codec.Picture.Types (PixelRGB8(..))
 import Data.Attoparsec.Text
 import Numeric

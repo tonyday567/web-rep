@@ -1,6 +1,7 @@
 module Web.Page
   ( renderJs
   , renderCss
+  , renderHtml
   , module X
   , Value(..)
   , finally
@@ -37,3 +38,5 @@ renderJs = toStrict . Js.renderToText . Js.unJS
 renderCss :: Css -> Text
 renderCss = toStrict . Css.render
 
+renderHtml :: Html a -> Text
+renderHtml = toText

@@ -115,6 +115,3 @@ data PageConfig =
 defaultPageConfig :: PageConfig
 defaultPageConfig = PageConfig Inline HeaderBody Minified
     (("default"<>) <$> suffixes) []
-
-
-

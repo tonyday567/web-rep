@@ -1,11 +1,7 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Bridge
@@ -19,20 +15,23 @@ module Web.Page.Bridge
   , sendConcerns
   , Engine
   , start
+  , Application
+  , midShared
   ) where
 
 import Box.Cont
 import Control.Lens
 import Data.Aeson (Value)
+import Data.HashMap.Strict as HashMap
 import Lucid
-import Network.JavaScript (Engine, start, send, command, addListener, JavaScript(..))
-import Protolude hiding (replace)
+import Network.JavaScript (Engine, start, send, command, addListener, JavaScript(..), Application)
+import Protolude hiding (replace, Rep)
 import Text.InterpolatedString.Perl6
 import Web.Page.Html
 import Web.Page.Js
+import Web.Page.Rep
 import Web.Page.Types
 import qualified Data.Text as Text
--- import qualified Data.Text.Lazy as Lazy
 
 preventEnter :: PageJs
 preventEnter = PageJs $ fromText [q|
@@ -93,7 +92,7 @@ sendc :: Engine -> Text -> IO ()
 sendc e = send e . command . JavaScript . fromStrict
 
 replace :: Engine -> Text -> Text -> IO ()
-replace e d t = send e $ command $
+replace e d t = send e $ command
   [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML = '{clean t}'
@@ -101,7 +100,7 @@ replace e d t = send e $ command $
      |]
 
 append :: Engine -> Text -> Text -> IO ()
-append e d t = send e $ command $
+append e d t = send e $ command
     [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML += '{clean t}'
@@ -109,7 +108,7 @@ append e d t = send e $ command $
      |]
 
 replaceWithScript :: Engine -> Text -> Text -> IO ()
-replaceWithScript e d t = send e $ command $ 
+replaceWithScript e d t = send e $ command
   [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML = '{clean t}'
@@ -117,7 +116,7 @@ replaceWithScript e d t = send e $ command $
      |]
 
 appendWithScript :: Engine -> Text -> Text -> IO ()
-appendWithScript e d t = send e $ command $
+appendWithScript e d t = send e $ command
     [qc|
      var $container = document.getElementById('{d}')
      $container.innerHTML += '{clean t}'
@@ -137,3 +136,22 @@ clean :: Text -> Text
 clean =
   Text.intercalate "\\'" . Text.split (=='\'') .
   Text.intercalate "\\n" . Text.lines
+
+
+-- | create Wai Middleware for a SharedRep providing an initialiser and action on events
+midShared ::
+  (Show a) =>
+  SharedRep IO a ->
+  (Engine -> Rep a -> StateT (HashMap Text Text) IO ()) ->
+  (Engine -> Either Text (HashMap Text Text, Either Text a) -> IO ()) ->
+  Application -> Application
+midShared sr init action = start $ \e ->
+  void $ runOnEvent
+  sr
+  (zoom _2 . init e)
+  (action e)
+  (bridge e)
+
+
+
+

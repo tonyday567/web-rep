@@ -6,7 +6,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Web.Page.Examples
   ( page1
@@ -29,12 +28,11 @@ module Web.Page.Examples
 import Control.Category (id)
 import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
+import Data.Biapplicative
 import Lucid
 import Protolude hiding ((<<*>>))
-import Data.Biapplicative
 import Web.Page
 import qualified Clay
-import Data.Aeson
 
 -- | simple page examples
 page1 :: Page
@@ -113,23 +111,7 @@ data RepExamples =
   , repColor :: PixelRGB8
   } deriving (Show, Eq, Generic)
 
-instance ToJSON PixelRGB8 where
-  toJSON (PixelRGB8 r g b) = object ["r" .= r, "g" .= g, "b" .= b]
-
-instance FromJSON PixelRGB8 where
-  parseJSON = withObject "Color" $ \v ->
-    PixelRGB8 <$>
-    v .: "r" <*>
-    v .: "g" <*>
-    v .: "b"
-
-instance ToJSON RepExamples
-instance FromJSON RepExamples
-
 data Shape = SquareShape | CircleShape deriving (Eq, Show, Generic)
-
-instance ToJSON Shape
-instance FromJSON Shape
 
 toShape :: Text -> Shape
 toShape t = case t of
@@ -174,9 +156,6 @@ fiddleExample = Concerns mempty mempty
 |]
 
 data SumTypeExample = SumInt Int | SumOnly | SumText Text deriving (Eq, Show, Generic)
-
-instance ToJSON SumTypeExample
-instance FromJSON SumTypeExample
 
 sumTypeText :: SumTypeExample -> Text
 sumTypeText (SumInt _) = "SumInt"
@@ -265,5 +244,3 @@ repSumType2Example defi deft defst defst2 =
     defInt = case defst of
       SumInt i -> i
       _ -> defi
-
-

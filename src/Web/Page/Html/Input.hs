@@ -1,12 +1,8 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE NoPatternSynonyms #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Html.Input
@@ -15,7 +11,6 @@ module Web.Page.Html.Input
   , scriptToggleShow
   ) where
 
-import Control.Category (id)
 import Data.Text
 import Lucid
 import Lucid.Base
@@ -171,7 +166,7 @@ instance (ToHtml a) => ToHtml (Input a) where
      ( [ type_ "button"
        , id_ i
        , class__ "btn btn-primary btn-sm"
-       , value_ (maybe "button" id l)
+       , value_ (fromMaybe "button" l)
        ]) <>
     scriptJsbButton i)
 

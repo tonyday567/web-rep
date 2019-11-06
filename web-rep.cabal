@@ -1,6 +1,6 @@
 cabal-version: 1.12
 name:           web-rep
-version:        0.1.0
+version:        0.1.1
 synopsis:       representations of a web pag
 description:    See readme.md for verbage (if any)
 bug-reports:    https://github.com/tonyday567/web-page/issues
@@ -36,7 +36,6 @@ library
     , bifunctors
     , box
     , clay
-    , colour
     , foldl
     , formatting
     , generic-lens

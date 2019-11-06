@@ -1,13 +1,11 @@
-resolver: lts-13.29
+resolver: lts-14.11
 
 packages:
 - '.'
 
 extra-deps:
-  - git: https://github.com/ku-fpg/javascript-bridge.git
-    commit: d9320209806d72c71969786739ed03f9d3394881
-    # bb72dbb7d2f6376353f67aec6c251271ffb055d5
   - lucid-svg-0.7.1
-  - box-0.0.1.1
+  - box-0.0.1.4
+  - javascript-bridge-0.2.0
 
 allow-newer: true

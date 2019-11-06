@@ -2,11 +2,10 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Rep
@@ -82,14 +81,14 @@ instance (Semigroup r) => Semigroup (RepF r a) where
     (\hm -> let (hm', x') = a0 hm in let (hm'', x'') = a1 hm' in (hm'', x' <> x''))
 
 instance (Monoid a, Monoid r) => Monoid (RepF r a) where
-  mempty = Rep mempty (\hm -> (hm, Right mempty))
+  mempty = Rep mempty (,Right mempty)
   mappend = (<>)
 
 instance Bifunctor RepF where
   bimap f g (Rep r a) = Rep (f r) (second (fmap g) . a)
 
 instance Biapplicative RepF where
-  bipure r a = Rep r (\hm -> (hm, Right a))
+  bipure r a = Rep r (, Right a)
   (Rep fr fa) <<*>> (Rep r a) = Rep (fr r)
     (\hm ->
         let (hm', a') = a hm in let (hm'', fa') = fa hm' in (hm'', fa' <*> a'))
@@ -150,7 +149,7 @@ accordionListify :: (Monad m) => Maybe Text -> Text -> Maybe Text -> (Text -> a 
 accordionListify title prefix open srf labels as = SharedRep $ do
   (Rep h fa) <-
     unrep $
-    first (accordion prefix open . zipWith (,) labels ) $
+    first (accordion prefix open . zip labels ) $
     foldr (\a x -> bimap (:) (:) a <<*>> x)
     (pure []) (zipWith srf labels as)
   h' <- zoom _1 h
@@ -177,7 +176,7 @@ listifyMaybe :: (Monad m) => Maybe Text -> Text -> (Text -> Maybe a -> SharedRep
 listifyMaybe t p srf n as = accordionListify t p Nothing srf (defaultListifyLabels n) (take n ((Just <$> as) <> repeat Nothing)) 
 
 listifyMaybe' :: (Monad m) => Maybe Text -> Text -> (Bool -> SharedRep m Bool) -> (a -> SharedRep m a) -> Int -> a -> [a] -> SharedRep m [a]
-listifyMaybe' t p brf srf n defa as = second (mconcat . fmap (\(b,a) -> bool [] [a] b)) $ accordionListifyMaybe t p srf brf (defaultListifyLabels n) (take n (((\x -> (True,x)) <$> as) <> repeat (False, defa)))
+listifyMaybe' t p brf srf n defa as = second (mconcat . fmap (\(b,a) -> bool [] [a] b)) $ accordionListifyMaybe t p srf brf (defaultListifyLabels n) (take n (((True,) <$> as) <> repeat (False, defa)))
 
 defaultListifyLabels :: Int -> [Text]
 defaultListifyLabels n = (\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]
@@ -188,7 +187,7 @@ valueModel step s =
   S.map fromJson' &
   S.partitionEithers &
   hoist (S.chain (modify . step)) &
-  hoist (S.mapM (\_ -> get)) &
+  hoist (S.mapM (const get)) &
   S.unseparate &
   S.maps S.sumToEither
 
@@ -197,9 +196,8 @@ valueConsume :: s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text s
 valueConsume init step comm vio = do
   (c,e) <- atomically $ ends Unbounded
   with_ vio (atomically . c)
-  final <- etcM init (Transducer (valueModel step))
+  etcM init (Transducer (valueModel step))
     (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
-  pure final
 
 stepM :: MonadState s m => (s -> (s, b)) -> (a -> s -> s) -> a -> m (s, b)
 stepM sr step v = do
@@ -234,9 +232,8 @@ sharedConsume :: (s -> (s, Either Text b)) -> s -> (Element -> s -> s) -> Cont I
 sharedConsume sh init step comm vio = do
   (c,e) <- atomically $ ends Unbounded
   with_ vio (atomically . c)
-  final <- etcM init (Transducer (sharedModel sh step))
+  etcM init (Transducer (sharedModel sh step))
     (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
-  pure final
 
 runOnEvent
   :: SharedRep IO a

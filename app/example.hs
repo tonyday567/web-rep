@@ -95,28 +95,21 @@ midBridgeTest init eeio = start $ \ e -> do
   putStrLn $ ("final value was: " :: Text) <> show final
 
 -- * SharedRep testing
-midShared ::
-  (Show a) =>
-  SharedRep IO a ->
-  (Engine -> Either Text (HashMap Text Text, Either Text a) -> IO ()) ->
-  Application -> Application
-midShared sr action = start $ \e ->
-  void $ runOnEvent
-  sr
-  (zoom _2 . initRep e show)
-  (action e)
-  (bridge e)
 
-initRep
-  :: Engine
-  -> ((HashMap Text Text, Either Text a) -> Text)
+-- | Middleware that shows the current shared values
+midShow :: (Show a) => SharedRep IO a -> Application -> Application
+midShow sr = midShared sr initShowRep (logResults show)
+
+initShowRep
+  :: (Show a)
+  => Engine
   -> Rep a
   -> StateT (HashMap Text Text) IO ()
-initRep e rend r =
+initShowRep e r =
   void $ oneRep r
   (\(Rep h fa) m -> do
       appendWithScript e "input" (toText h)
-      replace e "output" (rend (fa m)))
+      replace e "output" (show (fa m)))
 
 results :: (a -> Text) -> Engine -> a -> IO ()
 results r e x = replace e "output" (r x)
@@ -126,22 +119,14 @@ logResults _ e (Left err) = append e "log" (err <> "<br>")
 logResults r e (Right x) = results r e x
 
 -- | evaluate a Fiddle, without attempting to downstream bridging
-midFiddle ::
-  Concerns Text ->
-  Application -> Application
-midFiddle cs = start $ \e ->
-  void $ runOnEvent
-  (fiddle cs)
-  (zoom _2 . initFiddleRep e show)
-  (logFiddle e . second snd)
-  (bridge e)
+midFiddle :: Concerns Text -> Application -> Application
+midFiddle cs = midShared (fiddle cs) initFiddleRep (\e -> logFiddle e . second snd)
 
 initFiddleRep
   :: Engine
-  -> ((HashMap Text Text, Either Text a) -> Text)
   -> Rep a
   -> StateT (HashMap Text Text) IO ()
-initFiddleRep e _ r =
+initFiddleRep e r =
   void $ oneRep r
   (\(Rep h _) _ ->
       appendWithScript e "input" (toText h))
@@ -152,23 +137,20 @@ logFiddle e (Right (Left err)) = append e "log" ("parse error: " <> err)
 logFiddle e (Right (Right (c,u))) = bool (pure ()) (sendConcerns e "output" c) u
 
 -- | evaluate a Fiddle, and any downstream bridging representation
+
 midViaFiddle
   :: Show a
   => SharedRep IO a
   -> Application -> Application
-midViaFiddle sr = start $ \e ->
-  void $ runOnEvent
-  (viaFiddle sr)
-  (zoom _2 . initViaFiddleRep e show)
-  (logViaFiddle e show . second snd)
-  (bridge e)
+midViaFiddle sr =
+  midShared (viaFiddle sr) (initViaFiddleRep show) (\e -> logViaFiddle e show . second snd)
 
 initViaFiddleRep
-  :: Engine
-  -> (a -> Text)
+  :: (a -> Text)
+  -> Engine
   -> Rep (Bool, Concerns Text, a)
   -> StateT (HashMap Text Text) IO ()
-initViaFiddleRep e rend r =
+initViaFiddleRep rend e r =
   void $ oneRep r
   (\(Rep h fa) m -> do
       appendWithScript e "input" (toText h)
@@ -203,7 +185,7 @@ instance ParseRecord (Opts Wrapped)
 main :: IO ()
 main = do
   o :: Opts Unwrapped <- unwrapRecord "examples for web-page"
-  let tr = maybe False id
+  let tr = fromMaybe False
   scotty 3000 $ do
     middleware $ staticPolicy (noDots >-> addBase "other")
     middleware $ staticPolicy (noDots >-> addBase "saves")
@@ -218,21 +200,20 @@ main = do
     middleware $ case midtype o of
       NoMid -> id
       -- WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: Unexpected response code: 200
-      Prod -> midShared
-        (maybeRep (Just "maybe") True repExamples) (logResults show)
-      Dev -> midShared
-        (repSumTypeExample 2 "default text" SumOnly) (logResults show)
-      ChooseFileExample -> midShared
-        (chooseFile (Just "ChooseFile Label") "") (logResults show)
-      DataListExample -> midShared
+      Prod -> midShow 
+        (maybeRep (Just "maybe") True repExamples)
+      Dev -> midShow
+        (repSumTypeExample 2 "default text" SumOnly)
+      ChooseFileExample -> midShow
+        (chooseFile (Just "ChooseFile Label") "")
+      DataListExample -> midShow
         (datalist (Just "label") ["first", "2", "3"] "2" "idlist")
-        (logResults show)
-      SumTypeExample -> midShared
-        (repSumTypeExample 2 "default text" SumOnly) (logResults show)
-      SumType2Example -> midShared
-        (repSumType2Example 2 "default text" SumOnly (SumOutside 2)) (logResults show)
-      Listify -> midShared (listifyExample 5) (logResults show)
-      ListifyMaybe -> midShared (listifyMaybeExample 10) (logResults show)
+      SumTypeExample -> midShow
+        (repSumTypeExample 2 "default text" SumOnly)
+      SumType2Example -> midShow
+        (repSumType2Example 2 "default text" SumOnly (SumOutside 2))
+      Listify -> midShow (listifyExample 5)
+      ListifyMaybe -> midShow (listifyMaybeExample 10)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
         consumeBridgeTest
       Fiddle -> midFiddle fiddleExample
@@ -253,5 +234,3 @@ main = do
             (toHtml (show initBridgeTest :: Text))
             (midtype o == Bridge)))
        ])
-
--- window.open("/", "window.open test title", "menubar=yes,location=yes,resizable=yes,scrollbars=yes,status=yes")

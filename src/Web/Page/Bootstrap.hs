@@ -1,11 +1,7 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Bootstrap
@@ -113,7 +109,7 @@ accordion pre x hs = do
       aCard par (t,b) = do
         idh <- genNamePre pre
         idb <- genNamePre pre
-        pure $ accordionCard (maybe True (/=t) x) [] par idh idb t b
+        pure $ accordionCard (x /= Just t) [] par idh idb t b
 
 -- | create a bootstrapped accordian class
 accordionChecked :: (MonadState Int m, Monad m) => Text -> [(Text, Html (), Html ())] -> m (Html ())
@@ -128,5 +124,5 @@ accordionChecked pre hs = do
         pure $ accordionCardChecked True par idh idb l bodyhtml checkhtml
 
 accordion_ :: Text -> Maybe Text -> [(Text, Html ())] -> Html ()
-accordion_ pre x hs = runIdentity $ flip evalStateT 0 (accordion pre x hs)
+accordion_ pre x hs = runIdentity $ evalStateT (accordion pre x hs) 0
 
