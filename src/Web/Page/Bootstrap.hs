@@ -100,7 +100,7 @@ accordionCardChecked collapse idp idh idb label bodyhtml checkhtml =
     (with div_ ([class__ "card-body"]) bodyhtml)
 
 -- | create a bootstrapped accordian class
-accordion :: (MonadState Int m, Monad m) => Text -> Maybe Text -> [(Text, Html ())] -> m (Html ())
+accordion :: (MonadState Int m) => Text -> Maybe Text -> [(Text, Html ())] -> m (Html ())
 accordion pre x hs = do
   idp' <- genNamePre pre
   with div_ [class__ "accordion", id_ idp'] <$> aCards idp'
@@ -112,7 +112,7 @@ accordion pre x hs = do
         pure $ accordionCard (x /= Just t) [] par idh idb t b
 
 -- | create a bootstrapped accordian class
-accordionChecked :: (MonadState Int m, Monad m) => Text -> [(Text, Html (), Html ())] -> m (Html ())
+accordionChecked :: (MonadState Int m) => Text -> [(Text, Html (), Html ())] -> m (Html ())
 accordionChecked pre hs = do
   idp' <- genNamePre pre
   with div_ [class__ "accordion", id_ idp'] <$> aCards idp'
