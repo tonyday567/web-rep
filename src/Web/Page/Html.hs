@@ -18,7 +18,6 @@ import Data.Text
 import Lucid
 import Protolude hiding ((%))
 import qualified Data.Text.Lazy as Lazy
--- import qualified GHC.Show
 import Codec.Picture.Types (PixelRGB8(..))
 import Data.Attoparsec.Text
 import Numeric
@@ -31,13 +30,13 @@ toText :: Html a -> Text
 toText = Lazy.toStrict . renderText
 
 -- | name supply for html elements
-genName :: (MonadState Int m, Monad m) => m Text
+genName :: (MonadState Int m) => m Text
 genName = do
   modify (+1)
   show <$> get
 
 -- | sometimes a number doesn't work properly in html (or js???), and an alpha prefix seems to help
-genNamePre :: (MonadState Int m, Monad m) => Text -> m Text
+genNamePre :: (MonadState Int m) => Text -> m Text
 genNamePre pre = (pre <>) <$> genName
 
 libCss :: Text -> Html ()
