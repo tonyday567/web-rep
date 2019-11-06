@@ -2,6 +2,7 @@ cabal-version: 1.12
 name:           web-rep
 version:        0.1.1
 synopsis:       representations of a web pag
+category: web
 description:    See readme.md for verbage (if any)
 bug-reports:    https://github.com/tonyday567/web-page/issues
 maintainer:     Tony Day <tonyday567@gmail.com>
@@ -32,7 +33,7 @@ library
       JuicyPixels
     , aeson
     , attoparsec
-    , base
+    , base >= 4.12 && <5
     , bifunctors
     , box
     , clay
@@ -63,7 +64,7 @@ executable page-example
   ghc-options: -funbox-strict-fields -fforce-recomp -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       attoparsec
-    , base
+    , base >= 4.12 && <5
     , box
     , lens
     , lucid
@@ -84,7 +85,7 @@ test-suite test
       test
   ghc-options: -Wall -O2 -threaded
   build-depends:
-      base
+    base >= 4.12 && <5
     , lens
     , lucid
     , protolude
