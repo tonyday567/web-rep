@@ -38,7 +38,6 @@ library
     , box
     , clay
     , foldl
-    , formatting
     , generic-lens
     , interpolatedstring-perl6
     , javascript-bridge
@@ -52,6 +51,7 @@ library
     , scotty
     , streaming
     , text
+    , text-format
     , transformers
     , unordered-containers
     , wai-middleware-static

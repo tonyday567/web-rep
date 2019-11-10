@@ -21,7 +21,8 @@ import qualified Data.Text.Lazy as Lazy
 import Codec.Picture.Types (PixelRGB8(..))
 import Data.Attoparsec.Text
 import Numeric
-import Formatting hiding (string)
+import Data.Text.Format
+import Data.Text.Lazy.Builder (toLazyText)
 
 class__ :: Text -> Attribute
 class__ t = class_ (" " <> t <> " ")
@@ -57,7 +58,11 @@ fromHex =
     (string "#" *> hexadecimal)
 
 toHex :: PixelRGB8 -> Text
-toHex (PixelRGB8 r g b) = sformat ("#" % ((left 2 '0') %. hex) % ((left 2 '0') %. hex) % ((left 2 '0') %. hex)) r g b
+toHex (PixelRGB8 r g b) =
+  "#"
+  <> justifyRight 2 '0' (toStrict $ toLazyText $ hex r)
+  <> justifyRight 2 '0' (toStrict $ toLazyText $ hex g)
+  <> justifyRight 2 '0' (toStrict $ toLazyText $ hex b)
 
 -- `ToHtml a` is used throughout because `Show a` gives "\"text\"" for show "text", and hilarity ensues when rendering to the web page.
 -- hence orphans
