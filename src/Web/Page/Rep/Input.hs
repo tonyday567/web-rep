@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wredundant-constraints #-}
 
 module Web.Page.Rep.Input
   ( repInput
@@ -42,7 +43,7 @@ import Web.Page.Rep
 import Box.Cont ()
 
 -- | create a sharedRep from an Input
-repInput :: (Monad m, ToHtml a, Show a) => Parser a -> (a -> Text) -> Input a -> a -> SharedRep m a
+repInput :: (Monad m, ToHtml a) => Parser a -> (a -> Text) -> Input a -> a -> SharedRep m a
 repInput p pr i a =
   SharedRep $ do
     name <- zoom _1 genName
@@ -56,7 +57,7 @@ repInput p pr i a =
         either (Left . (\x -> name <> ": " <> x) . pack) Right . parseOnly p <$> lookup name s))
 
 -- | does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
-repMessage :: (Monad m, ToHtml a, Show a) => Parser a -> (a -> Text) -> Input a -> a -> a -> SharedRep m a
+repMessage :: (Monad m, ToHtml a) => Parser a -> (a -> Text) -> Input a -> a -> a -> SharedRep m a
 repMessage p _ i def a =
   SharedRep $ do
     name <- zoom _1 genName
@@ -90,7 +91,7 @@ colorPicker :: (Monad m) => Maybe Text -> PixelRGB8 -> SharedRep m PixelRGB8
 colorPicker label v = repInput fromHex toHex
   (Input v label mempty ColorPicker) v
 
-dropdown :: (Monad m, ToHtml a, Show a) =>
+dropdown :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Maybe Text -> [Text] -> a -> SharedRep m a
 dropdown p pr label opts v = repInput p pr 
   (Input v label mempty (Dropdown opts)) v
@@ -99,7 +100,7 @@ datalist :: (Monad m) => Maybe Text -> [Text] -> Text -> Text -> SharedRep m Tex
 datalist label opts v id'' = repInput takeText show
   (Input v label mempty (Datalist opts id'')) v
 
-dropdownSum :: (Monad m, ToHtml a, Show a) =>
+dropdownSum :: (Monad m, ToHtml a) =>
   Parser a -> (a -> Text) -> Maybe Text -> [Text] -> a -> SharedRep m a
 dropdownSum p pr label opts v = repInput p pr
   (Input v label mempty (DropdownSum opts)) v
