@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wredundant-constraints #-}
 
 module Web.Page.Bridge
   ( bridgePage
@@ -137,10 +138,9 @@ clean =
   Text.intercalate "\\'" . Text.split (=='\'') .
   Text.intercalate "\\n" . Text.lines
 
-
 -- | create Wai Middleware for a SharedRep providing an initialiser and action on events
 midShared ::
-  (Show a) =>
+  ( ) =>
   SharedRep IO a ->
   (Engine -> Rep a -> StateT (HashMap Text Text) IO ()) ->
   (Engine -> Either Text (HashMap Text Text, Either Text a) -> IO ()) ->

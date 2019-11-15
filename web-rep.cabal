@@ -1,6 +1,6 @@
 cabal-version: 1.12
 name:           web-rep
-version:        0.1.2
+version:        0.1.3
 synopsis:       representations of a web pag
 category: web
 description:    See readme.md for verbage (if any)
