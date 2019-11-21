@@ -20,19 +20,18 @@ module Web.Page.Examples
   , repSumTypeExample
   , SumType2Example(..)
   , repSumType2Example
-  , listifyExample
-  , listifyMaybeExample
+  , listExample
+  , listRepExample
   , fiddleExample
   ) where
 
-import Control.Category (id)
 import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
-import Data.Biapplicative
 import Lucid
-import Protolude hiding ((<<*>>))
+import Prelude
 import Web.Page
 import qualified Clay
+import GHC.Generics
 
 -- | simple page examples
 page1 :: Page
@@ -58,7 +57,7 @@ cfg2 =
   #structure .~ Headless $
   #localdirs .~ ["test/static"] $
   #filenames .~ (("other/cfg2" <>) <$> suffixes) $
-  defaultPageConfig
+  (defaultPageConfig "")
 
 cssLibs :: [Text]
 cssLibs =
@@ -131,7 +130,7 @@ repExamples = do
   ds' <- slider (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
-  dr <- dropdown decimal show (Just "dropdown") (show <$> [1..5::Int]) 3
+  dr <- dropdown decimal (pack . show) (Just "dropdown") ((pack . show) <$> [1..5::Int]) 3
   drt <- toShape <$> dropdown takeText id (Just "shape") (["Circle", "Square"]) (fromShape SquareShape)
   col <- colorPicker (Just "color") (PixelRGB8 56 128 200)
   pure (RepExamples t ta n ds' c tog dr drt col)
@@ -139,14 +138,14 @@ repExamples = do
 -- encodeFile "saves/rep2.json" $ RepExamples "text1" "text2" 1 1.0 True True 2 (PixelRGB8 0 100 0)
 -- decodeFileStrict "saves/rep2.json" :: IO (Maybe RepExamples)
 
-listifyExample :: (Monad m) => Int -> SharedRep m [Int]
-listifyExample n =
-  accordionListify (Just "accordianListify") "al" Nothing
-  (\l a -> sliderI (Just l) (0::Int) n 1 a) ((\x -> "[" <> show x <> "]") <$> [0..n] :: [Text]) [0..n]
+listExample :: (Monad m) => Int -> SharedRep m [Int]
+listExample n =
+  accordionList (Just "accordianListify") "al" Nothing
+  (\l a -> sliderI (Just l) (0::Int) n 1 a) ((\x -> "[" <> (pack . show) x <> "]") <$> [0..n] :: [Text]) [0..n]
 
-listifyMaybeExample :: (Monad m) => Int -> SharedRep m [Int]
-listifyMaybeExample n =
-  listifyMaybe' (Just "listifyMaybe") "alm" (checkbox Nothing)
+listRepExample :: (Monad m) => Int -> SharedRep m [Int]
+listRepExample n =
+  listRep (Just "listifyMaybe") "alm" (checkbox Nothing)
     (sliderI Nothing (0::Int) n 1) n 3 [0..4]
 
 fiddleExample :: Concerns Text

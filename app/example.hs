@@ -3,37 +3,38 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import Control.Category (id)
+import Prelude hiding (log, init)
 import Control.Lens hiding (Wrapped, Unwrapped)
-import Data.Attoparsec.Text
-import Lucid hiding (b_)
-import Network.Wai
-import Network.Wai.Middleware.RequestLogger
+import Data.Attoparsec.Text (parseOnly, decimal)
+import Lucid
+import Network.Wai (rawPathInfo)
+import Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, (>->))
 import Options.Generic
-import Protolude hiding (replace, Rep, log)
 import Web.Page
 import Web.Page.Examples
-import Web.Scotty
+import Web.Scotty (scotty, middleware)
 import qualified Box
 import qualified Data.Text as Text
+import Data.Text (pack, Text)
+import Control.Monad
+import Data.Maybe
 
 testPage :: Text -> Text -> [(Text, Html ())] -> Page
 testPage title mid sections =
   bootstrapPage <>
   bridgePage &
   #htmlHeader .~ title_ "iroTestPage" &
-  #htmlBody .~ b_ "container" (mconcat
-    [ b_ "row" (h1_ (toHtml title))
-    , b_ "row" (h2_ ("middleware: " <> toHtml mid))
-    , b_ "row" $ mconcat $ (\(t,h) -> b_ "col" (h2_ (toHtml t) <> with div_ [id_ t] h)) <$> sections
+  #htmlBody .~ divClass_ "container" (mconcat
+    [ divClass_ "row" (h1_ (toHtml title))
+    , divClass_ "row" (h2_ ("middleware: " <> toHtml mid))
+    , divClass_ "row" $ mconcat $ (\(t,h) -> divClass_ "col" (h2_ (toHtml t) <> with div_ [id_ t] h)) <$> sections
     ])
 
 -- | bridge testing without the SharedRep method
@@ -72,14 +73,14 @@ stepBridgeTest e s =
       (\x -> Right (x,t))
       (parseOnly decimal v)
     step (Element "textid" v) (n, _) = Right (n,v)
-    step e' _ = Left $ "unknown id: " <> show e'
+    step e' _ = Left $ "unknown id: " <> pack (show e')
 
 sendBridgeTest :: (Show a) => Engine -> Either Text a -> IO ()
 sendBridgeTest e (Left err) = append e "log" err
 sendBridgeTest e (Right a) =
   replace e "output"
   (toText $ cardify (mempty, []) (Just "output was:")
-    (toHtml (show a :: Text), []))
+    (toHtml (show a), []))
 
 consumeBridgeTest :: Engine -> IO (Int, Text)
 consumeBridgeTest e =
@@ -90,15 +91,15 @@ consumeBridgeTest e =
 
 midBridgeTest :: (Show a) => Html () -> (Engine -> IO a) -> Application -> Application
 midBridgeTest init eeio = start $ \ e -> do
-  appendWithScript e "input" (toText init)
-  final <- eeio e `finally` putStrLn ("midBridgeTest finalled" :: Text)
-  putStrLn $ ("final value was: " :: Text) <> show final
+  append e "input" (toText init)
+  final <- eeio e `finally` putStrLn "midBridgeTest finalled"
+  putStrLn $ "final value was: " <> show final
 
 -- * SharedRep testing
 
 -- | Middleware that shows the current shared values
 midShow :: (Show a) => SharedRep IO a -> Application -> Application
-midShow sr = midShared sr initShowRep (logResults show)
+midShow sr = midShared sr initShowRep (logResults (pack . show))
 
 initShowRep
   :: (Show a)
@@ -108,8 +109,8 @@ initShowRep
 initShowRep e r =
   void $ oneRep r
   (\(Rep h fa) m -> do
-      appendWithScript e "input" (toText h)
-      replace e "output" (show (fa m)))
+      append e "input" (toText h)
+      replace e "output" (pack . show $ fa m))
 
 results :: (a -> Text) -> Engine -> a -> IO ()
 results r e x = replace e "output" (r x)
@@ -129,7 +130,7 @@ initFiddleRep
 initFiddleRep e r =
   void $ oneRep r
   (\(Rep h _) _ ->
-      appendWithScript e "input" (toText h))
+      append e "input" (toText h))
 
 logFiddle :: Engine -> Either Text (Either Text (Concerns Text, Bool)) -> IO ()
 logFiddle e (Left err) = append e "log" ("map error: " <> err)
@@ -137,13 +138,12 @@ logFiddle e (Right (Left err)) = append e "log" ("parse error: " <> err)
 logFiddle e (Right (Right (c,u))) = bool (pure ()) (sendConcerns e "output" c) u
 
 -- | evaluate a Fiddle, and any downstream bridging representation
-
 midViaFiddle
   :: Show a
   => SharedRep IO a
   -> Application -> Application
 midViaFiddle sr =
-  midShared (viaFiddle sr) (initViaFiddleRep show) (\e -> logViaFiddle e show . second snd)
+  midShared (viaFiddle sr) (initViaFiddleRep (pack . show)) (\e -> logViaFiddle e (pack . show) . second snd)
 
 initViaFiddleRep
   :: (a -> Text)
@@ -153,7 +153,7 @@ initViaFiddleRep
 initViaFiddleRep rend e r =
   void $ oneRep r
   (\(Rep h fa) m -> do
-      appendWithScript e "input" (toText h)
+      append e "input" (toText h)
       case (snd $ fa m) of
         Left err -> append e "log" ("map error: " <> err)
         Right (_,c,a) -> do
@@ -168,7 +168,7 @@ logViaFiddle e r (Right (Right (True,c,a))) = do
   replace e "output" (r a)
 logViaFiddle e r (Right (Right (False,_,a))) = replace e "output" (r a)
 
-data MidType = Dev | Prod | ChooseFileExample | DataListExample | SumTypeExample | SumType2Example | Bridge | Listify | ListifyMaybe | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
+data MidType = Dev | Prod | ChooseFileExample | DataListExample | SumTypeExample | SumType2Example | Bridge | ListExample | ListRepExample | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
 
 instance ParseField MidType
 instance ParseRecord MidType
@@ -193,7 +193,7 @@ main = do
       middleware logStdoutDev
     when (tr $ logPath o) $
       middleware $ \app req res ->
-        putStrLn ("raw path:" :: Text) >>
+        putStrLn "raw path:" >>
         print (rawPathInfo req) >> app req res
   -- Only one middleware servicing the web socket can be run at a time.  Simply switching on based on paths doesn't work because socket comms comes through "/"
   -- so that the first bridge middleware consumes all the elements
@@ -212,25 +212,25 @@ main = do
         (repSumTypeExample 2 "default text" SumOnly)
       SumType2Example -> midShow
         (repSumType2Example 2 "default text" SumOnly (SumOutside 2))
-      Listify -> midShow (listifyExample 5)
-      ListifyMaybe -> midShow (listifyMaybeExample 10)
+      ListExample -> midShow (listExample 5)
+      ListRepExample -> midShow (listRepExample 10)
       Bridge -> midBridgeTest (toHtml rangeTest <> toHtml textTest)
         consumeBridgeTest
       Fiddle -> midFiddle fiddleExample
       ViaFiddle -> midViaFiddle
         (slider Nothing 0 10 0.01 4)
-    servePageWith "/simple" defaultPageConfig page1
-    servePageWith "/iro" defaultPageConfig
-      (testPage "iro" (show $ midtype o)
+    servePageWith "/simple" (defaultPageConfig "page1") page1
+    servePageWith "/iro" (defaultPageConfig "iro")
+      (testPage "iro" (pack . show $ midtype o)
         [ ("input", mempty)
         , ("representation", mempty)
         , ("output", mempty)
         ])
-    servePageWith "/" defaultPageConfig
-      (testPage "prod" (show $ midtype o)
+    servePageWith "/" (defaultPageConfig "prod")
+      (testPage "prod" (pack . show $ midtype o)
        [ ("input", mempty)
        , ("output",
           (bool mempty
-            (toHtml (show initBridgeTest :: Text))
+            (toHtml (show initBridgeTest))
             (midtype o == Bridge)))
        ])

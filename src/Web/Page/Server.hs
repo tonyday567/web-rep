@@ -10,12 +10,15 @@ module Web.Page.Server
 import Control.Lens hiding (only)
 import Lucid (renderText)
 import Network.Wai.Middleware.Static (addBase, noDots, staticPolicy, only)
-import Protolude hiding (get)
+import Prelude
 import Web.Page.Render
 import Web.Page.Types
 import Web.Scotty
 import qualified Control.Monad.State as State
+import Control.Monad
+import Data.Text (unpack)
 
+-- | serve a Page via a ScottyM
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
 servePageWith rp pc p =
   sequence_ $ servedir <> [getpage]
@@ -27,11 +30,11 @@ servePageWith rp pc p =
       do
         middleware $ staticPolicy $ only [(cssfp,cssfp), (jsfp, jsfp)]
         get rp (do
-                   State.lift $ writeFile' cssfp css
-                   State.lift $ writeFile' jsfp js
+                   State.lift $ writeFile' cssfp (unpack css)
+                   State.lift $ writeFile' jsfp (unpack js)
                    html $ renderText h)
-  cssfp = pc ^. #filenames . #css
-  jsfp = pc ^. #filenames . #js
+  cssfp = pc ^. #filenames . #cssConcern
+  jsfp = pc ^. #filenames . #jsConcern
   writeFile' fp s = unless (s == mempty) (writeFile fp s)
   servedir = (\x -> middleware $ staticPolicy (noDots <> addBase x)) <$> pc ^. #localdirs
 

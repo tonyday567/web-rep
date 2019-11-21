@@ -1,42 +1,41 @@
+
+-- | haskell for web page representations
+
 module Web.Page
-  ( renderJs
-  , renderCss
-  , renderHtml
-  , module X
+  ( module X
   , Value(..)
   , finally
   , PixelRGB8(..)
   , HashMap.HashMap(..)
   , fromList
+  , void
+  , sequenceA_
+  , Text
+  , pack
+  , unpack
+  , bool
   ) where
 
-import Protolude hiding (Selector)
-import Web.Page.Css as X
-import Web.Page.Js as X
+import Web.Page.SharedReps as X
 import Web.Page.Render as X
 import Web.Page.Server as X
 import Web.Page.Types as X
 import Web.Page.Bridge as X
-import Web.Page.Rep as X
-import Web.Page.Rep.Input as X
 import Web.Page.Html as X
 import Web.Page.Html.Input as X
 import Web.Page.Bootstrap as X
 import Text.InterpolatedString.Perl6 as X
+import Control.Monad.Trans.State as X
+import Data.Bifunctor as X
+import Control.Applicative as X
+import Data.Biapplicative as X
 import Control.Exception (finally)
-
+import Data.Text.Lazy (toStrict)
 import GHC.Exts (fromList)
 import qualified Data.HashMap.Strict as HashMap
-import qualified Web.Page.Css as Css (render)
-import qualified Web.Page.Js as Js
 import Data.Aeson (Value(..))
 import Codec.Picture.Types (PixelRGB8(..))
-
-renderJs :: JS -> Text
-renderJs = toStrict . Js.renderToText . Js.unJS
-
-renderCss :: Css -> Text
-renderCss = toStrict . Css.render
-
-renderHtml :: Html a -> Text
-renderHtml = toText
+import Control.Monad
+import Data.Foldable (sequenceA_)
+import Data.Text (Text, pack, unpack)
+import Data.Bool

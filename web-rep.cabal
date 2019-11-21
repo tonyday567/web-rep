@@ -17,14 +17,11 @@ library
       Web.Page
       Web.Page.Bootstrap
       Web.Page.Bridge
-      Web.Page.Css
       Web.Page.Examples
       Web.Page.Html
       Web.Page.Html.Input
-      Web.Page.Js
       Web.Page.Render
-      Web.Page.Rep
-      Web.Page.Rep.Input
+      Web.Page.SharedReps
       Web.Page.Server
       Web.Page.Types
   hs-source-dirs:

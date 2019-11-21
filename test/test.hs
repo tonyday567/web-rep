@@ -5,7 +5,7 @@ module Main where
 
 import Control.Lens
 import Lucid
-import Protolude
+import Prelude
 import Test.Tasty
 import Test.Tasty.Hspec
 import Web.Page
@@ -19,11 +19,11 @@ generatePage dir stem pc =
 generatePages ::
      Traversable t => FilePath -> t (FilePath, PageConfig, Page) -> IO ()
 generatePages dir xs =
-  void $ sequenceA $ (\(fp, pc, p) -> generatePage dir fp pc p) <$> xs
+  sequenceA_ $ (\(fp, pc, p) -> generatePage dir fp pc p) <$> xs
 
 genTest :: FilePath -> IO ()
 genTest dir =
-  void $ generatePages dir [("default", defaultPageConfig, page1), ("sep", cfg2, page2)]
+  void $ generatePages dir [("default", (defaultPageConfig "default"), page1), ("sep", cfg2, page2)]
 
 testVsFile :: FilePath -> FilePath -> PageConfig -> Page -> IO Bool
 testVsFile dir stem pc p = do
@@ -42,7 +42,7 @@ textVsFile dir stem pc p = do
   let t = renderPageAsText pc' p
   case pc ^. #concerns of
     Inline -> do
-      t' <- Text.readFile (dir <> names ^. #html)
+      t' <- Text.readFile (dir <> names ^. #htmlConcern)
       return (t, Concerns mempty mempty t')
     Separated -> do
       t' <- sequenceA $ Text.readFile <$> (dir <>) <$> names
@@ -58,7 +58,7 @@ testsRender =
         "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>window.onload=function(){}</script></body></html>"
       let dir = "test/canned/"
       it "renderPageToFile, renderPage (compared with default canned file)" $
-        testVsFile dir "default" defaultPageConfig page1 `shouldReturn` True
+        testVsFile dir "default" (defaultPageConfig "default") page1 `shouldReturn` True
       it "the various PageConfig's" $
         testVsFile dir "sep" cfg2 page2 `shouldReturn` True
 
@@ -74,7 +74,7 @@ testsBootstrap =
           runIdentity .
           flip evalStateT 0 .
           accordion "acctest" Nothing $
-          (\x -> (Protolude.show x, "filler")) <$> [1..2::Int]) `shouldBe`
+          (\x -> (pack (show x), "filler")) <$> [1..2::Int]) `shouldBe`
         "<div id=\"acctest1\" class=\" accordion \"><div class=\" card \"><div id=\"acctest2\" class=\" card-header \"><h2 class=\" mb-0 \"><button data-toggle=\"collapse\" data-target=\"#acctest3\" aria-controls=\"acctest3\" type=\"button\" class=\" btn btn-link collapsed \" aria-expanded=\"false\">1</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest3\" aria-labelledby=\"acctest2\" class=\" collapse \"><div class=\" card-body \">filler</div></div></div><div class=\" card \"><div id=\"acctest4\" class=\" card-header \"><h2 class=\" mb-0 \"><button data-toggle=\"collapse\" data-target=\"#acctest5\" aria-controls=\"acctest5\" type=\"button\" class=\" btn btn-link collapsed \" aria-expanded=\"false\">2</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest5\" aria-labelledby=\"acctest4\" class=\" collapse \"><div class=\" card-body \">filler</div></div></div></div>"
 
 testsBridge :: IO (SpecWith ())
@@ -83,7 +83,7 @@ testsBridge =
     describe "Web.Page.Bridge" $
       it "bridgePage versus canned" $
         toText (renderPage bridgePage) `shouldBe`
-                "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>\nwindow.addEventListener('keydown',function(e) {\n  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {\n    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {\n      e.preventDefault();\n      return false;\n    }\n  }\n}, true);\n\n\nfunction insertScript ($script) {\n  var s = document.createElement('script')\n  s.type = 'text/javascript'\n  if ($script.src) {\n    s.onload = callback\n    s.onerror = callback\n    s.src = $script.src\n  } else {\n    s.textContent = $script.innerText\n  }\n\n  // re-insert the script tag so it executes.\n  document.head.appendChild(s)\n\n  // clean-up\n  $script.parentNode.removeChild($script)\n}\n\nfunction runScripts ($container) {\n  // get scripts tags from a node\n  var $scripts = $container.querySelectorAll('script')\n  $scripts.forEach(function ($script) {\n    insertScript($script)\n  })\n}\n window.onload=function(){\nwindow.jsb = {ws: new WebSocket('ws://' + location.host + '/')};\njsb.ws.onmessage = (evt) => eval(evt.data);\n};</script></body></html>"
+                "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>\nwindow.addEventListener('keydown',function(e) {\n  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {\n    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {\n      e.preventDefault();\n      return false;\n    }\n  }\n}, true);\n\nfunction insertScript ($script) {\n  var s = document.createElement('script')\n  s.type = 'text/javascript'\n  if ($script.src) {\n    s.onload = callback\n    s.onerror = callback\n    s.src = $script.src\n  } else {\n    s.textContent = $script.innerText\n  }\n\n  // re-insert the script tag so it executes.\n  document.head.appendChild(s)\n\n  // clean-up\n  $script.parentNode.removeChild($script)\n}\n\nfunction runScripts ($container) {\n  // get scripts tags from a node\n  var $scripts = $container.querySelectorAll('script')\n  $scripts.forEach(function ($script) {\n    insertScript($script)\n  })\n}\n window.onload=function(){\nwindow.jsb = {ws: new WebSocket('ws://' + location.host + '/')};\njsb.ws.onmessage = (evt) => eval(evt.data);\n};</script></body></html>"
 
 testbs :: [Value]
 testbs =
@@ -130,8 +130,8 @@ testsRep =
       it "repExamples versus canned" $
         runIdentity (runOnce repExamples mempty) `shouldBe`
         (fromList [("7","3"),("1","sometext"),("4","0.5"),("2","no initial value & multi-line text\\nrenders is not ok?/"),("5","true"),("8","Square"),("3","3"),("6","false"),("9","#3880c8")],Right (RepExamples {repTextbox = "sometext", repTextarea = "no initial value & multi-line text\\nrenders is not ok?/", repSliderI = 3, repSlider = 0.5, repCheckbox = True, repToggle = False, repDropdown = 3, repShape = SquareShape, repColor = PixelRGB8 56 128 200}))
-      it "listifyExamples versus canned" $
-        runIdentity (runOnce (listifyExample 5) mempty) `shouldBe`
+      it "listExample versus canned" $
+        runIdentity (runOnce (listExample 5) mempty) `shouldBe`
         (fromList [("1","0"),("4","3"),("2","1"),("5","4"),("3","2"),("6","5")],Right [0,1,2,3,4,5])
       it "fiddleExample versus canned" $
         runIdentity (runOnce (fiddle fiddleExample) mempty) `shouldBe`

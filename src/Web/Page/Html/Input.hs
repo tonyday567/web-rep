@@ -14,9 +14,12 @@ module Web.Page.Html.Input
 import Data.Text
 import Lucid
 import Lucid.Base
-import Protolude hiding (for_)
+import Prelude
 import Text.InterpolatedString.Perl6
 import Web.Page.Html
+import GHC.Generics
+import Data.Bool
+import Data.Maybe
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a =
@@ -50,7 +53,7 @@ instance (ToHtml a) => ToHtml (Input a) where
       ([ type_ "range"
        , class__ " form-control-range custom-range"
        , id_ i
-       , value_ (show $ toHtml v)
+       , value_ (pack $ show $ toHtml v)
        ] <> satts) <>
       scriptJsbEvent i "change")
   toHtml (Input v l i TextBox) =
@@ -60,14 +63,14 @@ instance (ToHtml a) => ToHtml (Input a) where
       ([ type_ "text"
        , class__ "form-control"
        , id_ i
-       , value_ (show $ toHtml v)
+       , value_ (pack $ show $ toHtml v)
        ]) <>
       scriptJsbEvent i "input")
   toHtml (Input v l i (TextArea rows)) =
     with div_ [class__ "form-group"]
     (maybe mempty (with label_ [for_ i] . toHtml) l <>
      (with textarea_
-     [ rows_ (show rows)
+     [ rows_ (pack $ show rows)
      , class__ "form-control"
      , id_ i
      ] (toHtmlRaw v)
@@ -80,7 +83,7 @@ instance (ToHtml a) => ToHtml (Input a) where
       ([ type_ "color"
        , class__ "form-control"
        , id_ i
-       , value_ (show $ toHtml v)
+       , value_ (pack $ show $ toHtml v)
        ]) <>
      scriptJsbEvent i "input")
   toHtml (Input _ l i ChooseFile) =
@@ -223,6 +226,7 @@ $('#{name}').on('change', (function()\{
   \}));
 |]
 
+-- | toggle show/hide
 scriptToggleShow :: (Monad m) => Text -> Text -> HtmlT m ()
 scriptToggleShow checkName toggleClass = script_ [qq|
 $('#{checkName}').on('change', (function()\{
