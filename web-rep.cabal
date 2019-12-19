@@ -11,6 +11,7 @@ license-file:   LICENSE.md
 build-type:     Simple
 extra-source-files:
     stack.yaml
+    readme.md
 
 library
   exposed-modules:
