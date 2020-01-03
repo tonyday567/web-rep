@@ -10,6 +10,8 @@
 module Web.Page.Examples
   ( page1
   , page2
+  , pagemj
+  , pagemjsvg
   , cfg2
   , RepExamples(..)
   , repExamples
@@ -28,6 +30,7 @@ module Web.Page.Examples
 import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
 import Lucid
+import qualified Lucid.Svg as Svg
 import Prelude
 import Web.Page
 import qualified Clay
@@ -49,6 +52,26 @@ page2 =
   #libsCss .~ (libCss <$> cssLibsLocal) $
   #libsJs .~ (libJs <$> jsLibsLocal) $
   page1
+
+htmlMathjaxExample :: HtmlT Identity ()
+htmlMathjaxExample =
+  p_ "double dollar:" <>
+  p_ "$$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$$" <>
+  p_ "single dollar:" <>
+  p_ "$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$"
+  
+
+-- | simple mathjax formulae
+pagemj :: Page
+pagemj =
+  #htmlBody .~ htmlMathjaxExample $
+  mathjaxPage
+
+-- | simple mathjax formulae inside an svg text element
+pagemjsvg :: Page
+pagemjsvg =
+  (#htmlBody .~ (with Svg.svg11_ [Svg.height_ "400", Svg.width_ "400", Svg.viewBox_ "-20 -20 300 300"]) (with Svg.g_ [class_ "mathjaxsvg"] $ with Svg.text_ [size_ "10"] "inside text element (inside svg):\\(\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}\\)") <> p_ "outside svg:" <> p_ "\\(\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}\\)")
+  (mathjaxSvgPage "mathjaxsvg")
 
 cfg2 :: PageConfig
 cfg2 =

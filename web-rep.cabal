@@ -21,6 +21,7 @@ library
       Web.Page.Examples
       Web.Page.Html
       Web.Page.Html.Input
+      Web.Page.Mathjax
       Web.Page.Render
       Web.Page.SharedReps
       Web.Page.Server

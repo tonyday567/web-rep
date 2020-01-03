@@ -220,6 +220,8 @@ main = do
       ViaFiddle -> midViaFiddle
         (slider Nothing 0 10 0.01 4)
     servePageWith "/simple" (defaultPageConfig "page1") page1
+    servePageWith "/mathjax" (defaultPageConfig "mathjax") pagemj
+    servePageWith "/mathjaxsvg" (defaultPageConfig "mathjax") pagemjsvg
     servePageWith "/iro" (defaultPageConfig "iro")
       (testPage "iro" (pack . show $ midtype o)
         [ ("input", mempty)
