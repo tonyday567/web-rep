@@ -4,27 +4,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
--- | some <https://getbootstrap.com/ bootstrap> assets
+-- | Some <https://getbootstrap.com/ bootstrap> assets and functionality.
 module Web.Page.Bootstrap
   ( bootstrapPage,
     cardify,
     divClass_,
     accordion,
     accordionChecked,
+    accordionCard,
     accordionCardChecked,
     accordion_,
   )
 where
 
-import Lucid
-import Lucid.Base
-import Prelude
-import Web.Page.Html
-import Web.Page.Types
-import Data.Text (Text)
 import Control.Monad.State
 import Data.Bool
 import Data.Functor.Identity
+import Data.Text (Text)
+import Lucid
+import Lucid.Base
+import Web.Page.Html
+import Web.Page.Types
+import Prelude
 
 bootstrapCss :: [Html ()]
 bootstrapCss =
@@ -95,6 +96,7 @@ cardify (h, hatts) t (b, batts) =
 divClass_ :: Text -> Html () -> Html ()
 divClass_ t = with div_ [class__ t]
 
+-- | A Html object based on the bootstrap accordion card concept.
 accordionCard :: Bool -> [Attribute] -> Text -> Text -> Text -> Text -> Html () -> Html ()
 accordionCard collapse atts idp idh idb t0 b =
   with div_ ([class__ "card"] <> atts) $
@@ -111,6 +113,7 @@ accordionCard collapse atts idp idh idb t0 b =
         [id_ idb, class__ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
         (with div_ [class__ "card-body"] b)
 
+-- | A bootstrap accordion card attached to a checkbox.
 accordionCardChecked :: Bool -> Text -> Text -> Text -> Text -> Html () -> Html () -> Html ()
 accordionCardChecked collapse idp idh idb label bodyhtml checkhtml =
   with div_ ([class__ "card"]) $

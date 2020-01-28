@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wall #-}
 
+-- | Serve pages via 'ScottyM'
 module Web.Page.Server
   ( servePageWith
   ) where

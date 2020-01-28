@@ -8,79 +8,80 @@
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Examples
-  ( page1
-  , page2
-  , pagemj
-  , pagemjsvg
-  , cfg2
-  , RepExamples(..)
-  , repExamples
-  , Shape(..)
-  , fromShape
-  , toShape
-  , SumTypeExample(..)
-  , repSumTypeExample
-  , SumType2Example(..)
-  , repSumType2Example
-  , listExample
-  , listRepExample
-  , fiddleExample
-  ) where
+  ( page1,
+    page2,
+    pagemj,
+    pagemjsvg,
+    cfg2,
+    RepExamples (..),
+    repExamples,
+    Shape (..),
+    fromShape,
+    toShape,
+    SumTypeExample (..),
+    repSumTypeExample,
+    SumType2Example (..),
+    repSumType2Example,
+    listExample,
+    listRepExample,
+    fiddleExample,
+  )
+where
 
+import qualified Clay
 import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
+import GHC.Generics
 import Lucid
 import qualified Lucid.Svg as Svg
-import Prelude
 import Web.Page
-import qualified Clay
-import GHC.Generics
+import Prelude
 
--- | simple page examples
+-- | simple page example
 page1 :: Page
 page1 =
-  #htmlBody .~ button1 $
-  #cssBody .~ PageCss css1 $
-  #jsGlobal .~ mempty $
-  #jsOnLoad .~ click $
-  #libsCss .~ (libCss <$> cssLibs) $
-  #libsJs .~ (libJs <$> jsLibs) $
-  mempty
+  #htmlBody .~ button1
+    $ #cssBody .~ PageCss css1
+    $ #jsGlobal .~ mempty
+    $ #jsOnLoad .~ click
+    $ #libsCss .~ (libCss <$> cssLibs)
+    $ #libsJs .~ (libJs <$> jsLibs)
+    $ mempty
 
+-- | page with localised libraries
 page2 :: Page
 page2 =
-  #libsCss .~ (libCss <$> cssLibsLocal) $
-  #libsJs .~ (libJs <$> jsLibsLocal) $
-  page1
+  #libsCss .~ (libCss <$> cssLibsLocal)
+    $ #libsJs .~ (libJs <$> jsLibsLocal)
+    $ page1
 
 htmlMathjaxExample :: HtmlT Identity ()
 htmlMathjaxExample =
-  p_ "double dollar:" <>
-  p_ "$$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$$" <>
-  p_ "single dollar:" <>
-  p_ "$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$"
-  
+  p_ "double dollar:"
+    <> p_ "$$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$$"
+    <> p_ "single dollar:"
+    <> p_ "$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$"
 
 -- | simple mathjax formulae
 pagemj :: Page
 pagemj =
   #htmlBody .~ htmlMathjaxExample $
-  mathjaxPage
+    mathjaxPage
 
 -- | simple mathjax formulae inside an svg text element
 pagemjsvg :: Page
 pagemjsvg =
   (#htmlBody .~ (with Svg.svg11_ [Svg.height_ "400", Svg.width_ "400", Svg.viewBox_ "-20 -20 300 300"]) (with Svg.g_ [class_ "mathjaxsvg"] $ with Svg.text_ [size_ "10"] "inside text element (inside svg):\\(\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}\\)") <> p_ "outside svg:" <> p_ "\\(\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}\\)")
-  (mathjaxSvgPage "mathjaxsvg")
+    (mathjaxSvgPage "mathjaxsvg")
 
 cfg2 :: PageConfig
 cfg2 =
-  #concerns .~ Separated $
-  #pageRender .~ Pretty $
-  #structure .~ Headless $
-  #localdirs .~ ["test/static"] $
-  #filenames .~ (("other/cfg2" <>) <$> suffixes) $
-  (defaultPageConfig "")
+  #concerns .~ Separated
+    $ #pageRender .~ Pretty
+    $ #structure .~ Headless
+    $ #localdirs .~ ["test/static"]
+    $ #filenames .~ (("other/cfg2" <>) <$> suffixes)
+    $ (defaultPageConfig "")
 
 cssLibs :: [Text]
 cssLibs =
@@ -106,7 +107,9 @@ css1 = do
 
 -- js
 click :: PageJs
-click = PageJsText [q|
+click =
+  PageJsText
+    [q|
 $('#btnGo').click( function() {
   $('#btnGo').toggleClass('on');
   alert('bada bing!');
@@ -120,31 +123,37 @@ button1 =
     [id_ "btnGo", Lucid.type_ "button"]
     ("Go " <> with i_ [class__ "fa fa-play"] mempty)
 
-data RepExamples =
-  RepExamples
-  { repTextbox :: Text
-  , repTextarea :: Text
-  , repSliderI :: Int
-  , repSlider :: Double
-  , repCheckbox :: Bool
-  , repToggle :: Bool
-  , repDropdown :: Int
-  , repShape :: Shape
-  , repColor :: PixelRGB8
-  } deriving (Show, Eq, Generic)
+-- | One of each sharedrep input instances.
+data RepExamples
+  = RepExamples
+      { repTextbox :: Text,
+        repTextarea :: Text,
+        repSliderI :: Int,
+        repSlider :: Double,
+        repCheckbox :: Bool,
+        repToggle :: Bool,
+        repDropdown :: Int,
+        repShape :: Shape,
+        repColor :: PixelRGB8
+      }
+  deriving (Show, Eq, Generic)
 
+-- | For a typed dropdown example.
 data Shape = SquareShape | CircleShape deriving (Eq, Show, Generic)
 
+-- | shape parser
 toShape :: Text -> Shape
 toShape t = case t of
   "Circle" -> CircleShape
   "Square" -> SquareShape
   _ -> CircleShape
 
+-- | shape printer
 fromShape :: Shape -> Text
 fromShape CircleShape = "Circle"
 fromShape SquareShape = "Square"
 
+-- | one of each input SharedReps
 repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
   t <- textbox (Just "textbox") "sometext"
@@ -153,7 +162,7 @@ repExamples = do
   ds' <- slider (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
-  dr <- dropdown decimal (pack . show) (Just "dropdown") ((pack . show) <$> [1..5::Int]) 3
+  dr <- dropdown decimal (pack . show) (Just "dropdown") ((pack . show) <$> [1 .. 5 :: Int]) 3
   drt <- toShape <$> dropdown takeText id (Just "shape") (["Circle", "Square"]) (fromShape SquareShape)
   col <- colorPicker (Just "color") (PixelRGB8 56 128 200)
   pure (RepExamples t ta n ds' c tog dr drt col)
@@ -163,17 +172,31 @@ repExamples = do
 
 listExample :: (Monad m) => Int -> SharedRep m [Int]
 listExample n =
-  accordionList (Just "accordianListify") "al" Nothing
-  (\l a -> sliderI (Just l) (0::Int) n 1 a) ((\x -> "[" <> (pack . show) x <> "]") <$> [0..n] :: [Text]) [0..n]
+  accordionList
+    (Just "accordianListify")
+    "al"
+    Nothing
+    (\l a -> sliderI (Just l) (0 :: Int) n 1 a)
+    ((\x -> "[" <> (pack . show) x <> "]") <$> [0 .. n] :: [Text])
+    [0 .. n]
 
 listRepExample :: (Monad m) => Int -> SharedRep m [Int]
 listRepExample n =
-  listRep (Just "listifyMaybe") "alm" (checkbox Nothing)
-    (sliderI Nothing (0::Int) n 1) n 3 [0..4]
+  listRep
+    (Just "listifyMaybe")
+    "alm"
+    (checkbox Nothing)
+    (sliderI Nothing (0 :: Int) n 1)
+    n
+    3
+    [0 .. 4]
 
 fiddleExample :: Concerns Text
-fiddleExample = Concerns mempty mempty
-  [q|
+fiddleExample =
+  Concerns
+    mempty
+    mempty
+    [q|
 <div class=" form-group-sm "><label for="1">fiddle example</label><input max="10.0" value="3.0" oninput="jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});" step="1.0" min="0.0" id="1" type="range" class=" custom-range  form-control-range "></div>
 |]
 
@@ -190,33 +213,39 @@ repSumTypeExample defi deft defst =
   where
     repi = sliderI Nothing 0 20 1 defInt
     rept = textbox Nothing defText
-    repst = dropdownSum takeText id (Just "SumTypeExample")
-      ["SumInt", "SumOnly", "SumText"]
-      (sumTypeText defst)
+    repst =
+      dropdownSum
+        takeText
+        id
+        (Just "SumTypeExample")
+        ["SumInt", "SumOnly", "SumText"]
+        (sumTypeText defst)
     hmap repst' repi' rept' =
       div_
-      (repst' <>
-      with repi'
-        [ class__ "subtype "
-        , data_ "sumtype" "SumInt"
-        , style_
-          ("display:" <>
-           bool "block" "none" (sumTypeText defst /= "SumInt"))
-        ] <>
-      with rept'
-        [ class__ "subtype "
-        , data_ "sumtype" "SumText"
-        , style_
-          ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))
-        ])
-
+        ( repst'
+            <> with
+              repi'
+              [ class__ "subtype ",
+                data_ "sumtype" "SumInt",
+                style_
+                  ( "display:"
+                      <> bool "block" "none" (sumTypeText defst /= "SumInt")
+                  )
+              ]
+            <> with
+              rept'
+              [ class__ "subtype ",
+                data_ "sumtype" "SumText",
+                style_
+                  ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))
+              ]
+        )
     mmap repst' repi' rept' =
       case repst' of
         "SumInt" -> SumInt repi'
         "SumOnly" -> SumOnly
         "SumText" -> SumText rept'
         _ -> SumOnly
-
     defInt = case defst of
       SumInt i -> i
       _ -> defi
@@ -236,33 +265,40 @@ repSumType2Example defi deft defst defst2 =
   where
     repoi = sliderI Nothing 0 20 1 defInt
     repst = repSumTypeExample defi deft SumOnly
-    repst2 = dropdownSum takeText id (Just "SumType2Example")
-      ["SumOutside", "SumInside"]
-      (sumType2Text defst2)
+    repst2 =
+      dropdownSum
+        takeText
+        id
+        (Just "SumType2Example")
+        ["SumOutside", "SumInside"]
+        (sumType2Text defst2)
     hmap repst2' repst' repoi' =
       div_
-      (repst2' <>
-      with repst'
-        [ class__ "subtype "
-        , data_ "sumtype" "SumInside"
-        , style_
-          ("display:" <>
-           bool "block" "none" (sumType2Text defst2 /= "SumInside"))
-        ] <>
-      with repoi'
-        [ class__ "subtype "
-        , data_ "sumtype" "SumOutside"
-        , style_
-          ("display:" <>
-           bool "block" "none" (sumType2Text defst2 /= "SumOutside"))
-        ])
-
+        ( repst2'
+            <> with
+              repst'
+              [ class__ "subtype ",
+                data_ "sumtype" "SumInside",
+                style_
+                  ( "display:"
+                      <> bool "block" "none" (sumType2Text defst2 /= "SumInside")
+                  )
+              ]
+            <> with
+              repoi'
+              [ class__ "subtype ",
+                data_ "sumtype" "SumOutside",
+                style_
+                  ( "display:"
+                      <> bool "block" "none" (sumType2Text defst2 /= "SumOutside")
+                  )
+              ]
+        )
     mmap repst2' repst' repoi' =
       case repst2' of
         "SumOutside" -> SumOutside repoi'
         "SumInside" -> SumInside repst'
         _ -> SumOutside repoi'
-
     defInt = case defst of
       SumInt i -> i
       _ -> defi

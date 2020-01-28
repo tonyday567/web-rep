@@ -4,6 +4,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Wredundant-constraints #-}
 
+-- | A streaming bridge between a web page and haskell.
 module Web.Page.Bridge
   ( bridgePage,
     append,
@@ -26,9 +27,13 @@ import Box.Cont ()
 import qualified Control.Foldl as L
 import Control.Lens
 import Control.Monad.Morph
+import Control.Monad.State
 import Data.Aeson
 import Data.HashMap.Strict as HashMap
 import qualified Data.Text as Text
+import Data.Text (Text, pack)
+import Data.Text.Lazy (fromStrict)
+import GHC.Conc
 import Lucid
 import Network.JavaScript (Application, Engine, JavaScript (..), addListener, command, send, start)
 import qualified Streaming.Prelude as S
@@ -36,10 +41,6 @@ import Text.InterpolatedString.Perl6
 import Web.Page.Html
 import Web.Page.Types
 import Prelude hiding (init)
-import Data.Text (Text, pack)
-import Data.Text.Lazy (fromStrict)
-import Control.Monad.State
-import GHC.Conc
 
 -- | prevent the Enter key from triggering an event
 preventEnter :: PageJs

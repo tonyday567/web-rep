@@ -6,6 +6,7 @@ module Main where
 import Control.Lens
 import Lucid
 import Prelude
+import Test.DocTest
 import Test.Tasty
 import Test.Tasty.Hspec
 import Web.Page
@@ -152,4 +153,6 @@ tests = testGroup "the tests" <$> sequence
   ]
 
 main :: IO ()
-main = defaultMain =<< tests
+main = do
+  doctest ["src/Web/Page/SharedReps.hs"]
+  defaultMain =<< tests

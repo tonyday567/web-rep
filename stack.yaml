@@ -7,5 +7,3 @@ extra-deps:
   - lucid-svg-0.7.1
   - box-0.1.0
   - javascript-bridge-0.2.0
-
-allow-newer: true

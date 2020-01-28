@@ -5,8 +5,13 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wall #-}
 
--- | some <https://docs.mathjax.org/en/latest/web/start.html mathjax> assets
+-- | mathjax functionality.
+--
+-- some <https://docs.mathjax.org/en/latest/web/start.html mathjax> assets
+--
 -- <https://math.meta.stackexchange.com/questions/5020/mathjax-basic-tutorial-and-quick-reference mathjax cheatsheet>
+--
+-- FIXME: Mathjax inside svg doesn't quite work, and needs to be structured around the foreign object construct.
 module Web.Page.Mathjax
   ( mathjaxPage,
     mathjax27Page,
@@ -15,71 +20,75 @@ module Web.Page.Mathjax
   )
 where
 
-import Lucid
-import Prelude
-import Web.Page.Types
 import Control.Lens
-import Text.InterpolatedString.Perl6
 import Data.Text (Text)
+import Lucid
+import Text.InterpolatedString.Perl6
+import Web.Page.Types
+import Prelude
 
 mathjax3Lib :: Html ()
 mathjax3Lib =
   with
-      (script_ mempty)
-      [ src_ "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js"
-      , id_ "MathJax-script"
-      , async_ ""
-      ]
+    (script_ mempty)
+    [ src_ "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js",
+      id_ "MathJax-script",
+      async_ ""
+    ]
 
 mathjax27Lib :: Html ()
 mathjax27Lib =
-   with
-      (script_ mempty)
-      [ src_ "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_SVG"
-      ]
+  with
+    (script_ mempty)
+    [ src_ "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_SVG"
+    ]
 
 jqueryLib :: Html ()
 jqueryLib =
   with
-  (script_ mempty)
-  [ src_ "https://code.jquery.com/jquery-3.3.1.slim.min.js",
-    integrity_ "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
-    crossorigin_ "anonymous"
-  ]
+    (script_ mempty)
+    [ src_ "https://code.jquery.com/jquery-3.3.1.slim.min.js",
+      integrity_ "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
+      crossorigin_ "anonymous"
+    ]
 
+-- | A 'Page' that loads mathjax
 mathjaxPage :: Page
 mathjaxPage =
-  mempty &
-  #jsOnLoad .~ PageJsText scriptMathjaxConfig &
-  #libsJs .~
-  [ mathjax3Lib
-  ]
+  mempty
+    & #jsOnLoad .~ PageJsText scriptMathjaxConfig
+    & #libsJs
+      .~ [ mathjax3Lib
+         ]
 
+-- | A 'Page' that loads the mathjax 2.7 js library
 mathjax27Page :: Page
 mathjax27Page =
-  mempty &
-  #jsOnLoad .~ PageJsText scriptMathjaxConfig &
-  #libsJs .~
-  [ mathjax27Lib
-  ]
+  mempty
+    & #jsOnLoad .~ PageJsText scriptMathjaxConfig
+    & #libsJs
+      .~ [ mathjax27Lib
+         ]
 
+-- | A 'Page' that tries to enable mathjax inside svg (which is tricky).
 mathjaxSvgPage :: Text -> Page
 mathjaxSvgPage cl =
-  mempty &
-  #jsGlobal .~ PageJsText (scriptMathjaxConfigSvg cl) &
-  #libsJs .~
-  [ mathjax3Lib,
-    jqueryLib
-  ]
+  mempty
+    & #jsGlobal .~ PageJsText (scriptMathjaxConfigSvg cl)
+    & #libsJs
+      .~ [ mathjax3Lib,
+           jqueryLib
+         ]
 
+-- | A 'Page' that tries to enable mathjax 2.7 inside svg.
 mathjax27SvgPage :: Text -> Page
 mathjax27SvgPage cl =
-  mempty &
-  #jsGlobal .~ PageJsText (scriptMathjax27ConfigSvg cl) &
-  #libsJs .~
-  [ mathjax27Lib,
-    jqueryLib
-  ]
+  mempty
+    & #jsGlobal .~ PageJsText (scriptMathjax27ConfigSvg cl)
+    & #libsJs
+      .~ [ mathjax27Lib,
+           jqueryLib
+         ]
 
 scriptMathjaxConfig :: Text
 scriptMathjaxConfig =
@@ -140,4 +149,3 @@ scriptMathjaxConfigSvg cl =
              }
          };
 |]
-

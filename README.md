@@ -3,13 +3,10 @@
 
 Various functions and representations for a web page.
 
-
-recipes
----
+The best way to understand functionality is via running the example app:
 
 ```
 stack build --test --exec "$(stack path --local-install-root)/bin/page-example --midtype Prod" --file-watch
-stack build web-rep:test:test --file-watch --ghc-options -freverse-errors
 ```
 
 reference
@@ -29,4 +26,3 @@ todo
 ---
 
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!
-
