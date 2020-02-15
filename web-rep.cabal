@@ -34,7 +34,7 @@ library
     aeson >= 1.4.5 && < 1.5,
     attoparsec >= 0.13.2 && < 0.14,
     bifunctors >= 5.5.5 && < 5.6,
-    box >= 0.1.0 && < 0.2,
+    box >= 0.1.0 && < 0.3,
     clay >= 0.13 && < 0.14,
     foldl >= 1.4.5 && < 1.5,
     generic-lens >= 1.1.0 && < 1.3,

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Key generators and miscellaneous html utilities.
 --
@@ -28,7 +29,6 @@ import Data.Text.Format
 import qualified Data.Text.Lazy as Lazy
 import Data.Text.Lazy.Builder (toLazyText)
 import Lucid
-import Numeric
 import Prelude
 
 -- | FIXME: A horrible hack to separate class id's

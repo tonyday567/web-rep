@@ -29,6 +29,7 @@ module Web.Page.SharedReps
     accordionList,
     listMaybeRep,
     listRep,
+    readTextbox,
     defaultListLabels,
   )
 where
@@ -42,7 +43,7 @@ import Data.Attoparsec.Text hiding (take)
 import Data.Biapplicative
 import Data.Bool
 import qualified Data.HashMap.Strict as HashMap
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Lucid
 import Text.InterpolatedString.Perl6
 import Web.Page.Bootstrap
@@ -371,6 +372,16 @@ listRep t p brf srf n defa as =
 -- a sensible default for the accordion row labels for a list
 defaultListLabels :: Int -> [Text]
 defaultListLabels n = (\x -> "[" <> pack (show x) <> "]") <$> [0 .. n] :: [Text]
+
+-- | Parse from a textbox
+--
+readTextbox :: (Monad m, Read a, Show a) => Maybe Text -> a -> SharedRep m (Either Text a)
+readTextbox label v = parsed . unpack <$> textbox label (pack $ show v)
+  where
+    parsed str =
+      case reads str of
+        [(a, "")] -> Right a
+        _ -> Left (pack str)
 
 -- | Representation of web concerns (css, js & html).
 fiddle :: (Monad m) => Concerns Text -> SharedRep m (Concerns Text, Bool)

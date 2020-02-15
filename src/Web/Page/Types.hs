@@ -6,6 +6,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK hide, not-home #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
 module Web.Page.Types
   ( Page (..),
@@ -17,7 +18,7 @@ module Web.Page.Types
     PageConcerns (..),
     PageStructure (..),
     PageRender (..),
-    Css (..),
+    Css,
     PageCss (..),
     renderCss,
     renderPageCss,
@@ -39,7 +40,7 @@ module Web.Page.Types
 where
 
 import qualified Clay
-import Clay (Css (..))
+import Clay (Css)
 import Control.Applicative
 import Control.Lens
 import Control.Monad.IO.Class

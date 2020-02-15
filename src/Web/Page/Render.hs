@@ -21,8 +21,6 @@ import Data.Monoid
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.IO (writeFile)
-import Data.Text.Lazy (fromStrict, toStrict)
-import Data.Traversable
 import Lucid
 import qualified Lucid.Svg as Svg
 import Web.Page.Html

@@ -77,7 +77,7 @@ instance (ToHtml a) => ToHtml (Input a) where
             ( [ type_ "text",
                 class__ "form-control",
                 id_ i,
-                value_ (pack $ show $ toHtml v)
+                value_ (pack $ show $ toHtmlRaw v)
               ]
             )
           <> scriptJsbEvent i "input"
