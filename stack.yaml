@@ -1,9 +1,11 @@
 resolver: lts-14.13
 
 packages:
-- '.'
+  - '.'
 
 extra-deps:
   - lucid-svg-0.7.1
-  - box-0.1.0
   - javascript-bridge-0.2.0
+  # - box-0.2.0
+  - git: https://github.com/tonyday567/box.git
+    commit: 507d3a80d924bb16b870837dd19afb96539e50e0
