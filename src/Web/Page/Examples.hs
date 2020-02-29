@@ -55,23 +55,21 @@ page2 =
     $ #libsJs .~ (libJs <$> jsLibsLocal)
     $ page1
 
+-- | simple mathjax formulae
+pagemj :: Page
+pagemj = mathjaxPage & #htmlBody .~ htmlMathjaxExample
+
 htmlMathjaxExample :: HtmlT Identity ()
 htmlMathjaxExample =
   p_ "double dollar:"
     <> p_ "$$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$$"
-    <> p_ "single dollar:"
-    <> p_ "$\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$"
-
--- | simple mathjax formulae
-pagemj :: Page
-pagemj =
-  #htmlBody .~ htmlMathjaxExample $
-    mathjaxPage
+    <> p_ "single dollar for inline: $\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$"
+    <> p_ "escaped brackets for inline mathjax: \\(\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}\\)"
 
 -- | simple mathjax formulae inside an svg text element
 pagemjsvg :: Page
 pagemjsvg =
-  (#htmlBody .~ (with Svg.svg11_ [Svg.height_ "400", Svg.width_ "400", Svg.viewBox_ "-20 -20 300 300"]) (with Svg.g_ [class_ "mathjaxsvg"] $ with Svg.text_ [size_ "10"] "inside text element (inside svg):\\(\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}\\)") <> p_ "outside svg:" <> p_ "\\(\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}\\)")
+  (#htmlBody .~ (with Svg.svg11_ [Svg.height_ "400", Svg.width_ "400", Svg.viewBox_ "-20 -20 300 300"]) (with Svg.g_ [class_ "mathjaxsvg"] $ with Svg.text_ [size_ "10", Svg.y_ "100", Svg.x_ "0"] "prefix: $\\sum_{i=0}^n i^2 = \\frac{(n^2+n)(2n+1)}{6}$"))
     (mathjaxSvgPage "mathjaxsvg")
 
 cfg2 :: PageConfig

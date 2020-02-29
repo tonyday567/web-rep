@@ -56,7 +56,7 @@ jqueryLib =
 mathjaxPage :: Page
 mathjaxPage =
   mempty
-    & #jsOnLoad .~ PageJsText scriptMathjaxConfig
+    & #jsGlobal .~ PageJsText scriptMathjaxConfig
     & #libsJs
       .~ [ mathjax3Lib
          ]
@@ -90,16 +90,14 @@ mathjax27SvgPage cl =
            jqueryLib
          ]
 
+
 scriptMathjaxConfig :: Text
 scriptMathjaxConfig =
   [q|
-{
-MathJax.Hub.Config({
-    tex2jax: {
-      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-      processEscapes: true
-    }
-  });
+MathJax = {
+  tex: {
+    inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+  }
 };
 |]
 
@@ -134,15 +132,24 @@ scriptMathjax27ConfigSvg cl =
 -- http://bl.ocks.org/larsenmtl/86077bddc91c3de8d3db6a53216b2f47
 scriptMathjaxConfigSvg :: Text -> Text
 scriptMathjaxConfigSvg cl =
-  [qq|   window.MathJax = \{
+  [qq|
+        window.MathJax = \{
+             tex: \{
+                 inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+             },
              startup: \{
                  ready: () => \{
                      MathJax.startup.defaultReady();
                      MathJax.startup.promise.then(() => \{
-                         $('.{cl}').each(function()\{
-                             var m = $('text>mjx-container>svg');
-                             m.remove();
-                             $(this).append(m);
+                         var xs = document.querySelectorAll('.{cl}');
+                         xs.forEach((x) =>
+                             \{ x.querySelectorAll('text').forEach((t) =>
+                                 \{t.querySelectorAll('mjx-container>svg').forEach((s) =>
+                                     \{
+                                         Array.from(t.attributes).forEach((a) => s.setAttribute(a.name, a.value));
+                                         x.appendChild(s);
+                                 });
+                             });
                          });
                      });
                  }

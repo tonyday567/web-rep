@@ -1,0 +1,46 @@
+<!DOCTYPE HTML>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <svg xmlns="http://www.w3.org/2000/svg" height="400" viewBox="-20 -20 300 300" width="400" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+            <g class="mathjaxsvg">
+                <text size="10" y="100" x="0"> after: $\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}$
+                </text>
+            </g>
+            <g class="mathjaxsvg">
+                <text size="10" y="200" x="0"> before: $\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}$
+                </text>
+            </g>
+        </svg>
+
+        <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js" id="MathJax-script"></script>
+        <script crossorigin="anonymous" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+        <script>
+         window.MathJax = {
+             tex: {
+                 inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+             },
+             startup: {
+                 ready: () => {
+                     MathJax.startup.defaultReady();
+                     MathJax.startup.promise.then(() => {
+                         var xs = document.querySelectorAll('.mathjaxsvg');
+                         xs.forEach((x) =>
+                             { x.querySelectorAll('text').forEach((t) =>
+                                 {t.querySelectorAll('mjx-container>svg').forEach((s) =>
+                                     {
+                                         Array.from(t.attributes).forEach((a) => s.setAttribute(a.name, a.value));
+                                         x.appendChild(s);
+                                 });
+                             });
+                         });
+                     });
+                 }
+             }
+         };
+         window.onload=function(){{};};
+        </script>
+    </body>
+</html>
