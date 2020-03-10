@@ -19,6 +19,8 @@ module Web.Page.Bridge
     runList,
     runOnEvent,
     midShared,
+    refreshJsbJs,
+    runScriptJs,
   )
 where
 
@@ -69,7 +71,7 @@ jsb.ws.onmessage = (evt) => eval(evt.data);
 
 -- | script injection js.
 --
--- See https://ghinda.net/article/script-tags/ for why this is needed.
+-- See https://ghinda.net/article/script-tags/ for why this might be needed.
 runScriptJs :: PageJs
 runScriptJs =
   PageJsText
@@ -105,7 +107,7 @@ function runScripts ($container) {
 bridgePage :: Page
 bridgePage =
   mempty
-    & #jsGlobal .~ (preventEnter <> runScriptJs)
+    & #jsGlobal .~ (preventEnter <> refreshJsbJs)
     & #jsOnLoad .~ webSocket
 
 sendc :: Engine -> Text -> IO ()
@@ -117,9 +119,9 @@ replace e d t =
   send e $
     command
       [qc|
-     var $container = document.getElementById('{d}')
-     $container.innerHTML = '{clean t}'
-     runScripts($container)
+     var $container = document.getElementById('{d}');
+     $container.innerHTML = '{clean t}';
+     refreshJsb();
      |]
 
 -- | append to a container and run any embedded scripts
@@ -128,9 +130,9 @@ append e d t =
   send e $
     command
       [qc|
-     var $container = document.getElementById('{d}')
-     $container.innerHTML += '{clean t}'
-     runScripts($container)
+     var $container = document.getElementById('{d}');
+     $container.innerHTML += '{clean t}';
+     refreshJsb();
      |]
 
 clean :: Text -> Text
@@ -251,3 +253,47 @@ runList sr vs = S.fst' <$> do
       S.fold
       L.list
       (sharedModel faStep (\(Element k v) s -> insert k v s) (S.each vs))
+
+-- | Event hooks that may need to be reattached given dynamic content creation.
+refreshJsbJs :: PageJs
+refreshJsbJs =
+  PageJsText
+    [q|
+function refreshJsb () {
+  $('.jsbClassEventChange').off('change');
+  $('.jsbClassEventChange').on('change', (function(){
+    jsb.event({ 'element': this.id, 'value': this.value});
+  }));
+  $('.jsbClassEventInput').off('input');
+  $('.jsbClassEventInput').on('input', (function(){
+    jsb.event({ 'element': this.id, 'value': this.value});
+  }));
+  $('.jsbClassEventButton').off('click');
+  $('.jsbClassEventButton').on('click', (function(){
+    jsb.event({ 'element': this.id, 'value': this.value});
+  }));
+  $('.jsbClassEventToggle').off('click');
+  $('.jsbClassEventToggle').on('click', (function(){
+    jsb.event({ 'element': this.id, 'value': ('true' !== this.getAttribute('aria-pressed')).toString()});
+  }));
+  $('.jsbClassEventCheckbox').off('click');
+  $('.jsbClassEventCheckbox').on('click', (function(){
+    jsb.event({ 'element': this.id, 'value': this.checked.toString()});
+  }));
+  $('.jsbClassEventChooseFile').off('input');
+  $('.jsbClassEventChooseFile').on('input', (function(){
+    jsb.event({ 'element': this.id, 'value': this.files[0].name});
+  }));
+  $('.jsbClassEventShowSum').off('change');
+  $('.jsbClassEventShowSum').on('change', (function(){
+    var v = this.value;
+    $(this).parent('.sumtype-group').siblings('.subtype').each(function(i) {
+      if (this.dataset.sumtype === v) {
+        this.style.display = 'block';
+        } else {
+        this.style.display = 'none';
+      }
+    })
+  }));
+};
+|]

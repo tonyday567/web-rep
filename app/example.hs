@@ -236,3 +236,12 @@ main = do
             (toHtml (show initBridgeTest))
             (midtype o == Bridge)))
        ])
+    servePageWith "/log" (defaultPageConfig "prod")
+      (testPage "prod" (pack . show $ midtype o)
+       [ ("input", mempty)
+       , ("output",
+          (bool mempty
+            (toHtml (show initBridgeTest))
+            (midtype o == Bridge)))
+       , ("log", mempty)
+       ])

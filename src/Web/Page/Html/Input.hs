@@ -18,7 +18,6 @@ import Data.Text
 import GHC.Generics
 import Lucid
 import Lucid.Base
-import Text.InterpolatedString.Perl6
 import Web.Page.Html
 import Prelude
 
@@ -60,13 +59,12 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( (maybe mempty (with label_ [for_ i] . toHtml) l)
           <> input_
             ( [ type_ "range",
-                class__ " form-control-range custom-range",
+                class__ " form-control-range custom-range jsbClassEventChange",
                 id_ i,
                 value_ (pack $ show $ toHtml v)
               ]
                 <> satts
             )
-          <> scriptJsbEvent i "change"
       )
   toHtml (Input v l i TextBox) =
     with
@@ -75,12 +73,11 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( (maybe mempty (with label_ [for_ i] . toHtml) l)
           <> input_
             ( [ type_ "text",
-                class__ "form-control",
+                class__ "form-control jsbClassEventInput",
                 id_ i,
                 value_ (pack $ show $ toHtmlRaw v)
               ]
             )
-          <> scriptJsbEvent i "input"
       )
   toHtml (Input v l i (TextArea rows)) =
     with
@@ -90,12 +87,11 @@ instance (ToHtml a) => ToHtml (Input a) where
           <> ( with
                  textarea_
                  [ rows_ (pack $ show rows),
-                   class__ "form-control",
+                   class__ "form-control jsbClassEventInput",
                    id_ i
                  ]
                  (toHtmlRaw v)
              )
-          <> scriptJsbEvent i "input"
       )
   toHtml (Input v l i ColorPicker) =
     with
@@ -104,12 +100,11 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( (maybe mempty (with label_ [for_ i] . toHtml) l)
           <> input_
             ( [ type_ "color",
-                class__ "form-control",
+                class__ "form-control jsbClassEventInput",
                 id_ i,
                 value_ (pack $ show $ toHtml v)
               ]
             )
-          <> scriptJsbEvent i "input"
       )
   toHtml (Input _ l i ChooseFile) =
     with
@@ -118,11 +113,10 @@ instance (ToHtml a) => ToHtml (Input a) where
       (maybe mempty (with label_ [for_ i] . toHtml) l)
       <> input_
         ( [ type_ "file",
-            class__ "form-control-file",
+            class__ "form-control-file jsbClassEventChooseFile",
             id_ i
           ]
         )
-      <> scriptJsbChooseFile i
   toHtml (Input v l i (Dropdown opts)) =
     with
       div_
@@ -130,12 +124,11 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( (maybe mempty (with label_ [for_ i] . toHtml) l)
           <> ( with
                  select_
-                 [ class__ "form-control",
+                 [ class__ "form-control jsbClassEventInput",
                    id_ i
                  ]
                  opts'
              )
-          <> scriptJsbEvent i "input"
       )
     where
       opts' =
@@ -158,13 +151,11 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( (maybe mempty (with label_ [for_ i] . toHtml) l)
           <> ( with
                  select_
-                 [ class__ "form-control",
+                 [ class__ "form-control jsbClassEventInput jsbClassEventShowSum",
                    id_ i
                  ]
                  opts'
              )
-          <> scriptShowSum i
-          <> scriptJsbEvent i "input"
       )
     where
       opts' =
@@ -183,7 +174,7 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( (maybe mempty (with label_ [for_ i] . toHtml) l)
           <> input_
             [ type_ "text",
-              class__ "form-control",
+              class__ "form-control jsbClassEventInput",
               id_ i,
               list_ listId
               -- the datalist concept in html assumes initial state is a null
@@ -206,7 +197,6 @@ instance (ToHtml a) => ToHtml (Input a) where
                 )
                   <$> opts
             )
-          <> scriptJsbEvent i "input"
       )
   -- FIXME: How can you refactor to eliminate this polymorphic wart?
   toHtml (Input _ l i (Checkbox checked)) =
@@ -215,13 +205,12 @@ instance (ToHtml a) => ToHtml (Input a) where
       [class__ "form-check"]
       ( input_
           ( [ type_ "checkbox",
-              class__ "form-check-input",
+              class__ "form-check-input jsbClassEventCheckbox",
               id_ i
             ]
               <> bool [] [checked_] checked
           )
           <> (maybe mempty (with label_ [for_ i, class__ "form-check-label"] . toHtml) l)
-          <> scriptJsbCheckbox i
       )
   toHtml (Input _ l i (Toggle pushed lab)) =
     with
@@ -230,7 +219,7 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( (maybe mempty (with label_ [for_ i] . toHtml) l)
           <> input_
             ( [ type_ "button",
-                class__ "btn btn-primary btn-sm",
+                class__ "btn btn-primary btn-sm jsbClassEventToggle",
                 data_ "toggle" "button",
                 id_ i,
                 makeAttribute "aria-pressed" (bool "false" "true" pushed)
@@ -238,7 +227,6 @@ instance (ToHtml a) => ToHtml (Input a) where
                 <> (maybe [] (\l' -> [value_ l']) lab)
                 <> bool [] [checked_] pushed
             )
-          <> scriptJsbToggle i
       )
   toHtml (Input _ l i Button) =
     with
@@ -247,74 +235,11 @@ instance (ToHtml a) => ToHtml (Input a) where
       ( input_
           ( [ type_ "button",
               id_ i,
-              class__ "btn btn-primary btn-sm",
+              class__ "btn btn-primary btn-sm jsbClassEventButton",
               value_ (fromMaybe "button" l)
             ]
           )
-          <> scriptJsbButton i
       )
 
   toHtmlRaw = toHtml
 
--- scripts attached to Inputs
--- https://eager.io/blog/everything-I-know-about-the-script-tag/
-
-scriptJsbEvent :: (Monad m) => Text -> Text -> HtmlT m ()
-scriptJsbEvent name event =
-  script_
-    [qq|
-$('#{name}').on('{event}', (function()\{
-  jsb.event(\{ 'element': this.id, 'value': this.value\});
-\}));
-|]
-
-scriptJsbButton :: (Monad m) => Text -> HtmlT m ()
-scriptJsbButton name =
-  script_
-    [qq|
-$('#{name}').on('click', (function()\{
-  jsb.event(\{ 'element': this.id, 'value': this.value\});
-\}));
-|]
-
-scriptJsbToggle :: (Monad m) => Text -> HtmlT m ()
-scriptJsbToggle name =
-  script_
-    [qq|
-$('#{name}').on('click', (function()\{
-  jsb.event(\{ 'element': this.id, 'value': (\"true\" !== this.getAttribute(\"aria-pressed\")).toString()\});
-\}));
-|]
-
-scriptJsbCheckbox :: (Monad m) => Text -> HtmlT m ()
-scriptJsbCheckbox name =
-  script_
-    [qq|
-$('#{name}').on('click', (function()\{
-  jsb.event(\{ 'element': this.id, 'value': this.checked.toString()\});
-\}));
-|]
-
-scriptJsbChooseFile :: (Monad m) => Text -> HtmlT m ()
-scriptJsbChooseFile name =
-  script_
-    [qq|
-$('#{name}').on('input', (function()\{
-  jsb.event(\{ 'element': this.id, 'value': this.files[0].name\});
-\}));
-|]
-
-scriptShowSum :: (Monad m) => Text -> HtmlT m ()
-scriptShowSum name =
-  script_
-    [qq|
-$('#{name}').on('change', (function()\{
-  var v = this.value;
-  $(this).parent('.sumtype-group').siblings('.subtype').each(function(i) \{
-    if (this.dataset.sumtype === v) \{
-      this.style.display = 'block';
-      \} else \{
-      this.style.display = 'none';
-      \}\})
-  \}));
-|]
