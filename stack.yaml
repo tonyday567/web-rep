@@ -1,4 +1,4 @@
-resolver: lts-14.13
+resolver: lts-15.6
 
 packages:
   - '.'
@@ -6,6 +6,6 @@ packages:
 extra-deps:
   - lucid-svg-0.7.1
   - javascript-bridge-0.2.0
-  # - box-0.2.0
-  - git: https://github.com/tonyday567/box.git
-    commit: 507d3a80d924bb16b870837dd19afb96539e50e0
+  - box-0.3.0
+  - interpolatedstring-perl6-1.0.2
+  - text-format-0.3.2

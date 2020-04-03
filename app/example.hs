@@ -22,7 +22,6 @@ import Web.Page.Examples
 import Web.Scotty (scotty, middleware)
 import qualified Box
 import qualified Data.Text as Text
-import Data.Text (pack, Text)
 import Control.Monad
 import Data.Maybe
 

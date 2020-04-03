@@ -9,6 +9,8 @@ The best way to understand functionality is via running the example app:
 stack build --test --exec "$(stack path --local-install-root)/bin/page-example --midtype Prod" --file-watch
 ```
 
+http://localhost:3000/
+
 reference
 ---
 
