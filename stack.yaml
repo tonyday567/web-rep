@@ -9,3 +9,5 @@ extra-deps:
   - box-0.3.0
   - interpolatedstring-perl6-1.0.2
   - text-format-0.3.2
+
+allow-newer: true
