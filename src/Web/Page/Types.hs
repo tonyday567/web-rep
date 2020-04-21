@@ -48,10 +48,8 @@ import Control.Monad.Morph
 import Control.Monad.State
 import Data.Aeson
 import Data.Biapplicative
-import Data.Bifunctor (Bifunctor (..))
 import Data.Generics.Labels ()
 import Data.HashMap.Strict as HashMap hiding (foldr)
-import Data.Semigroup ((<>))
 import Data.Text (Text, unpack)
 import qualified Data.Text as Text
 import Data.Text.Lazy (toStrict)

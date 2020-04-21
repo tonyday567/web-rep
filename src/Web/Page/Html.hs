@@ -19,12 +19,9 @@ module Web.Page.Html
 where
 
 import Control.Monad.State
-import Data.Attoparsec.Text
 import Data.Bool
 import Data.Text
-import Data.Text.Format
 import qualified Data.Text.Lazy as Lazy
-import Data.Text.Lazy.Builder (toLazyText)
 import Lucid
 import Prelude
 
