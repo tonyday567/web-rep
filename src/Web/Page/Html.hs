@@ -13,14 +13,11 @@ module Web.Page.Html
     genNamePre,
     libCss,
     libJs,
-    fromHex,
-    toHex,
     HtmlT,
     Html,
   )
 where
 
-import Codec.Picture.Types (PixelRGB8 (..))
 import Control.Monad.State
 import Data.Attoparsec.Text
 import Data.Bool
@@ -67,23 +64,6 @@ libCss url =
 libJs :: Text -> Html ()
 libJs url = with (script_ mempty) [src_ url]
 
--- | convert from #xxxxxx to 'PixelRGB8'
-fromHex :: Parser PixelRGB8
-fromHex =
-  ( \((r, g), b) ->
-      PixelRGB8 (fromIntegral r) (fromIntegral g) (fromIntegral b)
-  )
-    . (\(f, b) -> (f `divMod` (256 :: Int), b))
-    . (`divMod` 256)
-    <$> (string "#" *> hexadecimal)
-
--- | convert from 'PixelRGB8' to #xxxxxx
-toHex :: PixelRGB8 -> Text
-toHex (PixelRGB8 r g b) =
-  "#"
-    <> justifyRight 2 '0' (Lazy.toStrict $ toLazyText $ hex r)
-    <> justifyRight 2 '0' (Lazy.toStrict $ toLazyText $ hex g)
-    <> justifyRight 2 '0' (Lazy.toStrict $ toLazyText $ hex b)
 
 -- | FIXME: `ToHtml a` is used throughout, mostly because `Show a` gives "\"text\"" for show "text", and hilarity ensues when rendering this to a web page, and I couldn't work out how to properly get around this.
 --
@@ -105,12 +85,6 @@ instance ToHtml Int where
   toHtml = toHtml . (pack . show)
 
   toHtmlRaw = toHtmlRaw . (pack . show)
-
-instance ToHtml PixelRGB8 where
-
-  toHtml = toHtml . toHex
-
-  toHtmlRaw = toHtmlRaw . toHex
 
 instance ToHtml () where
 

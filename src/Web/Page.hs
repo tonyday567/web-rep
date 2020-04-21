@@ -57,7 +57,6 @@ module Web.Page
     module X,
     Value (..),
     finally,
-    PixelRGB8 (..),
     HashMap.HashMap,
     fromList,
     void,
@@ -70,7 +69,6 @@ module Web.Page
   )
 where
 
-import Codec.Picture.Types (PixelRGB8 (..))
 import Control.Applicative as X
 import Control.Exception (finally)
 import Control.Monad

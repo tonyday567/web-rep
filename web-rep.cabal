@@ -1,6 +1,6 @@
 cabal-version: 1.12
 name:           web-rep
-version:        0.3.2
+version:        0.4.0
 synopsis:       representations of a web page
 category: web
 description:    An applicative-based, shared-data representation of a web page. 
@@ -30,7 +30,6 @@ library
       src
   build-depends:
     base >= 4.12 && <5,
-    JuicyPixels >= 3.3.4 && < 3.4,
     aeson >= 1.4.5 && < 1.5,
     attoparsec >= 0.13.2 && < 0.14,
     bifunctors >= 5.5.5 && < 5.6,

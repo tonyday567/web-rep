@@ -35,7 +35,6 @@ module Web.Page.SharedReps
 where
 
 import Box.Cont ()
-import Codec.Picture.Types (PixelRGB8 (..))
 import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.State
@@ -162,12 +161,12 @@ textarea rows label v =
     (Input v label mempty (TextArea rows))
     v
 
--- | color input
-colorPicker :: (Monad m) => Maybe Text -> PixelRGB8 -> SharedRep m PixelRGB8
+-- | Non-typed hex color input
+colorPicker :: (Monad m) => Maybe Text -> Text -> SharedRep m Text
 colorPicker label v =
   repInput
-    fromHex
-    toHex
+    takeText
+    id
     (Input v label mempty ColorPicker)
     v
 

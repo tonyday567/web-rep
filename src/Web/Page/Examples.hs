@@ -132,7 +132,7 @@ data RepExamples
         repToggle :: Bool,
         repDropdown :: Int,
         repShape :: Shape,
-        repColor :: PixelRGB8
+        repColor :: Text
       }
   deriving (Show, Eq, Generic)
 
@@ -162,11 +162,8 @@ repExamples = do
   tog <- toggle (Just "toggle") False
   dr <- dropdown decimal (pack . show) (Just "dropdown") ((pack . show) <$> [1 .. 5 :: Int]) 3
   drt <- toShape <$> dropdown takeText id (Just "shape") (["Circle", "Square"]) (fromShape SquareShape)
-  col <- colorPicker (Just "color") (PixelRGB8 56 128 200)
+  col <- colorPicker (Just "color") "#454e56"
   pure (RepExamples t ta n ds' c tog dr drt col)
-
--- encodeFile "saves/rep2.json" $ RepExamples "text1" "text2" 1 1.0 True True 2 (PixelRGB8 0 100 0)
--- decodeFileStrict "saves/rep2.json" :: IO (Maybe RepExamples)
 
 listExample :: (Monad m) => Int -> SharedRep m [Int]
 listExample n =
