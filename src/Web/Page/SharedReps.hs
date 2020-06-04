@@ -152,6 +152,15 @@ textbox label v =
     (Input v label mempty TextBox)
     v
 
+-- | textbox that only updates on focusout
+textbox' :: (Monad m) => Maybe Text -> Text -> SharedRep m Text
+textbox' label v =
+  repInput
+    takeText
+    id
+    (Input v label mempty TextBox')
+    v
+
 -- | textarea input element, specifying number of rows.
 textarea :: (Monad m) => Int -> Maybe Text -> Text -> SharedRep m Text
 textarea rows label v =
@@ -374,8 +383,9 @@ defaultListLabels n = (\x -> "[" <> pack (show x) <> "]") <$> [0 .. n] :: [Text]
 
 -- | Parse from a textbox
 --
+-- Uses focusout so as not to spam the reader.
 readTextbox :: (Monad m, Read a, Show a) => Maybe Text -> a -> SharedRep m (Either Text a)
-readTextbox label v = parsed . unpack <$> textbox label (pack $ show v)
+readTextbox label v = parsed . unpack <$> textbox' label (pack $ show v)
   where
     parsed str =
       case reads str of

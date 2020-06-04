@@ -260,12 +260,16 @@ refreshJsbJs =
   PageJsText
     [q|
 function refreshJsb () {
+  $('.jsbClassEventInput').off('input');
+  $('.jsbClassEventInput').on('input', (function(){
+    jsb.event({ 'element': this.id, 'value': this.value});
+  }));
   $('.jsbClassEventChange').off('change');
   $('.jsbClassEventChange').on('change', (function(){
     jsb.event({ 'element': this.id, 'value': this.value});
   }));
-  $('.jsbClassEventInput').off('input');
-  $('.jsbClassEventInput').on('input', (function(){
+  $('.jsbClassEventFocusout').off('focusout');
+  $('.jsbClassEventFocusout').on('focusout', (function(){
     jsb.event({ 'element': this.id, 'value': this.value});
   }));
   $('.jsbClassEventButton').off('click');

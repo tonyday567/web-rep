@@ -39,6 +39,7 @@ data Input a
 data InputType
   = Slider [Attribute]
   | TextBox
+  | TextBox'
   | TextArea Int
   | ColorPicker
   | ChooseFile
@@ -74,6 +75,19 @@ instance (ToHtml a) => ToHtml (Input a) where
           <> input_
             ( [ type_ "text",
                 class__ "form-control jsbClassEventInput",
+                id_ i,
+                value_ (pack $ show $ toHtmlRaw v)
+              ]
+            )
+      )
+  toHtml (Input v l i TextBox') =
+    with
+      div_
+      [class__ "form-group"]
+      ( (maybe mempty (with label_ [for_ i] . toHtml) l)
+          <> input_
+            ( [ type_ "text",
+                class__ "form-control jsbClassEventFocusout",
                 id_ i,
                 value_ (pack $ show $ toHtmlRaw v)
               ]
