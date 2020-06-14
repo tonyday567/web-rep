@@ -6,6 +6,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Wredundant-constraints #-}
+{-# LANGUAGE IncoherentInstances #-}
 
 -- | Various SharedRep instances for common html input elements.
 module Web.Page.SharedReps
@@ -14,6 +15,7 @@ module Web.Page.SharedReps
     sliderI,
     slider,
     dropdown,
+    dropdownMultiple,
     datalist,
     dropdownSum,
     colorPicker,
@@ -42,14 +44,14 @@ import Data.Attoparsec.Text hiding (take)
 import Data.Biapplicative
 import Data.Bool
 import qualified Data.HashMap.Strict as HashMap
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, pack, unpack, intercalate)
 import Lucid
 import Text.InterpolatedString.Perl6
 import Web.Page.Bootstrap
 import Web.Page.Html
 import Web.Page.Html.Input
 import Web.Page.Types
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, takeWhile)
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -199,6 +201,27 @@ dropdown p pr label opts v =
     pr
     (Input v label mempty (Dropdown opts))
     v
+
+-- | dropdown box with multiple selections
+dropdownMultiple ::
+  (Monad m, ToHtml a) =>
+  -- | parse an a from Text
+  Parser a ->
+  -- | print an a to Text
+  (a -> Text) ->
+  -- | label suggestion
+  Maybe Text ->
+  -- | list of dropbox elements (as text)
+  [Text] ->
+  -- | initial value
+  [a] ->
+  SharedRep m [a]
+dropdownMultiple p pr label opts vs =
+  repInput
+    (p `sepBy1` char ',')
+    (intercalate "," . fmap pr)
+    (Input vs label mempty (DropdownMultiple opts ','))
+    vs
 
 -- | a datalist input
 datalist :: (Monad m) => Maybe Text -> [Text] -> Text -> Text -> SharedRep m Text

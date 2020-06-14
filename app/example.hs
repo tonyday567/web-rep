@@ -232,7 +232,7 @@ main = do
        [ ("input", mempty)
        , ("output",
           (bool mempty
-            (toHtml (show initBridgeTest))
+            (toHtml (pack $ show initBridgeTest))
             (midtype o == Bridge)))
        ])
     servePageWith "/log" (defaultPageConfig "prod")

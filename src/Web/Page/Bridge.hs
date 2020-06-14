@@ -299,5 +299,9 @@ function refreshJsb () {
       }
     })
   }));
+  $('.jsbClassEventChangeMultiple').off('change');
+  $('.jsbClassEventChangeMultiple').on('change', (function(){
+    jsb.event({ 'element': this.id, 'value': [...this.options].filter(option => option.selected).map(option => option.value).join(',')});
+  }));
 };
 |]

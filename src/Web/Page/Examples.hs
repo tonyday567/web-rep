@@ -131,6 +131,7 @@ data RepExamples
         repCheckbox :: Bool,
         repToggle :: Bool,
         repDropdown :: Int,
+        repDropdownMultiple :: [Int],
         repShape :: Shape,
         repColor :: Text
       }
@@ -161,9 +162,10 @@ repExamples = do
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
   dr <- dropdown decimal (pack . show) (Just "dropdown") ((pack . show) <$> [1 .. 5 :: Int]) 3
+  drm <- dropdownMultiple decimal (pack . show) (Just "dropdown multiple") ((pack . show) <$> [1 .. 5 :: Int]) [2,4]
   drt <- toShape <$> dropdown takeText id (Just "shape") (["Circle", "Square"]) (fromShape SquareShape)
   col <- colorPicker (Just "color") "#454e56"
-  pure (RepExamples t ta n ds' c tog dr drt col)
+  pure (RepExamples t ta n ds' c tog dr drm drt col)
 
 listExample :: (Monad m) => Int -> SharedRep m [Int]
 listExample n =

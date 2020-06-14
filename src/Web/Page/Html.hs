@@ -2,6 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE IncoherentInstances #-}
 
 -- | Key generators and miscellaneous html utilities.
 --
@@ -24,6 +25,7 @@ import Data.Text
 import qualified Data.Text.Lazy as Lazy
 import Lucid
 import Prelude
+import Data.List (intercalate, intersperse)
 
 -- | FIXME: A horrible hack to separate class id's
 class__ :: Text -> Attribute
@@ -88,3 +90,11 @@ instance ToHtml () where
   toHtml = const "()"
 
   toHtmlRaw = const "()"
+
+
+-- I'm going to hell for sure.
+instance {-# INCOHERENT #-} (ToHtml a) => ToHtml [a] where
+
+  toHtml = mconcat . Data.List.intersperse (toHtml ("," :: Text)) . fmap toHtml
+
+  toHtmlRaw = mconcat . Data.List.intersperse (toHtmlRaw ("," :: Text)) . fmap toHtmlRaw
