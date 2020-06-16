@@ -102,10 +102,10 @@ accordionCard collapse atts idp idh idb t0 b =
   with div_ ([class__ "card"] <> atts) $
     with
       div_
-      [class__ "card-header", id_ idh]
+      [class__ "card-header p-0", id_ idh]
       ( with
           h2_
-          [class__ "mb-0"]
+          [class__ "m-0"]
           (with button_ [class__ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb] (toHtml t0))
       )
       <> with
@@ -119,11 +119,11 @@ accordionCardChecked collapse idp idh idb label bodyhtml checkhtml =
   with div_ ([class__ "card"]) $
     with
       div_
-      ([class__ "card-header", id_ idh])
+      ([class__ "card-header p-0", id_ idh])
       ( checkhtml
           <> with
             h2_
-            [class__ "mb-0"]
+            [class__ "m-0"]
             (with button_ [class__ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb] (toHtml label))
       )
       <> with
@@ -143,7 +143,7 @@ accordion ::
   m (Html ())
 accordion pre x hs = do
   idp' <- genNamePre pre
-  with div_ [class__ "accordion", id_ idp'] <$> aCards idp'
+  with div_ [class__ "accordion m-1", id_ idp'] <$> aCards idp'
   where
     aCards par = mconcat <$> sequence (aCard par <$> hs)
     aCard par (t, b) = do
@@ -155,7 +155,7 @@ accordion pre x hs = do
 accordionChecked :: (MonadState Int m) => Text -> [(Text, Html (), Html ())] -> m (Html ())
 accordionChecked pre hs = do
   idp' <- genNamePre pre
-  with div_ [class__ "accordion", id_ idp'] <$> aCards idp'
+  with div_ [class__ "accordion m-1", id_ idp'] <$> aCards idp'
   where
     aCards par = mconcat <$> sequence (aCard par <$> hs)
     aCard par (l, bodyhtml, checkhtml) = do
