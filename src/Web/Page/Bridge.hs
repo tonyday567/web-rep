@@ -19,8 +19,6 @@ module Web.Page.Bridge
     runList,
     runOnEvent,
     midShared,
-    refreshJsbJs,
-    runScriptJs,
   )
 where
 
@@ -67,40 +65,6 @@ webSocket =
     [q|
 window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
 jsb.ws.onmessage = (evt) => eval(evt.data);
-|]
-
--- | script injection js.
---
--- See https://ghinda.net/article/script-tags/ for why this might be needed.
-runScriptJs :: PageJs
-runScriptJs =
-  PageJsText
-    [q|
-function insertScript ($script) {
-  var s = document.createElement('script')
-  s.type = 'text/javascript'
-  if ($script.src) {
-    s.onload = callback
-    s.onerror = callback
-    s.src = $script.src
-  } else {
-    s.textContent = $script.innerText
-  }
-
-  // re-insert the script tag so it executes.
-  document.head.appendChild(s)
-
-  // clean-up
-  $script.parentNode.removeChild($script)
-}
-
-function runScripts ($container) {
-  // get scripts tags from a node
-  var $scripts = $container.querySelectorAll('script')
-  $scripts.forEach(function ($script) {
-    insertScript($script)
-  })
-}
 |]
 
 -- | componentry to kick off a javascript-bridge enabled page
@@ -305,3 +269,4 @@ function refreshJsb () {
   }));
 };
 |]
+
