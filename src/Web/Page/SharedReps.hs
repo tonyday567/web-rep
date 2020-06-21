@@ -285,23 +285,6 @@ chooseFile label v =
     (Input v label mempty ChooseFile)
     v
 
-checkboxShowJs :: (Monad m) => Maybe Text -> Text -> Bool -> SharedRep m Bool
-checkboxShowJs label cl v =
-  SharedRep $ do
-    name <- zoom _1 genName
-    zoom _2 (modify (HashMap.insert name (bool "false" "true" v)))
-    pure $
-      Rep
-        (toHtml (Input v label name (Checkbox v)) <> scriptToggleShow name cl)
-        ( \s ->
-            ( s,
-              join
-                $ maybe (Left "HashMap.lookup failed") Right
-                $ either (Left . pack) Right . parseOnly ((== "true") <$> takeText)
-                  <$> HashMap.lookup name s
-            )
-        )
-
 -- | Represent a Maybe using a checkbox.
 --
 -- Hides the underlying content on Nothing
@@ -312,16 +295,16 @@ maybeRep ::
   SharedRep m a ->
   SharedRep m (Maybe a)
 maybeRep label st sa = SharedRep $ do
-  className <- zoom _1 genName
-  unrep $ bimap (hmap className) mmap (checkboxShowJs label className st) <<*>> sa
+  id' <- zoom _1 (genNamePre "maybe")
+  unrep $ bimap (hmap id') mmap (checkboxShow label id' st) <<*>> sa
   where
-    hmap cl a b =
+    hmap id' a b =
       cardify
         (a, [])
         Nothing
         ( ( Lucid.with
               div_
-              [ class__ cl,
+              [ id_ id',
                 style_
                   ("display:" <> bool "none" "block" st)
               ]
@@ -330,6 +313,34 @@ maybeRep label st sa = SharedRep $ do
           [style_ "padding-top: 0.25rem; padding-bottom: 0.25rem;"]
         )
     mmap a b = bool Nothing (Just b) a
+
+checkboxShow :: (Monad m) => Maybe Text -> Text -> Bool -> SharedRep m Bool
+checkboxShow label id' v =
+  SharedRep $ do
+    name <- zoom _1 genName
+    zoom _2 (modify (HashMap.insert name (bool "false" "true" v)))
+    pure $
+      Rep
+        (toHtml (Input v label name (Checkbox v)) <> scriptToggleShow name id')
+        ( \s ->
+            ( s,
+              join
+                $ maybe (Left "HashMap.lookup failed") Right
+                $ either (Left . pack) Right . parseOnly ((== "true") <$> takeText)
+                  <$> HashMap.lookup name s
+            )
+        )
+
+-- | toggle show/hide
+scriptToggleShow :: (Monad m) => Text -> Text -> HtmlT m ()
+scriptToggleShow checkName toggleId =
+  script_
+    [qq|
+$('#{checkName}').on('change', (function()\{
+  var vis = this.checked ? "block" : "none";
+  document.getElementById("{toggleId}").style.display = vis;
+\}));
+|]
 
 -- | A (fixed-size) list represented in html as an accordion card
 -- A major restriction of the library is that a 'SharedRep' does not have a Monad instance. In practice, this means that the external representation of lists cannot have a dynamic size.
@@ -447,13 +458,3 @@ viaFiddle sr = SharedRep $ do
       <<*>> hrep
       <<*>> sr'
 
--- | toggle show/hide
-scriptToggleShow :: (Monad m) => Text -> Text -> HtmlT m ()
-scriptToggleShow checkName toggleClass =
-  script_
-    [qq|
-$('#{checkName}').on('change', (function()\{
-  var vis = this.checked ? "block" : "none";
-  Array.from(document.getElementsByClassName({toggleClass})).forEach(x => x.style.display = vis);
-\}));
-|]

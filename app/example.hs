@@ -200,7 +200,7 @@ main = do
       NoMid -> id
       -- WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: Unexpected response code: 200
       Prod -> midShow 
-        (maybeRep (Just "maybe") True repExamples)
+        (maybeRep (Just "maybe") False repExamples)
       Dev -> midShow
         (repSumTypeExample 2 "default text" SumOnly)
       ChooseFileExample -> midShow
