@@ -22,7 +22,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.IO (writeFile)
 import Lucid
-import qualified Lucid.Svg as Svg
+-- import qualified Lucid.Svg as Svg
 import Web.Page.Html
 import Web.Page.Types
 import Prelude hiding (writeFile)
@@ -88,9 +88,9 @@ renderPageWith pc p =
               jsInline
             ]
         Svg ->
-          Svg.doctype_
+          svgDocType
             <> svg_
-              ( Svg.defs_ $
+              ( svgDefs $
                   mconcat
                     [ mconcat libsCss',
                       cssInline,
@@ -143,3 +143,7 @@ renderPageAsText pc p =
   where
     htmlt = toText h
     (css, js, h) = renderPageWith pc p
+
+svgDocType = "?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n    \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\""
+
+svgDefs = term "defs"
