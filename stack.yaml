@@ -8,3 +8,6 @@ extra-deps:
     commit: d4a90748d3925b39df5aeeb88996d98cd9602ca9
   - javascript-bridge-0.2.0
 
+allow-newer: true
+
+
