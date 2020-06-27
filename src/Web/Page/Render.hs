@@ -1,6 +1,6 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | Page rendering
 module Web.Page.Render
@@ -13,19 +13,11 @@ module Web.Page.Render
   )
 where
 
-import Control.Applicative
 import Control.Lens
-import Control.Monad
-import Data.Foldable
-import Data.Monoid
-import Data.Text (Text)
-import qualified Data.Text as Text
-import Data.Text.IO (writeFile)
 import Lucid
--- import qualified Lucid.Svg as Svg
+import NumHask.Prelude
 import Web.Page.Html
 import Web.Page.Types
-import Prelude hiding (writeFile)
 
 -- | Render a Page with the default configuration into Html.
 renderPage :: Page -> Html ()
@@ -114,13 +106,13 @@ renderPageWith pc p =
         Inline -> p ^. #libsCss
         Separated ->
           p ^. #libsCss
-            <> [libCss (Text.pack $ pc ^. #filenames . #cssConcern)]
+            <> [libCss (pack $ pc ^. #filenames . #cssConcern)]
     libsJs' =
       case pc ^. #concerns of
         Inline -> p ^. #libsJs
         Separated ->
           p ^. #libsJs
-            <> [libJs (Text.pack $ pc ^. #filenames . #jsConcern)]
+            <> [libJs (pack $ pc ^. #filenames . #jsConcern)]
 
 -- | Render Page concerns to files.
 renderPageToFile :: FilePath -> PageConfig -> Page -> IO ()
@@ -144,6 +136,8 @@ renderPageAsText pc p =
     htmlt = toText h
     (css, js, h) = renderPageWith pc p
 
+svgDocType :: Html ()
 svgDocType = "?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n    \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\""
 
+svgDefs :: Html () -> Html ()
 svgDefs = term "defs"

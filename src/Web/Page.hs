@@ -50,39 +50,15 @@ module Web.Page
     module Web.Page.Html.Input,
     module Web.Page.Bootstrap,
     module Web.Page.Mathjax,
-    module Data.Biapplicative,
-    module Data.Bifunctor,
 
     -- * re-exports
-    module X,
     Value (..),
-    finally,
     HashMap.HashMap,
-    fromList,
-    void,
-    sequenceA_,
-    Text,
-    pack,
-    unpack,
-    toStrict,
-    bool,
   )
 where
 
-import Control.Applicative as X
-import Control.Exception (finally)
-import Control.Monad
-import Control.Monad.Trans.State as X
 import Data.Aeson (Value (..))
-import Data.Biapplicative
-import Data.Bifunctor
-import Data.Bool
-import Data.Foldable (sequenceA_)
 import qualified Data.HashMap.Strict as HashMap
-import Data.Text (Text, pack, unpack)
-import Data.Text.Lazy (toStrict)
-import GHC.Exts (fromList)
-import Text.InterpolatedString.Perl6 as X
 import Web.Page.Bootstrap
 import Web.Page.Bridge
 import Web.Page.Html

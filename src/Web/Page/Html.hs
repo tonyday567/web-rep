@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE IncoherentInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Key generators and miscellaneous html utilities.
 --
@@ -19,13 +19,10 @@ module Web.Page.Html
   )
 where
 
-import Control.Monad.State
-import Data.Bool
-import Data.Text
+import Data.List (intersperse)
 import qualified Data.Text.Lazy as Lazy
 import Lucid
-import Prelude
-import Data.List (intercalate, intersperse)
+import NumHask.Prelude
 
 -- | FIXME: A horrible hack to separate class id's
 class__ :: Text -> Attribute
@@ -39,7 +36,7 @@ toText = Lazy.toStrict . renderText
 genName :: (MonadState Int m) => m Text
 genName = do
   modify (+ 1)
-  (pack . show) <$> get
+  pack . show <$> get
 
 -- | sometimes a number doesn't work properly in html (or js???), and an alpha prefix seems to help
 genNamePre :: (MonadState Int m) => Text -> m Text
@@ -63,38 +60,31 @@ libCss url =
 libJs :: Text -> Html ()
 libJs url = with (script_ mempty) [src_ url]
 
-
 -- | FIXME: `ToHtml a` is used throughout, mostly because `Show a` gives "\"text\"" for show "text", and hilarity ensues when rendering this to a web page, and I couldn't work out how to properly get around this.
 --
 -- Hence, these orphans.
 instance ToHtml Double where
-
   toHtml = toHtml . (pack . show)
 
   toHtmlRaw = toHtmlRaw . (pack . show)
 
 instance ToHtml Bool where
-
   toHtml = toHtml . bool ("false" :: Text) "true"
 
   toHtmlRaw = toHtmlRaw . bool ("false" :: Text) "true"
 
 instance ToHtml Int where
-
   toHtml = toHtml . (pack . show)
 
   toHtmlRaw = toHtmlRaw . (pack . show)
 
 instance ToHtml () where
-
   toHtml = const "()"
 
   toHtmlRaw = const "()"
 
-
 -- I'm going to hell for sure.
 instance {-# INCOHERENT #-} (ToHtml a) => ToHtml [a] where
-
   toHtml = mconcat . Data.List.intersperse (toHtml ("," :: Text)) . fmap toHtml
 
   toHtmlRaw = mconcat . Data.List.intersperse (toHtmlRaw ("," :: Text)) . fmap toHtmlRaw

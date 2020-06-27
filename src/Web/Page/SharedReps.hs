@@ -1,12 +1,12 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Wredundant-constraints #-}
-{-# LANGUAGE IncoherentInstances #-}
 
 -- | Various SharedRep instances for common html input elements.
 module Web.Page.SharedReps
@@ -33,25 +33,25 @@ module Web.Page.SharedReps
     listRep,
     readTextbox,
     defaultListLabels,
+    repChoice,
+    subtype,
   )
 where
 
 import Box.Cont ()
 import Control.Lens
-import Control.Monad
-import Control.Monad.Trans.State
 import Data.Attoparsec.Text hiding (take)
-import Data.Biapplicative
-import Data.Bool
 import qualified Data.HashMap.Strict as HashMap
-import Data.Text (Text, pack, unpack, intercalate)
+import qualified Data.List as List
+import Data.Text (intercalate)
 import Lucid
+import NumHask.Prelude hiding (intercalate, takeWhile)
 import Text.InterpolatedString.Perl6
 import Web.Page.Bootstrap
 import Web.Page.Html
 import Web.Page.Html.Input
 import Web.Page.Types
-import Prelude hiding (lookup, takeWhile)
+import qualified Prelude as P
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -126,9 +126,9 @@ slider label l u s v =
 --
 -- >>> :t sliderI (Just "label") 0 1000 10 300
 -- sliderI (Just "label") 0 1000 10 300
---   :: (Monad m, ToHtml a, Integral a, Show a) => SharedRep m a
+--   :: (Monad m, ToHtml a, P.Integral a, Show a) => SharedRep m a
 sliderI ::
-  (Monad m, ToHtml a, Integral a, Show a) =>
+  (Monad m, ToHtml a, P.Integral a, Show a) =>
   Maybe Text ->
   a ->
   a ->
@@ -302,14 +302,13 @@ maybeRep label st sa = SharedRep $ do
       cardify
         (a, [])
         Nothing
-        ( ( Lucid.with
-              div_
-              [ id_ id',
-                style_
-                  ("display:" <> bool "none" "block" st)
-              ]
-              b
-          ),
+        ( Lucid.with
+            div_
+            [ id_ id',
+              style_
+                ("display:" <> bool "none" "block" st)
+            ]
+            b,
           [style_ "padding-top: 0.25rem; padding-bottom: 0.25rem;"]
         )
     mmap a b = bool Nothing (Just b) a
@@ -367,12 +366,11 @@ accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
         (\a x -> bimap (:) (:) a <<*>> x)
         (pure [])
         ( ( \(ch, a) ->
-              ( bimap
+              bimap
                   (,)
                   (,)
                   (checkf ch)
                   <<*>> bodyf a
-              )
           )
             <$> xs
         )
@@ -430,7 +428,7 @@ readTextbox label v = parsed . unpack <$> textbox' label (pack $ show v)
 fiddle :: (Monad m) => Concerns Text -> SharedRep m (Concerns Text, Bool)
 fiddle (Concerns c j h) =
   bimap
-    (\c' j' h' up -> (Lucid.with div_ [class__ "fiddle "] $ mconcat [up, h', j', c']))
+    (\c' j' h' up -> Lucid.with div_ [class__ "fiddle "] $ mconcat [up, h', j', c'])
     (\c' j' h' up -> (Concerns c' j' h', up))
     (textarea 10 (Just "css") c)
     <<*>> textarea 10 (Just "js") j
@@ -450,7 +448,7 @@ viaFiddle sr = SharedRep $ do
   u <- unrep $ button (Just "update")
   pure $
     bimap
-      (\up a b c _ -> (Lucid.with div_ [class__ "fiddle "] $ mconcat [up, a, b, c]))
+      (\up a b c _ -> Lucid.with div_ [class__ "fiddle "] $ mconcat [up, a, b, c])
       (\up a b c d -> (up, Concerns a b c, d))
       u
       <<*>> crep
@@ -458,3 +456,27 @@ viaFiddle sr = SharedRep $ do
       <<*>> hrep
       <<*>> sr'
 
+repChoice :: (Monad m) => Int -> [(Text, SharedRep m a)] -> SharedRep m a
+repChoice initt xs =
+  bimap hmap mmap dd
+    <<*>> foldr (\x a -> bimap (:) (:) x <<*>> a) (pure []) cs
+  where
+    ts = fst <$> xs
+    cs = snd <$> xs
+    dd = dropdownSum takeText id Nothing ts t0
+    t0 = ts List.!! initt
+    hmap dd' cs' =
+      div_
+        ( dd'
+            <> mconcat (zipWith (\c t -> subtype c t0 t) cs' ts)
+        )
+    mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
+
+subtype :: With a => a -> Text -> Text -> a
+subtype h origt t =
+  with
+    h
+    [ class__ "subtype ",
+      data_ "sumtype" t,
+      style_ ("display:" <> bool "block" "none" (origt /= t))
+    ]

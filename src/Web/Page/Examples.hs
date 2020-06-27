@@ -1,10 +1,10 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Page.Examples
@@ -30,11 +30,10 @@ where
 import qualified Clay
 import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
-import GHC.Generics
 import Lucid
--- import qualified Lucid.Svg as Svg
+import NumHask.Prelude
+import Text.InterpolatedString.Perl6
 import Web.Page
-import Prelude
 
 -- | simple page example
 page1 :: Page
@@ -72,7 +71,7 @@ cfg2 =
     $ #structure .~ Headless
     $ #localdirs .~ ["test/static"]
     $ #filenames .~ (("other/cfg2" <>) <$> suffixes)
-    $ (defaultPageConfig "")
+    $ defaultPageConfig ""
 
 cssLibs :: [Text]
 cssLibs =
@@ -154,9 +153,9 @@ repExamples = do
   ds' <- slider (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
-  dr <- dropdown decimal (pack . show) (Just "dropdown") ((pack . show) <$> [1 .. 5 :: Int]) 3
-  drm <- dropdownMultiple decimal (pack . show) (Just "dropdown multiple") ((pack . show) <$> [1 .. 5 :: Int]) [2,4]
-  drt <- toShape <$> dropdown takeText id (Just "shape") (["Circle", "Square"]) (fromShape SquareShape)
+  dr <- dropdown decimal (pack . show) (Just "dropdown") (pack . show <$> [1 .. 5 :: Int]) 3
+  drm <- dropdownMultiple decimal (pack . show) (Just "dropdown multiple") (pack . show <$> [1 .. 5 :: Int]) [2, 4]
+  drt <- toShape <$> dropdown takeText id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
   col <- colorPicker (Just "color") "#454e56"
   pure (RepExamples t ta n ds' c tog dr drm drt col)
 

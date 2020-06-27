@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Main where
 
 import Control.Lens
 import Lucid
-import Prelude
+import NumHask.Prelude
 import Test.DocTest
 import Test.Tasty
 import Test.Tasty.Hspec
@@ -24,7 +25,7 @@ generatePages dir xs =
 
 genTest :: FilePath -> IO ()
 genTest dir =
-  void $ generatePages dir [("default", (defaultPageConfig "default"), page1), ("sep", cfg2, page2)]
+  void $ generatePages dir [("default", defaultPageConfig "default", page1), ("sep", cfg2, page2)]
 
 testVsFile :: FilePath -> FilePath -> PageConfig -> Page -> IO Bool
 testVsFile dir stem pc p = do
@@ -46,7 +47,7 @@ textVsFile dir stem pc p = do
       t' <- Text.readFile (dir <> names ^. #htmlConcern)
       return (t, Concerns mempty mempty t')
     Separated -> do
-      t' <- sequenceA $ Text.readFile <$> (dir <>) <$> names
+      t' <- sequenceA $ Text.readFile . (dir <>) <$> names
       return (t, t')
 
 testsRender :: IO (SpecWith ())

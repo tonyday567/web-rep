@@ -5,8 +5,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_HADDOCK hide, not-home #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+{-# OPTIONS_HADDOCK hide, not-home #-}
 
 module Web.Page.Types
   ( Page (..),
@@ -41,25 +41,18 @@ where
 
 import qualified Clay
 import Clay (Css)
-import Control.Applicative
 import Control.Lens
-import Control.Monad.IO.Class
-import Control.Monad.Morph
-import Control.Monad.State
 import Data.Aeson
-import Data.Biapplicative
 import Data.Generics.Labels ()
-import Data.HashMap.Strict as HashMap hiding (foldr)
-import Data.Text (Text, unpack)
-import qualified Data.Text as Text
-import Data.Text.Lazy (toStrict)
-import GHC.Generics hiding (Rep)
+import qualified Data.HashMap.Strict as HashMap
+import Data.HashMap.Strict (HashMap)
+import GHC.Show (show)
 import Language.JavaScript.Parser
 import Language.JavaScript.Parser.AST
 import Language.JavaScript.Process.Minify
 import Lucid
+import NumHask.Prelude
 import Text.InterpolatedString.Perl6
-import Prelude
 
 -- | Components of a web page.
 --
@@ -95,7 +88,6 @@ instance Semigroup Page where
       (p0 ^. #htmlBody <> p1 ^. #htmlBody)
 
 instance Monoid Page where
-
   mempty = Page [] [] mempty mempty mempty mempty mempty
 
   mappend = (<>)
@@ -139,7 +131,6 @@ instance (Semigroup r) => Semigroup (RepF r a) where
       (\hm -> let (hm', x') = a0 hm in let (hm'', x'') = a1 hm' in (hm'', x' <> x''))
 
 instance (Monoid a, Monoid r) => Monoid (RepF r a) where
-
   mempty = Rep mempty (,Right mempty)
 
   mappend = (<>)
@@ -148,7 +139,6 @@ instance Bifunctor RepF where
   bimap f g (Rep r a) = Rep (f r) (second (fmap g) . a)
 
 instance Biapplicative RepF where
-
   bipure r a = Rep r (,Right a)
 
   (Rep fr fa) <<*>> (Rep r a) =
@@ -159,7 +149,6 @@ instance Biapplicative RepF where
       )
 
 instance (Monoid r) => Applicative (RepF r) where
-
   pure = bipure mempty
 
   Rep fh fm <*> Rep ah am =
@@ -196,13 +185,11 @@ instance (Functor m) => Bifunctor (SharedRepF m) where
   bimap f g (SharedRep s) = SharedRep $ fmap (bimap f g) s
 
 instance (Monad m) => Biapplicative (SharedRepF m) where
-
   bipure r a = SharedRep $ pure $ bipure r a
 
   (SharedRep f) <<*>> (SharedRep a) = SharedRep $ liftA2 (<<*>>) f a
 
 instance (Monad m, Monoid r) => Applicative (SharedRepF m r) where
-
   pure = bipure mempty
 
   SharedRep f <*> SharedRep a = SharedRep $ liftA2 (<*>) f a
@@ -242,7 +229,6 @@ instance Functor Concerns where
   fmap f (Concerns c j h) = Concerns (f c) (f j) (f h)
 
 instance Applicative Concerns where
-
   pure a = Concerns a a a
 
   Concerns f g h <*> Concerns a b c = Concerns (f a) (g b) (h c)
@@ -314,7 +300,6 @@ instance Semigroup PageCss where
     PageCssText (css <> renderCss css')
 
 instance Monoid PageCss where
-
   mempty = PageCssText mempty
 
   mappend = (<>)
@@ -367,7 +352,6 @@ instance Semigroup JS where
     JS $ JSAstProgram [JSExpressionStatement e (JSSemi ann), JSExpressionStatement e' (JSSemi ann')] ann
 
 instance Monoid JS where
-
   mempty = JS $ JSAstProgram [] (JSAnnot (TokenPn 0 0 0) [])
 
   mappend = (<>)
@@ -384,7 +368,6 @@ instance Semigroup PageJs where
     PageJsText (js <> toStrict (renderToText $ unJS js'))
 
 instance Monoid PageJs where
-
   mempty = PageJs mempty
 
   mappend = (<>)
@@ -408,7 +391,7 @@ onLoadText t = [qc| window.onload=function()\{{t}};|]
 
 -- | Convert 'Text' to 'JS', throwing an error on incorrectness.
 parseJs :: Text -> JS
-parseJs = JS . readJs . Text.unpack
+parseJs = JS . readJs . unpack
 
 -- | Render 'JS' as 'Text'.
 renderJs :: JS -> Text

@@ -1,8 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Common web page input elements, often with bootstrap scaffolding.
@@ -12,14 +11,11 @@ module Web.Page.Html.Input
   )
 where
 
-import Data.Bool
-import Data.Maybe
-import Data.Text
-import GHC.Generics
+import Data.Text (split)
 import Lucid
 import Lucid.Base
+import NumHask.Prelude hiding (for_)
 import Web.Page.Html
-import Prelude
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a
@@ -53,12 +49,11 @@ data InputType
   deriving (Eq, Show, Generic)
 
 instance (ToHtml a) => ToHtml (Input a) where
-
   toHtml (Input v l i (Slider satts)) =
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
           <> input_
             ( [ type_ "range",
                 class__ " form-control-range form-control-sm custom-range jsbClassEventChange",
@@ -72,54 +67,50 @@ instance (ToHtml a) => ToHtml (Input a) where
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
           <> input_
-            ( [ type_ "text",
-                class__ "form-control form-control-sm jsbClassEventInput",
-                id_ i,
-                value_ (pack $ show $ toHtmlRaw v)
-              ]
-            )
+            [ type_ "text",
+              class__ "form-control form-control-sm jsbClassEventInput",
+              id_ i,
+              value_ (pack $ show $ toHtmlRaw v)
+            ]
       )
   toHtml (Input v l i TextBox') =
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
           <> input_
-            ( [ type_ "text",
-                class__ "form-control form-control-sm jsbClassEventFocusout",
-                id_ i,
-                value_ (pack $ show $ toHtmlRaw v)
-              ]
-            )
+            [ type_ "text",
+              class__ "form-control form-control-sm jsbClassEventFocusout",
+              id_ i,
+              value_ (pack $ show $ toHtmlRaw v)
+            ]
       )
   toHtml (Input v l i (TextArea rows)) =
     with
       div_
       [class__ "form-group-sm"]
       ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> ( with
-                 textarea_
-                 [ rows_ (pack $ show rows),
-                   class__ "form-control form-control-sm jsbClassEventInput",
-                   id_ i
-                 ]
-                 (toHtmlRaw v)
-             )
+          <> with
+            textarea_
+            [ rows_ (pack $ show rows),
+              class__ "form-control form-control-sm jsbClassEventInput",
+              id_ i
+            ]
+            (toHtmlRaw v)
       )
   toHtml (Input v l i ColorPicker) =
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
           <> input_
-            ( [ type_ "color",
-                class__ "form-control form-control-sm jsbClassEventInput",
-                id_ i,
-                value_ (pack $ show $ toHtml v)
-              ]
-            )
+            [ type_ "color",
+              class__ "form-control form-control-sm jsbClassEventInput",
+              id_ i,
+              value_ (pack $ show $ toHtml v)
+            ]
       )
   toHtml (Input _ l i ChooseFile) =
     with
@@ -127,23 +118,21 @@ instance (ToHtml a) => ToHtml (Input a) where
       [class__ "form-group-sm"]
       (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
       <> input_
-        ( [ type_ "file",
-            class__ "form-control-file form-control-sm jsbClassEventChooseFile",
-            id_ i
-          ]
-        )
+        [ type_ "file",
+          class__ "form-control-file form-control-sm jsbClassEventChooseFile",
+          id_ i
+        ]
   toHtml (Input v l i (Dropdown opts)) =
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
-          <> ( with
-                 select_
-                 [ class__ "form-control form-control-sm jsbClassEventInput",
-                   id_ i
-                 ]
-                 opts'
-             )
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
+          <> with
+            select_
+            [ class__ "form-control form-control-sm jsbClassEventInput",
+              id_ i
+            ]
+            opts'
       )
     where
       opts' =
@@ -163,15 +152,14 @@ instance (ToHtml a) => ToHtml (Input a) where
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
-          <> ( with
-                 select_
-                 [ class__ "form-control form-control-sm jsbClassEventChangeMultiple",
-                   multiple_ "multiple",
-                   id_ i
-                 ]
-                 opts'
-             )
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
+          <> with
+            select_
+            [ class__ "form-control form-control-sm jsbClassEventChangeMultiple",
+              multiple_ "multiple",
+              id_ i
+            ]
+            opts'
       )
     where
       opts' =
@@ -182,7 +170,7 @@ instance (ToHtml a) => ToHtml (Input a) where
                 ( bool
                     []
                     [selected_ "selected"]
-                    (Prelude.any (\v -> toText (toHtml o) == toText (toHtml v)) (split (==sep) (toText (toHtml vs))))
+                    (any (\v -> toText (toHtml o) == toText (toHtml v)) (split (== sep) (toText (toHtml vs))))
                 )
                 (toHtml o)
           )
@@ -191,14 +179,13 @@ instance (ToHtml a) => ToHtml (Input a) where
     with
       div_
       [class__ "form-group-sm sumtype-group"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
-          <> ( with
-                 select_
-                 [ class__ "form-control form-control-sm jsbClassEventInput jsbClassEventShowSum",
-                   id_ i
-                 ]
-                 opts'
-             )
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
+          <> with
+            select_
+            [ class__ "form-control form-control-sm jsbClassEventInput jsbClassEventShowSum",
+              id_ i
+            ]
+            opts'
       )
     where
       opts' =
@@ -214,7 +201,7 @@ instance (ToHtml a) => ToHtml (Input a) where
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
           <> input_
             [ type_ "text",
               class__ "form-control form-control-sm jsbClassEventInput",
@@ -253,13 +240,13 @@ instance (ToHtml a) => ToHtml (Input a) where
             ]
               <> bool [] [checked_] checked
           )
-          <> (maybe mempty (with label_ [for_ i, class__ "form-check-label mb-0"] . toHtml) l)
+          <> maybe mempty (with label_ [for_ i, class__ "form-check-label mb-0"] . toHtml) l
       )
   toHtml (Input _ l i (Toggle pushed lab)) =
     with
       div_
       [class__ "form-group-sm"]
-      ( (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
           <> input_
             ( [ type_ "button",
                 class__ "btn btn-primary btn-sm jsbClassEventToggle",
@@ -267,7 +254,7 @@ instance (ToHtml a) => ToHtml (Input a) where
                 id_ i,
                 makeAttribute "aria-pressed" (bool "false" "true" pushed)
               ]
-                <> (maybe [] (\l' -> [value_ l']) lab)
+                <> maybe [] (\l' -> [value_ l']) lab
                 <> bool [] [checked_] pushed
             )
       )
@@ -276,13 +263,11 @@ instance (ToHtml a) => ToHtml (Input a) where
       div_
       [class__ "form-group-sm"]
       ( input_
-          ( [ type_ "button",
-              id_ i,
-              class__ "btn btn-primary btn-sm jsbClassEventButton",
-              value_ (fromMaybe "button" l)
-            ]
-          )
+          [ type_ "button",
+            id_ i,
+            class__ "btn btn-primary btn-sm jsbClassEventButton",
+            value_ (fromMaybe "button" l)
+          ]
       )
 
   toHtmlRaw = toHtml
-

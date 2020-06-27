@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
 
 -- | mathjax functionality.
@@ -21,11 +21,10 @@ module Web.Page.Mathjax
 where
 
 import Control.Lens
-import Data.Text (Text)
 import Lucid
+import NumHask.Prelude
 import Text.InterpolatedString.Perl6
 import Web.Page.Types
-import Prelude
 
 mathjax3Lib :: Html ()
 mathjax3Lib =
@@ -89,7 +88,6 @@ mathjax27SvgPage cl =
       .~ [ mathjax27Lib,
            jqueryLib
          ]
-
 
 scriptMathjaxConfig :: Text
 scriptMathjaxConfig =

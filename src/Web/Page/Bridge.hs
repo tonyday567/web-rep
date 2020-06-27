@@ -28,21 +28,17 @@ import Box
 import Box.Cont ()
 import qualified Control.Foldl as L
 import Control.Lens
-import Control.Monad.Morph
-import Control.Monad.State
 import Data.Aeson
 import Data.HashMap.Strict as HashMap
-import qualified Data.Text as Text
-import Data.Text (Text, pack)
-import Data.Text.Lazy (fromStrict)
+import Data.Text (intercalate, split)
 import GHC.Conc
 import Lucid
 import Network.JavaScript (Application, Engine, JavaScript (..), addListener, command, send, start)
+import NumHask.Prelude hiding (intercalate, replace)
 import qualified Streaming.Prelude as S
 import Text.InterpolatedString.Perl6
 import Web.Page.Html
 import Web.Page.Types
-import Prelude hiding (init)
 
 -- | prevent the Enter key from triggering an event
 preventEnter :: PageJs
@@ -139,9 +135,9 @@ append e d t =
 
 clean :: Text -> Text
 clean =
-  Text.intercalate "\\'" . Text.split (== '\'')
-    . Text.intercalate "\\n"
-    . Text.lines
+  intercalate "\\'" . split (== '\'')
+    . intercalate "\\n"
+    . lines
 
 -- | send css, js and html over the bridge
 sendConcerns :: Engine -> Text -> Concerns Text -> IO ()
@@ -157,7 +153,7 @@ bridge e = Cont_ $ \vio -> void $ addListener e vio
 fromJson' :: (FromJSON a) => Value -> Either Text a
 fromJson' v = case fromJSON v of
   (Success a) -> Right a
-  (Error e) -> Left $ "Json conversion error: " <> Text.pack e <> " of " <> (pack . show) v
+  (Error e) -> Left $ "Json conversion error: " <> pack e <> " of " <> (pack . show) v
 
 valueModel :: (FromJSON a, MonadState s m) => (a -> s -> s) -> S.Stream (S.Of Value) m () -> S.Stream (S.Of (Either Text s)) m ()
 valueModel step s =
@@ -307,4 +303,3 @@ function refreshJsb () {
   }));
 };
 |]
-
