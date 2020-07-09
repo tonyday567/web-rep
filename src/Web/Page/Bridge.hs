@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -21,6 +22,11 @@ module Web.Page.Bridge
     midShared,
     refreshJsbJs,
     runScriptJs,
+    Output(..),
+    OutputData(..),
+    bridgeEmitter,
+    bridgeCommitter,
+    makeBridgeBox,
   )
 where
 
@@ -62,7 +68,10 @@ webSocket =
   PageJsText
     [q|
 window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
-jsb.ws.onmessage = (evt) => eval(evt.data);
+jsb.ws.onmessage = function (evt) {
+  console.log(evt.data);
+  eval(evt.data);
+  };
 |]
 
 -- | script injection js.
@@ -106,8 +115,21 @@ bridgePage =
     & #jsGlobal .~ (preventEnter <> refreshJsbJs <> runScriptJs)
     & #jsOnLoad .~ webSocket
 
-sendc :: Engine -> Text -> IO ()
-sendc e = send e . command . JavaScript . fromStrict
+data OutputData =
+  Replace Text |
+  Append Text |
+  SendConcerns (Concerns Text)
+  deriving (Eq, Show, Generic)
+
+data Output = Output
+  { domId :: Text,
+    outputData :: OutputData
+  } deriving (Eq, Show, Generic)
+
+output :: Engine -> Output -> IO ()
+output e (Output i (Replace t)) = replace e i t
+output e (Output i (Append t)) = append e i t
+output e (Output i (SendConcerns t)) = sendConcerns e i t
 
 -- | replace a container and run any embedded scripts
 replace :: Engine -> Text -> Text -> IO ()
@@ -146,9 +168,26 @@ sendConcerns e t (Concerns c j h) = do
   append e t (toText $ style_ c)
   sendc e j
 
+sendc :: Engine -> Text -> IO ()
+sendc e = send e . command . JavaScript . fromStrict
+
 -- | The javascript bridge continuation.
 bridge :: Engine -> Cont_ IO Value
 bridge e = Cont_ $ \vio -> void $ addListener e vio
+
+bridgeEmitter :: Engine -> IO (Emitter IO Value)
+bridgeEmitter e = do
+  (c', e') <- atomically $ ends Unbounded
+  with_ (bridge e) (atomically . c')
+  pure (Emitter $ Just <$> atomically e')
+
+bridgeCommitter :: Engine -> Committer IO Output
+bridgeCommitter e = Committer $ \a -> output e a *> pure True
+
+makeBridgeBox :: Engine -> IO (Box IO Output Value)
+makeBridgeBox eng = do
+  e <- bridgeEmitter eng
+  pure (Box (bridgeCommitter eng) e)
 
 fromJson' :: (FromJSON a) => Value -> Either Text a
 fromJson' v = case fromJSON v of
@@ -166,14 +205,14 @@ valueModel step s =
     & S.maps S.sumToEither
 
 -- | consume an Element using a Committer and a Value continuation
-valueConsume :: s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text s)) -> Cont_ IO Value -> IO s
+valueConsume :: s -> (Element -> s -> s) -> Committer IO (Either Text s) -> Cont_ IO Value -> IO s
 valueConsume init step comm vio = do
   (c, e) <- atomically $ ends Unbounded
   with_ vio (atomically . c)
-  etcM
+  etc
     init
     (Transducer (valueModel step))
-    (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
+    (Box comm (Emitter (Just <$> atomically e)))
 
 stepM :: MonadState s m => (s -> (s, b)) -> (a -> s -> s) -> a -> m (s, b)
 stepM sr step v = do
@@ -192,14 +231,14 @@ sharedModel sr step s =
     & S.maps S.sumToEither
 
 -- | consume shared values using a step function, a continuation committer, and a Value continuation.
-sharedConsume :: (s -> (s, Either Text b)) -> s -> (Element -> s -> s) -> Cont IO (Committer IO (Either Text (s, Either Text b))) -> Cont_ IO Value -> IO s
+sharedConsume :: (s -> (s, Either Text b)) -> s -> (Element -> s -> s) -> Committer IO (Either Text (s, Either Text b)) -> Cont_ IO Value -> IO s
 sharedConsume sh init step comm vio = do
   (c, e) <- atomically $ ends Unbounded
   with_ vio (atomically . c)
-  etcM
+  etc
     init
     (Transducer (sharedModel sh step))
-    (Box <$> comm <*> (liftE <$> pure (Emitter (Just <$> e))))
+    (Box comm (Emitter (Just <$> atomically e)))
 
 -- | run a SharedRep using an initial state, a step function that consumes the shared model, and a value continuation
 runOnEvent ::
@@ -217,7 +256,7 @@ runOnEvent sr hio eaction cv = flip evalStateT (0, HashMap.empty) $ do
       fa
       m
       (\(Element k v) s -> insert k v s)
-      (pure (Committer (\v -> eaction v >> pure True)))
+      (Committer (\v -> eaction v >> pure True))
       cv
 
 -- | create Wai Middleware for a 'SharedRep' providing an initialiser and action on events

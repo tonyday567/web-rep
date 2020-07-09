@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import qualified Box
+import Box hiding (with)
 import Control.Lens hiding (Unwrapped, Wrapped)
 import Data.Attoparsec.Text (decimal, parseOnly)
 import Lucid
@@ -93,8 +93,8 @@ consumeBridgeTest e =
   valueConsume
     initBridgeTest
     stepBridgeTest
-    ( (Box.liftC <$> Box.showStdout)
-        <> pure (Box.Committer (\v -> sendBridgeTest e v >> pure True))
+    ( (contramap show Box.toStdout)
+        <> (Box.Committer (\v -> sendBridgeTest e v >> pure True))
     )
     (bridge e)
 
@@ -104,8 +104,35 @@ midBridgeTest init eeio = start $ \e -> do
   final <- eeio e `finally` putStrLn ("midBridgeTest finalled" :: Text)
   putStrLn ("final value was: " <> show final :: Text)
 
--- * SharedRep testing
+midBridgeBoxTest :: Application -> Application
+midBridgeBoxTest = start $ \eng -> do
+  putStrLn ("making bridge box" :: Text)
+  (Box.Box c e) <- makeBridgeBox eng
+  _ <- commit c (Output "inputs" (Replace initInputs))
+  fuse bbtShow (Box toStdout e)
+  -- fuse (pure . pure . show) (Box <$> ((<>) <$> pure (contramap outputTest c) <*> (liftC <$> cStdout')) <*> pure e)
 
+bbtShow :: Value -> IO (Maybe Text)
+bbtShow v = do
+  putStrLn (show v :: Text)
+  pure (Just (show v))
+
+initInputs :: Text
+initInputs = toText $ toHtml rangeTest <> toHtml textTest
+
+{-
+outputTest :: Text -> Output
+outputTest t = Output "output" $ Replace
+    ( toText $
+        cardify
+          (mempty, [])
+          (Just "output was:")
+          (toHtml t, [])
+    )
+
+-}
+
+-- * SharedRep testing
 -- | Middleware that shows the current shared values
 midShow :: (Show a) => SharedRep IO a -> Application -> Application
 midShow sr =
@@ -170,7 +197,7 @@ logViaFiddle e r (Right (Right (True, c, a))) = do
   replace e "output" (r a)
 logViaFiddle e r (Right (Right (False, _, a))) = replace e "output" (r a)
 
-data MidType = Dev | Prod | ChooseFileExample | DataListExample | SumTypeExample | SumType2Example | Bridge | ListExample | ListRepExample | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
+data MidType = Dev | Prod | ChooseFileExample | DataListExample | SumTypeExample | SumType2Example | Bridge | BridgeBox | ListExample | ListRepExample | Fiddle | ViaFiddle | NoMid deriving (Eq, Read, Show, Generic)
 
 instance ParseField MidType
 
@@ -223,6 +250,8 @@ main = do
         midBridgeTest
           (toHtml rangeTest <> toHtml textTest)
           consumeBridgeTest
+      BridgeBox ->
+        midBridgeBoxTest
       Fiddle -> midFiddle fiddleExample
       ViaFiddle ->
         midViaFiddle
