@@ -55,7 +55,7 @@ serveSocketBox cfg p b =
     middleware $ websocketsOr WS.defaultConnectionOptions (serverApp b)
     servePageWith "/" (defaultPageConfig "") p
 
-sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> [Code]) -> IO ()
+sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> IO [Code]) -> IO ()
 sharedServer srep cfg p i o =
   serveSocketBox cfg p <$.>
   fromAction (backendLoop srep i o . wrangle)
@@ -89,7 +89,7 @@ backendLoop ::
   -- | initial code to place html of the SharedRep
   (Html () -> [Code]) ->
   -- | output code
-  (Either Text a -> [Code]) ->
+  (Either Text a -> m [Code]) ->
   Box m [Code] (Text, Text) -> m ()
 backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empty) $ do
   -- you only want to run unrep once for a SharedRep
@@ -112,14 +112,15 @@ backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empt
       s <- get
       let (m', ea) = fa (snd s)
       modify (second (const m'))
-      pure $ outputCode ea
+      o <- lift $ outputCode ea
+      pure o
 
 defaultInputCode :: Html () -> [Code]
 defaultInputCode h = [Append "input" (toText h)]
 
-defaultOutputCode :: (Show a) => Either Text a -> [Code]
+defaultOutputCode :: (Monad m, Show a) => Either Text a -> m [Code]
 defaultOutputCode ea =
-  case ea of
+  pure $ case ea of
         Left err -> [Append "debug" err]
         Right a -> [Replace "output" (show a)]
 
