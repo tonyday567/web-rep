@@ -28,7 +28,6 @@ module Web.Page.Types
     renderPageJs,
     parseJs,
     renderJs,
-    Element (..),
     RepF (..),
     Rep,
     oneRep,
@@ -42,7 +41,6 @@ where
 import qualified Clay
 import Clay (Css)
 import Control.Lens
-import Data.Aeson
 import Data.Generics.Labels ()
 import qualified Data.HashMap.Strict as HashMap
 import Data.HashMap.Strict (HashMap)
@@ -91,24 +89,6 @@ instance Monoid Page where
   mempty = Page [] [] mempty mempty mempty mempty mempty
 
   mappend = (<>)
-
--- |
---
--- A key-value Text pair as the realistic datatype that zips across the interface between a page and haskell.
-data Element
-  = Element
-      { element :: Text,
-        value :: Text
-      }
-  deriving (Eq, Show, Generic)
-
-instance ToJSON Element
-
-instance FromJSON Element where
-  parseJSON = withObject "Element" $ \v ->
-    Element
-      <$> v .: "element"
-      <*> v .: "value"
 
 -- |
 -- Information contained in a web page can usually be considered to be isomorphic to a map of named values - a 'HashMap'. This is especially true when considering a differential of information contained in a web page. Looking at a page from the outside, it often looks like a streaming differential of a hashmap.
@@ -172,6 +152,9 @@ oneRep r@(Rep _ fa) action = do
 -- Driven by the architecture of the DOM, web page components are compositional, and tree-like, where components are often composed of other components, and values are thus shared across components.
 --
 -- This is sometimes referred to as "observable sharing". See <http://hackage.haskell.org/package/data-reify data-reify> as another library that reifies this (pun intended), and provided the initial inspiration for this implementation.
+--
+-- unrep should only be run once, which is a terrible flaw that might be fixed by linear types.
+--
 newtype SharedRepF m r a
   = SharedRep
       { unrep :: StateT (Int, HashMap Text Text) m (RepF r a)

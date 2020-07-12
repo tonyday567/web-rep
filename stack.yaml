@@ -2,6 +2,7 @@ resolver: nightly-2020-06-25
 
 packages:
   - '.'
+  - ../box-socket
 
 extra-deps:
   - git: https://github.com/tonyday567/numhask-space

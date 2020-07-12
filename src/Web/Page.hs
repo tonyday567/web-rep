@@ -12,7 +12,6 @@ module Web.Page
     oneRep,
     SharedRepF (..),
     SharedRep,
-    Element (..),
     runOnce,
     zeroState,
 
@@ -45,22 +44,20 @@ module Web.Page
     module Web.Page.SharedReps,
     module Web.Page.Render,
     module Web.Page.Server,
-    module Web.Page.Bridge,
+    module Web.Page.Socket,
     module Web.Page.Html,
     module Web.Page.Html.Input,
     module Web.Page.Bootstrap,
     module Web.Page.Mathjax,
 
     -- * re-exports
-    Value (..),
     HashMap.HashMap,
   )
 where
 
-import Data.Aeson (Value (..))
 import qualified Data.HashMap.Strict as HashMap
 import Web.Page.Bootstrap
-import Web.Page.Bridge
+import Web.Page.Socket
 import Web.Page.Html
 import Web.Page.Html.Input
 import Web.Page.Mathjax
