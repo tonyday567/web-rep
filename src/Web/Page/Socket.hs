@@ -55,14 +55,14 @@ serveSocketBox cfg p b =
     middleware $ websocketsOr WS.defaultConnectionOptions (serverApp b)
     servePageWith "/" (defaultPageConfig "") p
 
-sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (a -> Text) -> (Html () -> [Code]) -> (Either Text a -> (a -> Text) -> [Code]) -> IO ()
-sharedServer srep cfg p out i o =
+sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> [Code]) -> IO ()
+sharedServer srep cfg p i o =
   serveSocketBox cfg p <$.>
-  fromAction (backendLoop srep out i o . wrangle)
+  fromAction (backendLoop srep i o . wrangle)
 
 defaultSharedServer :: (Show a) => SharedRep IO a -> IO ()
 defaultSharedServer srep =
-  sharedServer srep defaultSocketConfig defaultSocketPage show defaultInputCode defaultOutputCode
+  sharedServer srep defaultSocketConfig defaultSocketPage defaultInputCode defaultOutputCode
 
 defaultSocketPage :: Page
 defaultSocketPage =
@@ -86,13 +86,12 @@ defaultSocketPage =
 backendLoop ::
   (MonadConc m) =>
   SharedRep m a ->
-  (a -> Text) ->
   -- | initial code to place html of the SharedRep
   (Html () -> [Code]) ->
   -- | output code
-  (Either Text a -> (a -> Text) -> [Code]) ->
+  (Either Text a -> [Code]) ->
   Box m [Code] (Text, Text) -> m ()
-backendLoop sr out inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empty) $ do
+backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empty) $ do
   -- you only want to run unrep once for a SharedRep
   (Rep h fa) <- unrep sr
   b <- lift $ commit c (inputCode h)
@@ -113,16 +112,16 @@ backendLoop sr out inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.
       s <- get
       let (m', ea) = fa (snd s)
       modify (second (const m'))
-      pure $ outputCode ea out
+      pure $ outputCode ea
 
 defaultInputCode :: Html () -> [Code]
 defaultInputCode h = [Append "input" (toText h)]
 
-defaultOutputCode :: Either Text a -> (a -> Text) -> [Code]
-defaultOutputCode ea out =
+defaultOutputCode :: (Show a) => Either Text a -> [Code]
+defaultOutputCode ea =
   case ea of
         Left err -> [Append "debug" err]
-        Right a -> [Replace "output" (out a)]
+        Right a -> [Replace "output" (show a)]
 
 wrangle :: Monad m => Box m Text Text -> Box m [Code] (Text,Text)
 wrangle (Box c e) = Box c' e'
