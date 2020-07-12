@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -11,7 +12,6 @@ module Web.Page.Socket
     serveSocketBox,
     sharedServer,
     defaultSharedServer,
-    OutputStep,
     SocketConfig(..),
     defaultSocketConfig,
     defaultSocketPage,
@@ -55,12 +55,7 @@ serveSocketBox cfg p b =
     middleware $ websocketsOr WS.defaultConnectionOptions (serverApp b)
     servePageWith "/" (defaultPageConfig "") p
 
-type OutputStep m a =
-  (HashMap Text Text -> (HashMap Text Text, Either Text a)) ->
-  (a -> Text) ->
-  StateT (Int, HashMap Text Text) m [Code]
-
-sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (a -> Text) -> (Html () -> [Code]) -> OutputStep IO a -> IO ()
+sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (a -> Text) -> (Html () -> [Code]) -> (Either Text a -> (a -> Text) -> [Code]) -> IO ()
 sharedServer srep cfg p out i o =
   serveSocketBox cfg p <$.>
   fromAction (backendLoop srep out i o . wrangle)
@@ -94,39 +89,40 @@ backendLoop ::
   (a -> Text) ->
   -- | initial code to place html of the SharedRep
   (Html () -> [Code]) ->
-  -- | output step
-  ((HashMap Text Text -> (HashMap Text Text, Either Text a)) -> (a -> Text) -> StateT (Int, HashMap Text Text) m [Code]) ->
+  -- | output code
+  (Either Text a -> (a -> Text) -> [Code]) ->
   Box m [Code] (Text, Text) -> m ()
 backendLoop sr out inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empty) $ do
   -- you only want to run unrep once for a SharedRep
   (Rep h fa) <- unrep sr
   b <- lift $ commit c (inputCode h)
-  o <- outputCode fa out
+  o <- step' fa
   b' <- lift $ commit c o
   when (b && b') (go fa)
   where
     go fa = do
       incoming <- lift $ emit e
       modify (updateS incoming)
-      o <- outputCode fa out
+      o <- step' fa
       b <- lift $ commit c o
       when b (go fa)
     updateS Nothing s = s
     updateS (Just (k,v)) s = second (insert k v) s
 
+    step' fa = do
+      s <- get
+      let (m', ea) = fa (snd s)
+      modify (second (const m'))
+      pure $ outputCode ea out
+
 defaultInputCode :: Html () -> [Code]
 defaultInputCode h = [Append "input" (toText h)]
 
-defaultOutputCode :: (MonadIO m) => (HashMap Text Text -> (HashMap Text Text, Either Text a)) -> (a -> Text) -> StateT (Int, HashMap Text Text) m [Code]
-defaultOutputCode fa out = do
-  s <- get
-  let (m', ea) = fa (snd s)
-  modify (second (const m'))
-  pure $
-    [ case ea of
-        Left err -> Append "debug" err
-        Right a -> Replace "output" (out a)
-    ]
+defaultOutputCode :: Either Text a -> (a -> Text) -> [Code]
+defaultOutputCode ea out =
+  case ea of
+        Left err -> [Append "debug" err]
+        Right a -> [Replace "output" (out a)]
 
 wrangle :: Monad m => Box m Text Text -> Box m [Code] (Text,Text)
 wrangle (Box c e) = Box c' e'
