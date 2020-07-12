@@ -87,18 +87,6 @@ defaultSocketPage =
         ("output", mempty)
       ]
 
--- | turn a box action into a box continuation
--- TODO: paste to box
-fromAction :: (MonadConc m) => (Box m a b -> m r) -> Cont m (Box m b a)
-fromAction baction = Cont $ fuseActions baction
-
--- | connect up two box actions via two queues
-fuseActions :: (MonadConc m) => (Box m a b -> m r) -> (Box m b a -> m r') -> m r'
-fuseActions abm bam = do
-  (Box ca ea, _) <- toBoxM Unbounded
-  (Box cb eb, _) <- toBoxM Unbounded
-  concurrentlyRight (abm (Box ca eb)) (bam (Box cb ea))
-
 -- I am proud of this.
 backendLoop ::
   (MonadConc m) =>
@@ -145,11 +133,6 @@ wrangle (Box c e) = Box c' e'
   where
     c' = listC $ contramap code c
     e' = mapE (pure . either (const Nothing) Just) (parseE parserJ e)
-
--- TODO: to Box
-listC :: (Monad m) => Committer m a -> Committer m [a]
-listC c = Committer $ \as ->
-  any id <$> (sequence $ commit c <$> as)
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
 parserJ :: A.Parser (Text,Text)
