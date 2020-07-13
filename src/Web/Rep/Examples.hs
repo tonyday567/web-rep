@@ -7,7 +7,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Web.Page.Examples
+module Web.Rep.Examples
   ( page1,
     page2,
     pagemj,
@@ -33,13 +33,13 @@ import Data.Attoparsec.Text
 import Lucid
 import NumHask.Prelude
 import Text.InterpolatedString.Perl6
-import Web.Page
+import Web.Rep
 
 -- | simple page example
 page1 :: Page
 page1 =
   #htmlBody .~ button1
-    $ #cssBody .~ PageCss css1
+    $ #cssBody .~ RepCss css1
     $ #jsGlobal .~ mempty
     $ #jsOnLoad .~ click
     $ #libsCss .~ (libCss <$> cssLibs)
@@ -96,9 +96,9 @@ css1 = do
   "#btnGo.on" Clay.? Clay.color Clay.green
 
 -- js
-click :: PageJs
+click :: RepJs
 click =
-  PageJsText
+  RepJsText
     [q|
 $('#btnGo').click( function() {
   $('#btnGo').toggleClass('on');

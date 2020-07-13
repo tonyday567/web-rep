@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wredundant-constraints #-}
 
 -- | Various SharedRep instances for common html input elements.
-module Web.Page.SharedReps
+module Web.Rep.SharedReps
   ( repInput,
     repMessage,
     sliderI,
@@ -35,6 +35,8 @@ module Web.Page.SharedReps
     defaultListLabels,
     repChoice,
     subtype,
+    selectItems,
+    repItemsSelect,
   )
 where
 
@@ -47,11 +49,12 @@ import Data.Text (intercalate)
 import Lucid
 import NumHask.Prelude hiding (intercalate, takeWhile)
 import Text.InterpolatedString.Perl6
-import Web.Page.Bootstrap
-import Web.Page.Html
-import Web.Page.Html.Input
-import Web.Page.Types
+import Web.Rep.Bootstrap
+import Web.Rep.Html
+import Web.Rep.Html.Input
+import Web.Rep.Types
 import qualified Prelude as P
+import qualified Data.Attoparsec.Text as A
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -471,6 +474,17 @@ repChoice initt xs =
             <> mconcat (zipWith (\c t -> subtype c t0 t) cs' ts)
         )
     mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
+
+-- | select test keys from a Map
+selectItems :: [Text] -> HashMap.HashMap Text a -> [(Text,a)]
+selectItems ks m =
+  HashMap.toList $
+    HashMap.filterWithKey (\k _ -> k `elem` ks) m
+
+-- | rep of multiple items list
+repItemsSelect :: Monad m => [Text] -> [Text] -> SharedRep m [Text]
+repItemsSelect init full =
+  dropdownMultiple (A.takeWhile (`notElem` ([',']::[Char]))) id (Just "items") full init
 
 subtype :: With a => a -> Text -> Text -> a
 subtype h origt t =

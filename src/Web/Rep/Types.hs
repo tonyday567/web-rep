@@ -8,8 +8,9 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
-module Web.Page.Types
-  ( Page (..),
+module Web.Rep.Types
+  ( Shared(..),
+    Page (..),
     PageConfig (..),
     defaultPageConfig,
     Concerns (..),
@@ -19,13 +20,13 @@ module Web.Page.Types
     PageStructure (..),
     PageRender (..),
     Css,
-    PageCss (..),
+    RepCss (..),
     renderCss,
-    renderPageCss,
+    renderRepCss,
     JS (..),
-    PageJs (..),
+    RepJs (..),
     onLoad,
-    renderPageJs,
+    renderRepJs,
     parseJs,
     renderJs,
     RepF (..),
@@ -52,6 +53,40 @@ import Lucid
 import NumHask.Prelude
 import Text.InterpolatedString.Perl6
 
+
+data Shared m r a =
+  Shared { representation :: r,
+           unshare :: StateT (Int, HashMap Text Text) (ExceptT Text m) a
+         } deriving (Functor)
+
+instance (Functor m) => Bifunctor (Shared m) where
+  bimap f g (Shared r m) = Shared (f r) (fmap g m)
+
+instance (Monad m) => Biapplicative (Shared m) where
+  bipure r a = Shared r (pure $ a)
+
+  (Shared fr fa) <<*>> (Shared r a) =
+    Shared (fr r) (fa <*> a)
+
+instance (Monoid r, Monad m) => Applicative (Shared m r) where
+  pure = bipure mempty
+
+  Shared fh fm <*> Shared ah am =
+    Shared
+      (fh <> ah)
+      (fm <*> am)
+
+instance (Semigroup r, Semigroup a, Monad m) => Semigroup (Shared m r a) where
+  (Shared r m) <> (Shared r' m') =
+    Shared
+      (r <> r')
+      ((<>) <$> m <*> m')
+
+instance (Monoid a, Monoid r, Monad m) => Monoid (Shared m r a) where
+  mempty = Shared mempty (pure mempty)
+
+  mappend = (<>)
+
 -- | Components of a web page.
 --
 -- A web page can take many forms but still have the same underlying representation. For example, CSS can be linked to in a separate file, or can be inline within html, but still be the same css and have the same expected external effect. A Page represents the practical components of what makes up a static snapshot of a web page.
@@ -62,11 +97,11 @@ data Page
         -- | javascript library links
         libsJs :: [Html ()],
         -- | css
-        cssBody :: PageCss,
+        cssBody :: RepCss,
         -- | javascript with global scope
-        jsGlobal :: PageJs,
+        jsGlobal :: RepJs,
         -- | javascript included within the onLoad function
-        jsOnLoad :: PageJs,
+        jsOnLoad :: RepJs,
         -- | html within the header
         htmlHeader :: Html (),
         -- | body html
@@ -268,30 +303,30 @@ defaultPageConfig stem =
     []
 
 -- | Unifies css as either a 'Clay.Css' or as Text.
-data PageCss = PageCss Clay.Css | PageCssText Text deriving (Generic)
+data RepCss = RepCss Clay.Css | RepCssText Text deriving (Generic)
 
-instance Show PageCss where
-  show (PageCss css) = unpack . renderCss $ css
-  show (PageCssText txt) = unpack txt
+instance Show RepCss where
+  show (RepCss css) = unpack . renderCss $ css
+  show (RepCssText txt) = unpack txt
 
-instance Semigroup PageCss where
-  (<>) (PageCss css) (PageCss css') = PageCss (css <> css')
-  (<>) (PageCssText css) (PageCssText css') = PageCssText (css <> css')
-  (<>) (PageCss css) (PageCssText css') =
-    PageCssText (renderCss css <> css')
-  (<>) (PageCssText css) (PageCss css') =
-    PageCssText (css <> renderCss css')
+instance Semigroup RepCss where
+  (<>) (RepCss css) (RepCss css') = RepCss (css <> css')
+  (<>) (RepCssText css) (RepCssText css') = RepCssText (css <> css')
+  (<>) (RepCss css) (RepCssText css') =
+    RepCssText (renderCss css <> css')
+  (<>) (RepCssText css) (RepCss css') =
+    RepCssText (css <> renderCss css')
 
-instance Monoid PageCss where
-  mempty = PageCssText mempty
+instance Monoid RepCss where
+  mempty = RepCssText mempty
 
   mappend = (<>)
 
--- | Render 'PageCss' as text.
-renderPageCss :: PageRender -> PageCss -> Text
-renderPageCss Minified (PageCss css) = toStrict $ Clay.renderWith Clay.compact [] css
-renderPageCss _ (PageCss css) = toStrict $ Clay.render css
-renderPageCss _ (PageCssText css) = css
+-- | Render 'RepCss' as text.
+renderRepCss :: PageRender -> RepCss -> Text
+renderRepCss Minified (RepCss css) = toStrict $ Clay.renderWith Clay.compact [] css
+renderRepCss _ (RepCss css) = toStrict $ Clay.render css
+renderRepCss _ (RepCssText css) = css
 
 -- | Render 'Css' as text.
 renderCss :: Css -> Text
@@ -340,25 +375,25 @@ instance Monoid JS where
   mappend = (<>)
 
 -- | Unifies javascript as 'JSStatement' and script as 'Text'.
-data PageJs = PageJs JS | PageJsText Text deriving (Eq, Show, Generic)
+data RepJs = RepJs JS | RepJsText Text deriving (Eq, Show, Generic)
 
-instance Semigroup PageJs where
-  (<>) (PageJs js) (PageJs js') = PageJs (js <> js')
-  (<>) (PageJsText js) (PageJsText js') = PageJsText (js <> js')
-  (<>) (PageJs js) (PageJsText js') =
-    PageJsText (toStrict (renderToText $ unJS js) <> js')
-  (<>) (PageJsText js) (PageJs js') =
-    PageJsText (js <> toStrict (renderToText $ unJS js'))
+instance Semigroup RepJs where
+  (<>) (RepJs js) (RepJs js') = RepJs (js <> js')
+  (<>) (RepJsText js) (RepJsText js') = RepJsText (js <> js')
+  (<>) (RepJs js) (RepJsText js') =
+    RepJsText (toStrict (renderToText $ unJS js) <> js')
+  (<>) (RepJsText js) (RepJs js') =
+    RepJsText (js <> toStrict (renderToText $ unJS js'))
 
-instance Monoid PageJs where
-  mempty = PageJs mempty
+instance Monoid RepJs where
+  mempty = RepJs mempty
 
   mappend = (<>)
 
 -- | Wrap js in standard DOM window loader.
-onLoad :: PageJs -> PageJs
-onLoad (PageJs js) = PageJs $ onLoadStatements [toStatement js]
-onLoad (PageJsText js) = PageJsText $ onLoadText js
+onLoad :: RepJs -> RepJs
+onLoad (RepJs js) = RepJs $ onLoadStatements [toStatement js]
+onLoad (RepJsText js) = RepJsText $ onLoadText js
 
 toStatement :: JS -> JSStatement
 toStatement (JS (JSAstProgram ss ann)) = JSStatementBlock JSNoAnnot ss JSNoAnnot (JSSemi ann)
@@ -380,8 +415,8 @@ parseJs = JS . readJs . unpack
 renderJs :: JS -> Text
 renderJs = toStrict . renderToText . unJS
 
--- | Render 'PageJs' as 'Text'.
-renderPageJs :: PageRender -> PageJs -> Text
-renderPageJs _ (PageJsText js) = js
-renderPageJs Minified (PageJs js) = toStrict . renderToText . minifyJS . unJS $ js
-renderPageJs Pretty (PageJs js) = toStrict . renderToText . unJS $ js
+-- | Render 'RepJs' as 'Text'.
+renderRepJs :: PageRender -> RepJs -> Text
+renderRepJs _ (RepJsText js) = js
+renderRepJs Minified (RepJs js) = toStrict . renderToText . minifyJS . unJS $ js
+renderRepJs Pretty (RepJs js) = toStrict . renderToText . unJS $ js

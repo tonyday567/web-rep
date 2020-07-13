@@ -7,7 +7,7 @@
 {-# OPTIONS_GHC -Wredundant-constraints #-}
 
 -- | A socket between a web page and haskell, based on the box library.
-module Web.Page.Socket
+module Web.Rep.Socket
   ( socketPage,
     serveSocketBox,
     sharedServer,
@@ -31,10 +31,10 @@ import Data.HashMap.Strict as HashMap
 import qualified Data.Text as Text
 import NumHask.Prelude hiding (intercalate, replace)
 import Text.InterpolatedString.Perl6
-import Web.Page.Html
-import Web.Page.Server
-import Web.Page.Types
-import Web.Page.Bootstrap
+import Web.Rep.Html
+import Web.Rep.Server
+import Web.Rep.Types
+import Web.Rep.Bootstrap
 import Web.Scotty hiding (get)
 import qualified Data.Attoparsec.Text as A
 import Network.Wai.Handler.WebSockets
@@ -191,9 +191,9 @@ clean =
 
 -- * initial javascript
 -- | create a web socket for event data
-webSocket :: PageJs
+webSocket :: RepJs
 webSocket =
-  PageJsText
+  RepJsText
     [q|
 window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
 jsb.event = function(ev) {
@@ -206,9 +206,9 @@ jsb.ws.onmessage = function(evt){
 
 -- * scripts
 -- | Event hooks that may need to be reattached given dynamic content creation.
-refreshJsbJs :: PageJs
+refreshJsbJs :: RepJs
 refreshJsbJs =
-  PageJsText
+  RepJsText
     [q|
 function refreshJsb () {
   $('.jsbClassEventInput').off('input');
@@ -258,9 +258,9 @@ function refreshJsb () {
 |]
 
 -- | prevent the Enter key from triggering an event
-preventEnter :: PageJs
+preventEnter :: RepJs
 preventEnter =
-  PageJs $
+  RepJs $
     parseJs
       [q|
 window.addEventListener('keydown',function(e) {
@@ -276,9 +276,9 @@ window.addEventListener('keydown',function(e) {
 -- | script injection js.
 --
 -- See https://ghinda.net/article/script-tags/ for why this might be needed.
-runScriptJs :: PageJs
+runScriptJs :: RepJs
 runScriptJs =
-  PageJsText
+  RepJsText
     [q|
 function insertScript ($script) {
   var s = document.createElement('script')

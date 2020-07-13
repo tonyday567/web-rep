@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Serve pages via 'ScottyM'
-module Web.Page.Server
+module Web.Rep.Server
   ( servePageWith
   )
 where
@@ -14,8 +14,8 @@ import Control.Lens hiding (only)
 import Lucid
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import NumHask.Prelude hiding (get, replace)
-import Web.Page.Render
-import Web.Page.Types
+import Web.Rep.Render
+import Web.Rep.Types
 import Web.Scotty
 
 -- | serve a Page via a ScottyM

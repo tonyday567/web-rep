@@ -7,7 +7,7 @@
 -- | Key generators and miscellaneous html utilities.
 --
 -- Uses the lucid 'Lucid.Html'.
-module Web.Page.Html
+module Web.Rep.Html
   ( class__,
     toText,
     genName,
