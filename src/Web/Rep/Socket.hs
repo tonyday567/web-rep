@@ -32,8 +32,9 @@ import qualified Data.Text as Text
 import NumHask.Prelude hiding (intercalate, replace)
 import Text.InterpolatedString.Perl6
 import Web.Rep.Html
+import Web.Rep.Page
 import Web.Rep.Server
-import Web.Rep.Types
+import Web.Rep.Shared
 import Web.Rep.Bootstrap
 import Web.Scotty hiding (get)
 import qualified Data.Attoparsec.Text as A
@@ -92,8 +93,8 @@ backendLoop ::
   (Either Text a -> m [Code]) ->
   Box m [Code] (Text, Text) -> m ()
 backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empty) $ do
-  -- you only want to run unrep once for a SharedRep
-  (Rep h fa) <- unrep sr
+  -- you only want to run unshare once for a SharedRep
+  (Rep h fa) <- unshare sr
   b <- lift $ commit c (inputCode h)
   o <- step' fa
   b' <- lift $ commit c o

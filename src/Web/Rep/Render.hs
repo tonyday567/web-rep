@@ -17,7 +17,7 @@ import Control.Lens
 import Lucid
 import NumHask.Prelude
 import Web.Rep.Html
-import Web.Rep.Types
+import Web.Rep.Page
 
 -- | Render a Page with the default configuration into Html.
 renderPage :: Page -> Html ()

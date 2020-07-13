@@ -24,7 +24,7 @@ import Control.Lens
 import Lucid
 import NumHask.Prelude
 import Text.InterpolatedString.Perl6
-import Web.Rep.Types
+import Web.Rep.Page
 
 mathjax3Lib :: Html ()
 mathjax3Lib =

@@ -15,7 +15,7 @@ import Lucid
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import NumHask.Prelude hiding (get, replace)
 import Web.Rep.Render
-import Web.Rep.Types
+import Web.Rep.Page
 import Web.Scotty
 
 -- | serve a Page via a ScottyM

@@ -10,8 +10,6 @@
 module Web.Rep.Html
   ( class__,
     toText,
-    genName,
-    genNamePre,
     libCss,
     libJs,
     HtmlT,
@@ -31,16 +29,6 @@ class__ t = class_ (" " <> t <> " ")
 -- | Convert html to text
 toText :: Html a -> Text
 toText = Lazy.toStrict . renderText
-
--- | name supply for html elements
-genName :: (MonadState Int m) => m Text
-genName = do
-  modify (+ 1)
-  pack . show <$> get
-
--- | sometimes a number doesn't work properly in html (or js???), and an alpha prefix seems to help
-genNamePre :: (MonadState Int m) => Text -> m Text
-genNamePre pre = (pre <>) <$> genName
 
 -- | Convert a link to a css library from text to html.
 --

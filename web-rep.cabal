@@ -21,11 +21,12 @@ library
     Web.Rep.Html
     Web.Rep.Html.Input
     Web.Rep.Mathjax
+    Web.Rep.Page
     Web.Rep.Render
     Web.Rep.Server
+    Web.Rep.Shared
     Web.Rep.SharedReps
     Web.Rep.Socket
-    Web.Rep.Types
   hs-source-dirs:
     src
   build-depends:

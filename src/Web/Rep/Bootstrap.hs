@@ -21,7 +21,8 @@ import Lucid
 import Lucid.Base
 import NumHask.Prelude
 import Web.Rep.Html
-import Web.Rep.Types
+import Web.Rep.Page
+import Web.Rep.Shared
 
 bootstrapCss :: [Html ()]
 bootstrapCss =

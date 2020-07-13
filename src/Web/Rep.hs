@@ -14,6 +14,9 @@ module Web.Rep
     SharedRep,
     runOnce,
     zeroState,
+    register,
+    genName,
+    genNamePre,
 
     -- * Web Rep Components
     Page (..),
@@ -61,7 +64,8 @@ import Web.Rep.Socket
 import Web.Rep.Html
 import Web.Rep.Html.Input
 import Web.Rep.Mathjax
+import Web.Rep.Page
 import Web.Rep.Render
 import Web.Rep.Server
+import Web.Rep.Shared
 import Web.Rep.SharedReps
-import Web.Rep.Types
