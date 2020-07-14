@@ -18,7 +18,7 @@ extra-deps:
   - git: https://github.com/tonyday567/box
     commit: c646bd417574366b0c2d5ff529974ad55e202783
   - git: https://github.com/tonyday567/box-socket
-    commit: c22ff8122f10ca5a709ff1ec73bd80924687271d
+    commit: aa68eefd2804b1b659c18e98c994d4ba08156d82
 
 allow-newer: true
 
