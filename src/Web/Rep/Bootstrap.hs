@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Some <https://getbootstrap.com/ bootstrap> assets and functionality.
-module Web.Page.Bootstrap
+module Web.Rep.Bootstrap
   ( bootstrapPage,
     cardify,
     divClass_,
@@ -20,8 +20,9 @@ where
 import Lucid
 import Lucid.Base
 import NumHask.Prelude
-import Web.Page.Html
-import Web.Page.Types
+import Web.Rep.Html
+import Web.Rep.Page
+import Web.Rep.Shared
 
 bootstrapCss :: [Html ()]
 bootstrapCss =

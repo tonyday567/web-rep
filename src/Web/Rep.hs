@@ -5,7 +5,7 @@
 -- I wanted to expose the server delivery mechanism, switch the streaming nature of the gap between a web page and a haskell server, and concentrate on getting a clean interface between pure haskell and the world that is a web page.
 --
 -- See app/examples.hs and 'Web.Examples' for usage.
-module Web.Page
+module Web.Rep
   ( -- * Shared Representation
     RepF (..),
     Rep,
@@ -14,8 +14,11 @@ module Web.Page
     SharedRep,
     runOnce,
     zeroState,
+    register,
+    genName,
+    genNamePre,
 
-    -- * Web Page Components
+    -- * Web Rep Components
     Page (..),
     PageConfig (..),
     defaultPageConfig,
@@ -28,27 +31,27 @@ module Web.Page
 
     -- * Css
     Css,
-    PageCss (..),
+    RepCss (..),
     renderCss,
-    renderPageCss,
+    renderRepCss,
 
     -- * JS
     JS (..),
-    PageJs (..),
+    RepJs (..),
     onLoad,
-    renderPageJs,
+    renderRepJs,
     parseJs,
     renderJs,
 
     -- * re-export modules
-    module Web.Page.SharedReps,
-    module Web.Page.Render,
-    module Web.Page.Server,
-    module Web.Page.Socket,
-    module Web.Page.Html,
-    module Web.Page.Html.Input,
-    module Web.Page.Bootstrap,
-    module Web.Page.Mathjax,
+    module Web.Rep.SharedReps,
+    module Web.Rep.Render,
+    module Web.Rep.Server,
+    module Web.Rep.Socket,
+    module Web.Rep.Html,
+    module Web.Rep.Html.Input,
+    module Web.Rep.Bootstrap,
+    module Web.Rep.Mathjax,
 
     -- * re-exports
     HashMap.HashMap,
@@ -56,12 +59,13 @@ module Web.Page
 where
 
 import qualified Data.HashMap.Strict as HashMap
-import Web.Page.Bootstrap
-import Web.Page.Socket
-import Web.Page.Html
-import Web.Page.Html.Input
-import Web.Page.Mathjax
-import Web.Page.Render
-import Web.Page.Server
-import Web.Page.SharedReps
-import Web.Page.Types
+import Web.Rep.Bootstrap
+import Web.Rep.Socket
+import Web.Rep.Html
+import Web.Rep.Html.Input
+import Web.Rep.Mathjax
+import Web.Rep.Page
+import Web.Rep.Render
+import Web.Rep.Server
+import Web.Rep.Shared
+import Web.Rep.SharedReps

@@ -3,7 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 -- | Page rendering
-module Web.Page.Render
+module Web.Rep.Render
   ( renderPage,
     renderPageWith,
     renderPageHtmlWith,
@@ -16,8 +16,8 @@ where
 import Control.Lens
 import Lucid
 import NumHask.Prelude
-import Web.Page.Html
-import Web.Page.Types
+import Web.Rep.Html
+import Web.Rep.Page
 
 -- | Render a Page with the default configuration into Html.
 renderPage :: Page -> Html ()
@@ -93,8 +93,8 @@ renderPageWith pc p =
               )
     css = rendercss (p ^. #cssBody)
     js = renderjs (p ^. #jsGlobal <> onLoad (p ^. #jsOnLoad))
-    renderjs = renderPageJs $ pc ^. #pageRender
-    rendercss = renderPageCss $ pc ^. #pageRender
+    renderjs = renderRepJs $ pc ^. #pageRender
+    rendercss = renderRepCss $ pc ^. #pageRender
     cssInline
       | pc ^. #concerns == Separated || css == mempty = mempty
       | otherwise = style_ [type_ "text/css"] css

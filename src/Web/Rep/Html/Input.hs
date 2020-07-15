@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Common web page input elements, often with bootstrap scaffolding.
-module Web.Page.Html.Input
+module Web.Rep.Html.Input
   ( Input (..),
     InputType (..),
   )
@@ -15,7 +15,7 @@ import Data.Text (split)
 import Lucid
 import Lucid.Base
 import NumHask.Prelude hiding (for_)
-import Web.Page.Html
+import Web.Rep.Html
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a

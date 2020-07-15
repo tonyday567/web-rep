@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
@@ -8,8 +9,9 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
-module Web.Page.Types
-  ( Page (..),
+module Web.Rep.Page
+  ( -- $page
+    Page (..),
     PageConfig (..),
     defaultPageConfig,
     Concerns (..),
@@ -18,38 +20,33 @@ module Web.Page.Types
     PageConcerns (..),
     PageStructure (..),
     PageRender (..),
+
+    -- $css
     Css,
-    PageCss (..),
+    RepCss (..),
     renderCss,
-    renderPageCss,
+    renderRepCss,
+
+    -- $js
     JS (..),
-    PageJs (..),
+    RepJs (..),
     onLoad,
-    renderPageJs,
+    renderRepJs,
     parseJs,
     renderJs,
-    RepF (..),
-    Rep,
-    oneRep,
-    SharedRepF (..),
-    SharedRep,
-    runOnce,
-    zeroState,
-  )
+    )
 where
 
 import qualified Clay
 import Clay (Css)
 import Control.Lens
 import Data.Generics.Labels ()
-import qualified Data.HashMap.Strict as HashMap
-import Data.HashMap.Strict (HashMap)
 import GHC.Show (show)
 import Language.JavaScript.Parser
 import Language.JavaScript.Parser.AST
 import Language.JavaScript.Process.Minify
 import Lucid
-import NumHask.Prelude
+import NumHask.Prelude hiding (show)
 import Text.InterpolatedString.Perl6
 
 -- | Components of a web page.
@@ -62,11 +59,11 @@ data Page
         -- | javascript library links
         libsJs :: [Html ()],
         -- | css
-        cssBody :: PageCss,
+        cssBody :: RepCss,
         -- | javascript with global scope
-        jsGlobal :: PageJs,
+        jsGlobal :: RepJs,
         -- | javascript included within the onLoad function
-        jsOnLoad :: PageJs,
+        jsOnLoad :: RepJs,
         -- | html within the header
         htmlHeader :: Html (),
         -- | body html
@@ -89,113 +86,6 @@ instance Monoid Page where
   mempty = Page [] [] mempty mempty mempty mempty mempty
 
   mappend = (<>)
-
--- |
--- Information contained in a web page can usually be considered to be isomorphic to a map of named values - a 'HashMap'. This is especially true when considering a differential of information contained in a web page. Looking at a page from the outside, it often looks like a streaming differential of a hashmap.
---
--- RepF consists of an underlying value being represented, and, given a hashmap state, a way to produce a representation of the underlying value (or error), in another domain, together with the potential to alter the hashmap state.
-data RepF r a
-  = Rep
-      { rep :: r,
-        make :: HashMap Text Text -> (HashMap Text Text, Either Text a)
-      }
-  deriving (Functor)
-
--- | the common usage, where the representation domain is Html
-type Rep a = RepF (Html ()) a
-
-instance (Semigroup r) => Semigroup (RepF r a) where
-  (Rep r0 a0) <> (Rep r1 a1) =
-    Rep
-      (r0 <> r1)
-      (\hm -> let (hm', x') = a0 hm in let (hm'', x'') = a1 hm' in (hm'', x' <> x''))
-
-instance (Monoid a, Monoid r) => Monoid (RepF r a) where
-  mempty = Rep mempty (,Right mempty)
-
-  mappend = (<>)
-
-instance Bifunctor RepF where
-  bimap f g (Rep r a) = Rep (f r) (second (fmap g) . a)
-
-instance Biapplicative RepF where
-  bipure r a = Rep r (,Right a)
-
-  (Rep fr fa) <<*>> (Rep r a) =
-    Rep
-      (fr r)
-      ( \hm ->
-          let (hm', a') = a hm in let (hm'', fa') = fa hm' in (hm'', fa' <*> a')
-      )
-
-instance (Monoid r) => Applicative (RepF r) where
-  pure = bipure mempty
-
-  Rep fh fm <*> Rep ah am =
-    Rep
-      (fh <> ah)
-      ( \hm ->
-          let (hm', a') = am hm in let (hm'', fa') = fm hm' in (hm'', fa' <*> a')
-      )
-
--- | stateful result of one step, given a 'Rep', and a monadic action.
--- Useful for testing and for initialising a page.
-oneRep :: (Monad m, MonadIO m) => Rep a -> (Rep a -> HashMap Text Text -> m ()) -> StateT (HashMap Text Text) m (HashMap Text Text, Either Text a)
-oneRep r@(Rep _ fa) action = do
-  m <- get
-  let (m', a) = fa m
-  put m'
-  lift $ action r m'
-  pure (m', a)
-
--- |
--- Driven by the architecture of the DOM, web page components are compositional, and tree-like, where components are often composed of other components, and values are thus shared across components.
---
--- This is sometimes referred to as "observable sharing". See <http://hackage.haskell.org/package/data-reify data-reify> as another library that reifies this (pun intended), and provided the initial inspiration for this implementation.
---
--- unrep should only be run once, which is a terrible flaw that might be fixed by linear types.
---
-newtype SharedRepF m r a
-  = SharedRep
-      { unrep :: StateT (Int, HashMap Text Text) m (RepF r a)
-      }
-  deriving (Functor)
-
--- | default representation type of 'Html' ()
-type SharedRep m a = SharedRepF m (Html ()) a
-
-instance (Functor m) => Bifunctor (SharedRepF m) where
-  bimap f g (SharedRep s) = SharedRep $ fmap (bimap f g) s
-
-instance (Monad m) => Biapplicative (SharedRepF m) where
-  bipure r a = SharedRep $ pure $ bipure r a
-
-  (SharedRep f) <<*>> (SharedRep a) = SharedRep $ liftA2 (<<*>>) f a
-
-instance (Monad m, Monoid r) => Applicative (SharedRepF m r) where
-  pure = bipure mempty
-
-  SharedRep f <*> SharedRep a = SharedRep $ liftA2 (<*>) f a
-
--- | compute the initial state of a SharedRep (testing)
-zeroState ::
-  (Monad m) =>
-  SharedRep m a ->
-  m (Html (), (HashMap Text Text, Either Text a))
-zeroState sr = do
-  (Rep h fa, (_, m)) <- flip runStateT (0, HashMap.empty) $ unrep sr
-  pure (h, fa m)
-
--- | Compute the initial state of a SharedRep and then run an action once (see tests).
-runOnce ::
-  (Monad m) =>
-  SharedRep m a ->
-  (Html () -> HashMap Text Text -> m ()) ->
-  m (HashMap Text Text, Either Text a)
-runOnce sr action = do
-  (Rep h fa, (_, m)) <- flip runStateT (0, HashMap.empty) $ unrep sr
-  action h m
-  pure (fa m)
 
 -- | A web page typically is composed of some css, javascript and html.
 --
@@ -268,34 +158,35 @@ defaultPageConfig stem =
     []
 
 -- | Unifies css as either a 'Clay.Css' or as Text.
-data PageCss = PageCss Clay.Css | PageCssText Text deriving (Generic)
+data RepCss = RepCss Clay.Css | RepCssText Text deriving (Generic)
 
-instance Show PageCss where
-  show (PageCss css) = unpack . renderCss $ css
-  show (PageCssText txt) = unpack txt
+instance Show RepCss where
+  show (RepCss css) = unpack . renderCss $ css
+  show (RepCssText txt) = unpack txt
 
-instance Semigroup PageCss where
-  (<>) (PageCss css) (PageCss css') = PageCss (css <> css')
-  (<>) (PageCssText css) (PageCssText css') = PageCssText (css <> css')
-  (<>) (PageCss css) (PageCssText css') =
-    PageCssText (renderCss css <> css')
-  (<>) (PageCssText css) (PageCss css') =
-    PageCssText (css <> renderCss css')
+instance Semigroup RepCss where
+  (<>) (RepCss css) (RepCss css') = RepCss (css <> css')
+  (<>) (RepCssText css) (RepCssText css') = RepCssText (css <> css')
+  (<>) (RepCss css) (RepCssText css') =
+    RepCssText (renderCss css <> css')
+  (<>) (RepCssText css) (RepCss css') =
+    RepCssText (css <> renderCss css')
 
-instance Monoid PageCss where
-  mempty = PageCssText mempty
+instance Monoid RepCss where
+  mempty = RepCssText mempty
 
   mappend = (<>)
 
--- | Render 'PageCss' as text.
-renderPageCss :: PageRender -> PageCss -> Text
-renderPageCss Minified (PageCss css) = toStrict $ Clay.renderWith Clay.compact [] css
-renderPageCss _ (PageCss css) = toStrict $ Clay.render css
-renderPageCss _ (PageCssText css) = css
+-- | Render 'RepCss' as text.
+renderRepCss :: PageRender -> RepCss -> Text
+renderRepCss Minified (RepCss css) = toStrict $ Clay.renderWith Clay.compact [] css
+renderRepCss _ (RepCss css) = toStrict $ Clay.render css
+renderRepCss _ (RepCssText css) = css
 
 -- | Render 'Css' as text.
 renderCss :: Css -> Text
 renderCss = toStrict . Clay.render
+
 
 -- | wrapper for `JSAST`
 newtype JS = JS {unJS :: JSAST} deriving (Show, Eq, Generic)
@@ -340,25 +231,25 @@ instance Monoid JS where
   mappend = (<>)
 
 -- | Unifies javascript as 'JSStatement' and script as 'Text'.
-data PageJs = PageJs JS | PageJsText Text deriving (Eq, Show, Generic)
+data RepJs = RepJs JS | RepJsText Text deriving (Eq, Show, Generic)
 
-instance Semigroup PageJs where
-  (<>) (PageJs js) (PageJs js') = PageJs (js <> js')
-  (<>) (PageJsText js) (PageJsText js') = PageJsText (js <> js')
-  (<>) (PageJs js) (PageJsText js') =
-    PageJsText (toStrict (renderToText $ unJS js) <> js')
-  (<>) (PageJsText js) (PageJs js') =
-    PageJsText (js <> toStrict (renderToText $ unJS js'))
+instance Semigroup RepJs where
+  (<>) (RepJs js) (RepJs js') = RepJs (js <> js')
+  (<>) (RepJsText js) (RepJsText js') = RepJsText (js <> js')
+  (<>) (RepJs js) (RepJsText js') =
+    RepJsText (toStrict (renderToText $ unJS js) <> js')
+  (<>) (RepJsText js) (RepJs js') =
+    RepJsText (js <> toStrict (renderToText $ unJS js'))
 
-instance Monoid PageJs where
-  mempty = PageJs mempty
+instance Monoid RepJs where
+  mempty = RepJs mempty
 
   mappend = (<>)
 
 -- | Wrap js in standard DOM window loader.
-onLoad :: PageJs -> PageJs
-onLoad (PageJs js) = PageJs $ onLoadStatements [toStatement js]
-onLoad (PageJsText js) = PageJsText $ onLoadText js
+onLoad :: RepJs -> RepJs
+onLoad (RepJs js) = RepJs $ onLoadStatements [toStatement js]
+onLoad (RepJsText js) = RepJsText $ onLoadText js
 
 toStatement :: JS -> JSStatement
 toStatement (JS (JSAstProgram ss ann)) = JSStatementBlock JSNoAnnot ss JSNoAnnot (JSSemi ann)
@@ -380,8 +271,8 @@ parseJs = JS . readJs . unpack
 renderJs :: JS -> Text
 renderJs = toStrict . renderToText . unJS
 
--- | Render 'PageJs' as 'Text'.
-renderPageJs :: PageRender -> PageJs -> Text
-renderPageJs _ (PageJsText js) = js
-renderPageJs Minified (PageJs js) = toStrict . renderToText . minifyJS . unJS $ js
-renderPageJs Pretty (PageJs js) = toStrict . renderToText . unJS $ js
+-- | Render 'RepJs' as 'Text'.
+renderRepJs :: PageRender -> RepJs -> Text
+renderRepJs _ (RepJsText js) = js
+renderRepJs Minified (RepJs js) = toStrict . renderToText . minifyJS . unJS $ js
+renderRepJs Pretty (RepJs js) = toStrict . renderToText . unJS $ js

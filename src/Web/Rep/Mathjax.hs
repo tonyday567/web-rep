@@ -12,7 +12,7 @@
 -- <https://math.meta.stackexchange.com/questions/5020/mathjax-basic-tutorial-and-quick-reference mathjax cheatsheet>
 --
 -- FIXME: Mathjax inside svg doesn't quite work, and needs to be structured around the foreign object construct.
-module Web.Page.Mathjax
+module Web.Rep.Mathjax
   ( mathjaxPage,
     mathjax27Page,
     mathjaxSvgPage,
@@ -24,7 +24,7 @@ import Control.Lens
 import Lucid
 import NumHask.Prelude
 import Text.InterpolatedString.Perl6
-import Web.Page.Types
+import Web.Rep.Page
 
 mathjax3Lib :: Html ()
 mathjax3Lib =
@@ -55,7 +55,7 @@ jqueryLib =
 mathjaxPage :: Page
 mathjaxPage =
   mempty
-    & #jsGlobal .~ PageJsText scriptMathjaxConfig
+    & #jsGlobal .~ RepJsText scriptMathjaxConfig
     & #libsJs
       .~ [ mathjax3Lib
          ]
@@ -64,7 +64,7 @@ mathjaxPage =
 mathjax27Page :: Page
 mathjax27Page =
   mempty
-    & #jsOnLoad .~ PageJsText scriptMathjaxConfig
+    & #jsOnLoad .~ RepJsText scriptMathjaxConfig
     & #libsJs
       .~ [ mathjax27Lib
          ]
@@ -73,7 +73,7 @@ mathjax27Page =
 mathjaxSvgPage :: Text -> Page
 mathjaxSvgPage cl =
   mempty
-    & #jsGlobal .~ PageJsText (scriptMathjaxConfigSvg cl)
+    & #jsGlobal .~ RepJsText (scriptMathjaxConfigSvg cl)
     & #libsJs
       .~ [ mathjax3Lib,
            jqueryLib
@@ -83,7 +83,7 @@ mathjaxSvgPage cl =
 mathjax27SvgPage :: Text -> Page
 mathjax27SvgPage cl =
   mempty
-    & #jsGlobal .~ PageJsText (scriptMathjax27ConfigSvg cl)
+    & #jsGlobal .~ RepJsText (scriptMathjax27ConfigSvg cl)
     & #libsJs
       .~ [ mathjax27Lib,
            jqueryLib

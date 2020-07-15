@@ -11,8 +11,8 @@
 
 import NumHask.Prelude
 import Options.Generic
-import Web.Page
-import Web.Page.Examples
+import Web.Rep
+import Web.Rep.Examples
 
 data AppType = SharedTest deriving (Eq, Read, Show, Generic)
 

@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wredundant-constraints #-}
 
 -- | Various SharedRep instances for common html input elements.
-module Web.Page.SharedReps
+module Web.Rep.SharedReps
   ( repInput,
     repMessage,
     sliderI,
@@ -35,6 +35,8 @@ module Web.Page.SharedReps
     defaultListLabels,
     repChoice,
     subtype,
+    selectItems,
+    repItemsSelect,
   )
 where
 
@@ -47,11 +49,13 @@ import Data.Text (intercalate)
 import Lucid
 import NumHask.Prelude hiding (intercalate, takeWhile)
 import Text.InterpolatedString.Perl6
-import Web.Page.Bootstrap
-import Web.Page.Html
-import Web.Page.Html.Input
-import Web.Page.Types
+import Web.Rep.Bootstrap
+import Web.Rep.Html
+import Web.Rep.Html.Input
+import Web.Rep.Shared
+import Web.Rep.Page
 import qualified Prelude as P
+import qualified Data.Attoparsec.Text as A
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -69,35 +73,12 @@ repInput ::
   a ->
   SharedRep m a
 repInput p pr i a =
-  SharedRep $ do
-    name <- zoom _1 genName
-    zoom _2 (modify (HashMap.insert name (pr a)))
-    pure $
-      Rep
-        (toHtml $ #inputVal .~ a $ #inputId .~ name $ i)
-        ( \s ->
-            ( s,
-              join
-                $ maybe (Left "lookup failed") Right
-                $ either (Left . (\x -> name <> ": " <> x) . pack) Right . parseOnly p <$> HashMap.lookup name s
-            )
-        )
+  register (first pack . A.parseOnly p) pr (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i) a
 
 -- | Like 'repInput', but does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
 repMessage :: (Monad m, ToHtml a) => Parser a -> (a -> Text) -> Input a -> a -> a -> SharedRep m a
 repMessage p _ i def a =
-  SharedRep $ do
-    name <- zoom _1 genName
-    pure $
-      Rep
-        (toHtml $ #inputVal .~ a $ #inputId .~ name $ i)
-        ( \s ->
-            ( HashMap.delete name s,
-              join
-                $ maybe (Right $ Right def) Right
-                $ either (Left . pack) Right . parseOnly p <$> HashMap.lookup name s
-            )
-        )
+  message (first pack . A.parseOnly p) (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
 
 -- | double slider
 --
@@ -296,7 +277,7 @@ maybeRep ::
   SharedRep m (Maybe a)
 maybeRep label st sa = SharedRep $ do
   id' <- zoom _1 (genNamePre "maybe")
-  unrep $ bimap (hmap id') mmap (checkboxShow label id' st) <<*>> sa
+  unshare $ bimap (hmap id') mmap (checkboxShow label id' st) <<*>> sa
   where
     hmap id' a b =
       cardify
@@ -346,7 +327,7 @@ $('#{checkName}').on('change', (function()\{
 accordionList :: (Monad m) => Maybe Text -> Text -> Maybe Text -> (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
 accordionList title prefix open srf labels as = SharedRep $ do
   (Rep h fa) <-
-    unrep
+    unshare
       $ first (accordion prefix open . zip labels)
       $ foldr
         (\a x -> bimap (:) (:) a <<*>> x)
@@ -359,7 +340,7 @@ accordionList title prefix open srf labels as = SharedRep $ do
 accordionBoolList :: (Monad m) => Maybe Text -> Text -> (a -> SharedRep m a) -> (Bool -> SharedRep m Bool) -> [Text] -> [(Bool, a)] -> SharedRep m [(Bool, a)]
 accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
   (Rep h fa) <-
-    unrep
+    unshare
       $ first (accordionChecked prefix)
       $ first (zipWith (\l (ch, a) -> (l, a, ch)) labels)
       $ foldr
@@ -441,11 +422,11 @@ viaFiddle ::
   SharedRep m a ->
   SharedRep m (Bool, Concerns Text, a)
 viaFiddle sr = SharedRep $ do
-  sr'@(Rep h _) <- unrep sr
-  hrep <- unrep $ textarea 10 (Just "html") (toText h)
-  crep <- unrep $ textarea 10 (Just "css") mempty
-  jrep <- unrep $ textarea 10 (Just "js") mempty
-  u <- unrep $ button (Just "update")
+  sr'@(Rep h _) <- unshare sr
+  hrep <- unshare $ textarea 10 (Just "html") (toText h)
+  crep <- unshare $ textarea 10 (Just "css") mempty
+  jrep <- unshare $ textarea 10 (Just "js") mempty
+  u <- unshare $ button (Just "update")
   pure $
     bimap
       (\up a b c _ -> Lucid.with div_ [class__ "fiddle "] $ mconcat [up, a, b, c])
@@ -471,6 +452,17 @@ repChoice initt xs =
             <> mconcat (zipWith (\c t -> subtype c t0 t) cs' ts)
         )
     mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
+
+-- | select test keys from a Map
+selectItems :: [Text] -> HashMap.HashMap Text a -> [(Text,a)]
+selectItems ks m =
+  HashMap.toList $
+    HashMap.filterWithKey (\k _ -> k `elem` ks) m
+
+-- | rep of multiple items list
+repItemsSelect :: Monad m => [Text] -> [Text] -> SharedRep m [Text]
+repItemsSelect init full =
+  dropdownMultiple (A.takeWhile (`notElem` ([',']::[Char]))) id (Just "items") full init
 
 subtype :: With a => a -> Text -> Text -> a
 subtype h origt t =
