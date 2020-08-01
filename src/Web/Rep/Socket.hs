@@ -19,6 +19,7 @@ module Web.Rep.Socket
     defaultOutputCode,
     Code(..),
     code,
+    wrangle,
   )
 where
 
