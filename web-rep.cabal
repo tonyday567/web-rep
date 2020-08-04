@@ -1,6 +1,6 @@
 cabal-version:  2.4
 name:           web-rep
-version:        0.6.0
+version:        0.7.0
 synopsis:       representations of a web page
 category: web
 description:    An applicative-based, shared-data representation of a web page. 
@@ -32,10 +32,9 @@ library
   build-depends:
     base >= 4.12 && <5,
     attoparsec >= 0.13.2 && < 0.14,
-    box >= 0.5 && < 0.6,
-    box-socket >= 0.0.1 && < 0.1,
+    box >= 0.6 && < 0.7,
+    box-socket >= 0.0.2 && < 0.1,
     clay >= 0.13 && < 0.14,
-    foldl >= 1.4.5 && < 1.5,
     generic-lens >= 1.1.0 && < 3.0,
     interpolatedstring-perl6 >= 1.0.2 && < 1.1,
     language-javascript >= 0.6.0 && < 0.8,

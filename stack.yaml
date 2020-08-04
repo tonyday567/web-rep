@@ -4,9 +4,9 @@ packages:
   - '.'
 
 extra-deps:
-  - numhask-0.6.0
-  - box-0.5.0
-  - box-socket-0.0.1
+  - numhask-0.6.0.2
+  - box-0.6.0
+  - box-socket-0.0.2
 
 allow-newer: true
 
