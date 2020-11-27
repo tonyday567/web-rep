@@ -170,7 +170,7 @@ instance (ToHtml a) => ToHtml (Input a) where
                 ( bool
                     []
                     [selected_ "selected"]
-                    (any (\v -> toText (toHtml o) == toText (toHtml v)) (split (== sep) (toText (toHtml vs))))
+                    (any (\v -> toText (toHtml o) == toText (toHtml v)) (Data.Text.split (== sep) (toText (toHtml vs))))
                 )
                 (toHtml o)
           )

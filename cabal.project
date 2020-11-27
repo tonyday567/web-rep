@@ -1,0 +1,5 @@
+packages: web-rep.cabal
+
+keep-going: true
+
+allow-newer: websockets:random
