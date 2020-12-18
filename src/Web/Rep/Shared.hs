@@ -1,6 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
@@ -9,8 +8,7 @@
 {-# OPTIONS_HADDOCK hide, not-home #-}
 
 module Web.Rep.Shared
-  (
-    RepF (..),
+  ( RepF (..),
     Rep,
     oneRep,
     SharedRepF (..),
@@ -26,8 +24,8 @@ where
 
 import Control.Lens
 import Data.Generics.Labels ()
-import qualified Data.HashMap.Strict as HashMap
 import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import GHC.Show (show)
 import Lucid
 import NumHask.Prelude hiding (show)
@@ -36,11 +34,10 @@ import NumHask.Prelude hiding (show)
 -- Information contained in a web page can usually be considered to be isomorphic to a map of named values - a 'HashMap'. This is especially true when considering a differential of information contained in a web page. Looking at a page from the outside, it often looks like a streaming differential of a hashmap.
 --
 -- RepF consists of an underlying value being represented, and, given a hashmap state, a way to produce a representation of the underlying value (or error), in another domain, together with the potential to alter the hashmap state.
-data RepF r a
-  = Rep
-      { rep :: r,
-        make :: HashMap Text Text -> (HashMap Text Text, Either Text a)
-      }
+data RepF r a = Rep
+  { rep :: r,
+    make :: HashMap Text Text -> (HashMap Text Text, Either Text a)
+  }
   deriving (Functor)
 
 -- | the common usage, where the representation domain is Html
@@ -96,11 +93,9 @@ oneRep r@(Rep _ fa) action = do
 -- This is sometimes referred to as "observable sharing". See <http://hackage.haskell.org/package/data-reify data-reify> as another library that reifies this (pun intended), and provided the initial inspiration for this implementation.
 --
 -- unshare should only be run once, which is a terrible flaw that might be fixed by linear types.
---
-newtype SharedRepF m r a
-  = SharedRep
-      { unshare :: StateT (Int, HashMap Text Text) m (RepF r a)
-      }
+newtype SharedRepF m r a = SharedRep
+  { unshare :: StateT (Int, HashMap Text Text) m (RepF r a)
+  }
   deriving (Functor)
 
 -- | default representation type of 'Html' ()
@@ -150,10 +145,10 @@ register p pr f a =
         (f name a)
         ( \s ->
             ( s,
-              join
-                $ maybe (Left "lookup failed") Right
-                $ either (Left . (\x -> name <> ": " <> x)) Right . p <$>
-                HashMap.lookup name s
+              join $
+                maybe (Left "lookup failed") Right $
+                  either (Left . (\x -> name <> ": " <> x)) Right . p
+                    <$> HashMap.lookup name s
             )
         )
 
@@ -177,10 +172,10 @@ message p f a d =
         (f name a)
         ( \s ->
             ( HashMap.delete name s,
-              join
-                $ maybe (Right $ Right d) Right
-                $ p <$>
-                HashMap.lookup name s
+              join $
+                maybe (Right $ Right d) Right $
+                  p
+                    <$> HashMap.lookup name s
             )
         )
 
@@ -206,4 +201,3 @@ runOnce sr action = do
   (Rep h fa, (_, m)) <- runSharedRep sr
   action h m
   pure (fa m)
-

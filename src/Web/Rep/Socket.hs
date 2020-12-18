@@ -13,44 +13,45 @@ module Web.Rep.Socket
     serveSocketBox,
     sharedServer,
     defaultSharedServer,
-    SocketConfig(..),
+    SocketConfig (..),
     defaultSocketConfig,
     defaultSocketPage,
     defaultInputCode,
     defaultOutputCode,
-    Code(..),
+    Code (..),
     code,
     wrangle,
   )
 where
 
-import qualified Network.WebSockets as WS
 import Box
 import Box.Socket
 import Control.Lens
 import Control.Monad.Conc.Class as C
+import qualified Data.Attoparsec.Text as A
 import Data.HashMap.Strict as HashMap
 import qualified Data.Text as Text
+import Lucid as L
+import Network.Wai.Handler.WebSockets
+import qualified Network.WebSockets as WS
 import NumHask.Prelude hiding (intercalate, replace)
 import Text.InterpolatedString.Perl6
+import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
-import Web.Rep.Bootstrap
 import Web.Scotty hiding (get)
-import qualified Data.Attoparsec.Text as A
-import Network.Wai.Handler.WebSockets
-import Lucid as L
 
 socketPage :: Page
-socketPage = mempty & #jsOnLoad .~
-  mconcat
-  [ webSocket,
-    runScriptJs,
-    refreshJsbJs,
-    preventEnter
-  ]
+socketPage =
+  mempty & #jsOnLoad
+    .~ mconcat
+      [ webSocket,
+        runScriptJs,
+        refreshJsbJs,
+        preventEnter
+      ]
 
 serveSocketBox :: SocketConfig -> Page -> Box IO Text Text -> IO ()
 serveSocketBox cfg p b =
@@ -60,8 +61,8 @@ serveSocketBox cfg p b =
 
 sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> IO [Code]) -> IO ()
 sharedServer srep cfg p i o =
-  serveSocketBox cfg p <$.>
-  fromAction (backendLoop srep i o . wrangle)
+  serveSocketBox cfg p
+    <$.> fromAction (backendLoop srep i o . wrangle)
 
 defaultSharedServer :: (Show a) => SharedRep IO a -> IO ()
 defaultSharedServer srep =
@@ -69,18 +70,18 @@ defaultSharedServer srep =
 
 defaultSocketPage :: Page
 defaultSocketPage =
-  bootstrapPage <>
-  socketPage &
-  #htmlBody
-      .~ divClass_
-        "container"
-        ( mconcat
-            [ divClass_ "row" (h1_ "web-rep testing"),
-              divClass_ "row" $ mconcat $ (\(t, h) -> divClass_ "col" (h2_ (toHtml t) <> L.with div_ [id_ t] h)) <$> sections
-            ]
-        )
+  bootstrapPage
+    <> socketPage
+    & #htmlBody
+    .~ divClass_
+      "container"
+      ( mconcat
+          [ divClass_ "row" (h1_ "web-rep testing"),
+            divClass_ "row" $ mconcat $ (\(t, h) -> divClass_ "col" (h2_ (toHtml t) <> L.with div_ [id_ t] h)) <$> sections
+          ]
+      )
   where
-    sections = 
+    sections =
       [ ("input", mempty),
         ("output", mempty)
       ]
@@ -93,7 +94,8 @@ backendLoop ::
   (Html () -> [Code]) ->
   -- | output code
   (Either Text a -> m [Code]) ->
-  Box m [Code] (Text, Text) -> m ()
+  Box m [Code] (Text, Text) ->
+  m ()
 backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empty) $ do
   -- you only want to run unshare once for a SharedRep
   (Rep h fa) <- unshare sr
@@ -109,14 +111,13 @@ backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empt
       b <- lift $ commit c o
       when b (go fa)
     updateS Nothing s = s
-    updateS (Just (k,v)) s = second (insert k v) s
+    updateS (Just (k, v)) s = second (insert k v) s
 
     step' fa = do
       s <- get
       let (m', ea) = fa (snd s)
       modify (second (const m'))
-      o <- lift $ outputCode ea
-      pure o
+      lift $ outputCode ea
 
 defaultInputCode :: Html () -> [Code]
 defaultInputCode h = [Append "input" (toText h)]
@@ -124,33 +125,35 @@ defaultInputCode h = [Append "input" (toText h)]
 defaultOutputCode :: (Monad m, Show a) => Either Text a -> m [Code]
 defaultOutputCode ea =
   pure $ case ea of
-        Left err -> [Append "debug" err]
-        Right a -> [Replace "output" (show a)]
+    Left err -> [Append "debug" err]
+    Right a -> [Replace "output" (show a)]
 
-wrangle :: Monad m => Box m Text Text -> Box m [Code] (Text,Text)
+wrangle :: Monad m => Box m Text Text -> Box m [Code] (Text, Text)
 wrangle (Box c e) = Box c' e'
   where
     c' = listC $ contramap code c
     e' = mapE (pure . either (const Nothing) Just) (parseE parserJ e)
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
-parserJ :: A.Parser (Text,Text)
+parserJ :: A.Parser (Text, Text)
 parserJ = do
   _ <- A.string [q|{"event":{"element":"|]
-  e <- A.takeTill (=='"')
+  e <- A.takeTill (== '"')
   _ <- A.string [q|","value":"|]
-  v <- A.takeTill (=='"')
+  v <- A.takeTill (== '"')
   _ <- A.string [q|"}}|]
-  pure (e,v)
+  pure (e, v)
 
 -- * code hooks
+
 -- * code messaging
-data Code =
-  Replace Text Text |
-  Append Text Text |
-  Console Text |
-  Eval Text |
-  Val Text
+
+data Code
+  = Replace Text Text
+  | Append Text Text
+  | Console Text
+  | Eval Text
+  | Val Text
   deriving (Eq, Show, Generic, Read)
 
 code :: Code -> Text
@@ -169,7 +172,7 @@ val t = [qc| jsb.ws.send({t}) |]
 -- | replace a container and run any embedded scripts
 replace :: Text -> Text -> Text
 replace d t =
-      [qc|
+  [qc|
      var $container = document.getElementById('{d}');
      $container.innerHTML = '{clean t}';
      runScripts($container);
@@ -179,7 +182,7 @@ replace d t =
 -- | append to a container and run any embedded scripts
 append :: Text -> Text -> Text
 append d t =
-      [qc|
+  [qc|
      var $container = document.getElementById('{d}');
      $container.innerHTML += '{clean t}';
      runScripts($container);
@@ -193,6 +196,7 @@ clean =
     . Text.lines
 
 -- * initial javascript
+
 -- | create a web socket for event data
 webSocket :: RepJs
 webSocket =
@@ -208,6 +212,7 @@ jsb.ws.onmessage = function(evt){
 |]
 
 -- * scripts
+
 -- | Event hooks that may need to be reattached given dynamic content creation.
 refreshJsbJs :: RepJs
 refreshJsbJs =

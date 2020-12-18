@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
@@ -22,10 +21,9 @@ instance ParseRecord AppType
 
 instance ParseFields AppType
 
-data Opts w
-  = Opts
-      { apptype :: w ::: AppType <?> "type of example"
-      }
+newtype Opts w = Opts
+  { apptype :: w ::: AppType <?> "type of example"
+  }
   deriving (Generic)
 
 instance ParseRecord (Opts Wrapped)
@@ -34,4 +32,4 @@ main :: IO ()
 main = do
   o :: Opts Unwrapped <- unwrapRecord "examples for web-page"
   case apptype o of
-      SharedTest -> defaultSharedServer (maybeRep (Just "maybe") False repExamples)
+    SharedTest -> defaultSharedServer (maybeRep (Just "maybe") False repExamples)

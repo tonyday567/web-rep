@@ -6,7 +6,7 @@
 
 -- | Serve pages via 'ScottyM'
 module Web.Rep.Server
-  ( servePageWith
+  ( servePageWith,
   )
 where
 
@@ -14,8 +14,8 @@ import Control.Lens hiding (only)
 import Lucid
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import NumHask.Prelude hiding (get, replace)
-import Web.Rep.Render
 import Web.Rep.Page
+import Web.Rep.Render
 import Web.Scotty
 
 -- | serve a Page via a ScottyM

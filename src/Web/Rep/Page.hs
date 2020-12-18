@@ -1,7 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -22,13 +21,11 @@ module Web.Rep.Page
     PageConcerns (..),
     PageStructure (..),
     PageRender (..),
-
     -- $css
     Css,
     RepCss (..),
     renderCss,
     renderRepCss,
-
     -- $js
     JS (..),
     RepJs (..),
@@ -36,11 +33,11 @@ module Web.Rep.Page
     renderRepJs,
     parseJs,
     renderJs,
-    )
+  )
 where
 
-import qualified Clay
 import Clay (Css)
+import qualified Clay
 import Control.Lens
 import Data.Generics.Labels ()
 import GHC.Show (show)
@@ -54,23 +51,22 @@ import Text.InterpolatedString.Perl6
 -- | Components of a web page.
 --
 -- A web page can take many forms but still have the same underlying representation. For example, CSS can be linked to in a separate file, or can be inline within html, but still be the same css and have the same expected external effect. A Page represents the practical components of what makes up a static snapshot of a web page.
-data Page
-  = Page
-      { -- | css library links
-        libsCss :: [Html ()],
-        -- | javascript library links
-        libsJs :: [Html ()],
-        -- | css
-        cssBody :: RepCss,
-        -- | javascript with global scope
-        jsGlobal :: RepJs,
-        -- | javascript included within the onLoad function
-        jsOnLoad :: RepJs,
-        -- | html within the header
-        htmlHeader :: Html (),
-        -- | body html
-        htmlBody :: Html ()
-      }
+data Page = Page
+  { -- | css library links
+    libsCss :: [Html ()],
+    -- | javascript library links
+    libsJs :: [Html ()],
+    -- | css
+    cssBody :: RepCss,
+    -- | javascript with global scope
+    jsGlobal :: RepJs,
+    -- | javascript included within the onLoad function
+    jsOnLoad :: RepJs,
+    -- | html within the header
+    htmlHeader :: Html (),
+    -- | body html
+    htmlBody :: Html ()
+  }
   deriving (Show, Generic)
 
 instance Semigroup Page where
@@ -92,12 +88,11 @@ instance Monoid Page where
 -- | A web page typically is composed of some css, javascript and html.
 --
 -- 'Concerns' abstracts this structural feature of a web page.
-data Concerns a
-  = Concerns
-      { cssConcern :: a,
-        jsConcern :: a,
-        htmlConcern :: a
-      }
+data Concerns a = Concerns
+  { cssConcern :: a,
+    jsConcern :: a,
+    htmlConcern :: a
+  }
   deriving (Eq, Show, Foldable, Traversable, Generic)
 
 instance Functor Concerns where
@@ -139,14 +134,13 @@ data PageRender
   deriving (Show, Eq, Generic)
 
 -- | Configuration options when rendering a 'Page'.
-data PageConfig
-  = PageConfig
-      { concerns :: PageConcerns,
-        structure :: PageStructure,
-        pageRender :: PageRender,
-        filenames :: Concerns FilePath,
-        localdirs :: [FilePath]
-      }
+data PageConfig = PageConfig
+  { concerns :: PageConcerns,
+    structure :: PageStructure,
+    pageRender :: PageRender,
+    filenames :: Concerns FilePath,
+    localdirs :: [FilePath]
+  }
   deriving (Show, Eq, Generic)
 
 -- | Default configuration is inline ecma and css, separate html header and body, minified code, with the suggested filename prefix.
@@ -188,7 +182,6 @@ renderRepCss _ (RepCssText css) = css
 -- | Render 'Css' as text.
 renderCss :: Css -> Text
 renderCss = toStrict . Clay.render
-
 
 -- | wrapper for `JSAST`
 newtype JS = JS {unJS :: JSAST} deriving (Show, Eq, Generic)

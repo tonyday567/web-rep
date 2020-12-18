@@ -43,6 +43,7 @@ where
 import Box.Cont ()
 import Control.Lens
 import Data.Attoparsec.Text hiding (take)
+import qualified Data.Attoparsec.Text as A
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 import Data.Text (intercalate)
@@ -52,10 +53,9 @@ import Text.InterpolatedString.Perl6
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input
-import Web.Rep.Shared
 import Web.Rep.Page
+import Web.Rep.Shared
 import qualified Prelude as P
-import qualified Data.Attoparsec.Text as A
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -303,10 +303,10 @@ checkboxShow label id' v =
         (toHtml (Input v label name (Checkbox v)) <> scriptToggleShow name id')
         ( \s ->
             ( s,
-              join
-                $ maybe (Left "HashMap.lookup failed") Right
-                $ either (Left . pack) Right . parseOnly ((== "true") <$> takeText)
-                  <$> HashMap.lookup name s
+              join $
+                maybe (Left "HashMap.lookup failed") Right $
+                  either (Left . pack) Right . parseOnly ((== "true") <$> takeText)
+                    <$> HashMap.lookup name s
             )
         )
 
@@ -326,12 +326,12 @@ $('#{checkName}').on('change', (function()\{
 accordionList :: (Monad m) => Maybe Text -> Text -> Maybe Text -> (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
 accordionList title prefix open srf labels as = SharedRep $ do
   (Rep h fa) <-
-    unshare
-      $ first (accordion prefix open . zip labels)
-      $ foldr
-        (\a x -> bimap (:) (:) a <<*>> x)
-        (pure [])
-        (zipWith srf labels as)
+    unshare $
+      first (accordion prefix open . zip labels) $
+        foldr
+          (\a x -> bimap (:) (:) a <<*>> x)
+          (pure [])
+          (zipWith srf labels as)
   h' <- zoom _1 h
   pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
 
@@ -339,21 +339,21 @@ accordionList title prefix open srf labels as = SharedRep $ do
 accordionBoolList :: (Monad m) => Maybe Text -> Text -> (a -> SharedRep m a) -> (Bool -> SharedRep m Bool) -> [Text] -> [(Bool, a)] -> SharedRep m [(Bool, a)]
 accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
   (Rep h fa) <-
-    unshare
-      $ first (accordionChecked prefix)
-      $ first (zipWith (\l (ch, a) -> (l, a, ch)) labels)
-      $ foldr
-        (\a x -> bimap (:) (:) a <<*>> x)
-        (pure [])
-        ( ( \(ch, a) ->
-              bimap
-                  (,)
-                  (,)
-                  (checkf ch)
-                  <<*>> bodyf a
-          )
-            <$> xs
-        )
+    unshare $
+      first (accordionChecked prefix) $
+        first (zipWith (\l (ch, a) -> (l, a, ch)) labels) $
+          foldr
+            (\a x -> bimap (:) (:) a <<*>> x)
+            (pure [])
+            ( ( \(ch, a) ->
+                  bimap
+                    (,)
+                    (,)
+                    (checkf ch)
+                    <<*>> bodyf a
+              )
+                <$> xs
+            )
   h' <- zoom _1 h
   pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
 
@@ -453,7 +453,7 @@ repChoice initt xs =
     mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
 
 -- | select test keys from a Map
-selectItems :: [Text] -> HashMap.HashMap Text a -> [(Text,a)]
+selectItems :: [Text] -> HashMap.HashMap Text a -> [(Text, a)]
 selectItems ks m =
   HashMap.toList $
     HashMap.filterWithKey (\k _ -> k `elem` ks) m
@@ -461,7 +461,7 @@ selectItems ks m =
 -- | rep of multiple items list
 repItemsSelect :: Monad m => [Text] -> [Text] -> SharedRep m [Text]
 repItemsSelect init full =
-  dropdownMultiple (A.takeWhile (`notElem` ([',']::[Char]))) id (Just "items") full init
+  dropdownMultiple (A.takeWhile (`notElem` ([','] :: [Char]))) id (Just "items") full init
 
 subtype :: With a => a -> Text -> Text -> a
 subtype h origt t =

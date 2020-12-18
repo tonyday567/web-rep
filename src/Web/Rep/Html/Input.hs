@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
@@ -19,17 +18,16 @@ import NumHask.Prelude hiding (for_)
 import Web.Rep.Html
 
 -- | something that might exist on a web page and be a front-end input to computations.
-data Input a
-  = Input
-      { -- | underlying value
-        inputVal :: a,
-        -- | label suggestion
-        inputLabel :: Maybe Text,
-        -- | name//key//id of the Input
-        inputId :: Text,
-        -- | type of html input
-        inputType :: InputType
-      }
+data Input a = Input
+  { -- | underlying value
+    inputVal :: a,
+    -- | label suggestion
+    inputLabel :: Maybe Text,
+    -- | name//key//id of the Input
+    inputId :: Text,
+    -- | type of html input
+    inputType :: InputType
+  }
   deriving (Eq, Show, Generic)
 
 -- | Various types of web page inputs, encapsulating practical bootstrap class functionality

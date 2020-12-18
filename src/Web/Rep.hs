@@ -60,7 +60,6 @@ where
 
 import qualified Data.HashMap.Strict as HashMap
 import Web.Rep.Bootstrap
-import Web.Rep.Socket
 import Web.Rep.Html
 import Web.Rep.Html.Input
 import Web.Rep.Mathjax
@@ -69,3 +68,4 @@ import Web.Rep.Render
 import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Rep.SharedReps
+import Web.Rep.Socket
