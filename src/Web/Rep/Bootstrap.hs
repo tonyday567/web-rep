@@ -1,7 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Some <https://getbootstrap.com/ bootstrap> assets and functionality.

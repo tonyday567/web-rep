@@ -4,7 +4,8 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Web.Rep.Examples
@@ -237,10 +238,10 @@ repSumTypeExample defi deft defst =
         _ -> SumOnly
     defInt = case defst of
       SumInt i -> i
-      _ -> defi
+      _NotSumInt -> defi
     defText = case defst of
       SumText t -> t
-      _ -> deft
+      _NotSumText -> deft
 
 data SumType2Example = SumOutside Int | SumInside SumTypeExample deriving (Eq, Show, Generic)
 
@@ -287,7 +288,7 @@ repSumType2Example defi deft defst defst2 =
       case repst2' of
         "SumOutside" -> SumOutside repoi'
         "SumInside" -> SumInside repst'
-        _ -> SumOutside repoi'
+        _WeirdSpelling -> SumOutside repoi'
     defInt = case defst of
       SumInt i -> i
-      _ -> defi
+      _NotSumInt -> defi

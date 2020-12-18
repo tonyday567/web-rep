@@ -3,8 +3,9 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Wredundant-constraints #-}
 
 -- | A socket between a web page and haskell, based on the box library.
 module Web.Rep.Socket

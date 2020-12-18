@@ -3,10 +3,10 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Wredundant-constraints #-}
 
 -- | Various SharedRep instances for common html input elements.
 module Web.Rep.SharedReps
@@ -72,8 +72,7 @@ repInput ::
   -- | initial value
   a ->
   SharedRep m a
-repInput p pr i a =
-  register (first pack . A.parseOnly p) pr (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i) a
+repInput p pr i = register (first pack . A.parseOnly p) pr (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i)
 
 -- | Like 'repInput', but does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
 repMessage :: (Monad m, ToHtml a) => Parser a -> (a -> Text) -> Input a -> a -> a -> SharedRep m a
@@ -403,7 +402,7 @@ readTextbox label v = parsed . unpack <$> textbox' label (pack $ show v)
     parsed str =
       case reads str of
         [(a, "")] -> Right a
-        _ -> Left (pack str)
+        _badRead -> Left (pack str)
 
 -- | Representation of web concerns (css, js & html).
 fiddle :: (Monad m) => Concerns Text -> SharedRep m (Concerns Text, Bool)
@@ -449,7 +448,7 @@ repChoice initt xs =
     hmap dd' cs' =
       div_
         ( dd'
-            <> mconcat (zipWith (\c t -> subtype c t0 t) cs' ts)
+            <> mconcat (zipWith (`subtype` t0) cs' ts)
         )
     mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
 
