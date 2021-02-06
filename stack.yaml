@@ -4,12 +4,12 @@ packages:
   - '.'
 
 extra-deps:
-  - numhask-0.7.0.0
+  - numhask-0.7.1.0
   - protolude-0.3.0
   - random-1.2.0
   - splitmix-0.1.0.3
-  - numhask-space-0.7.0.0
-  - box-0.6.2
+  - numhask-space-0.7.1.0
+  - box-0.6.3
   - box-socket-0.1.2
 
 allow-newer: true
