@@ -1,5 +1,4 @@
-packages: web-rep.cabal
-
-keep-going: true
-
-allow-newer: websockets:random
+packages:
+  web-rep.cabal
+  ../box/box.cabal
+  ../box-socket/box-socket.cabal

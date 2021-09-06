@@ -3,7 +3,6 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
 
@@ -34,7 +33,6 @@ import qualified Data.Text as Text
 import Lucid as L
 import Network.Wai.Handler.WebSockets
 import qualified Network.WebSockets as WS
-import NumHask.Prelude hiding (intercalate, replace)
 import Text.InterpolatedString.Perl6
 import Web.Rep.Bootstrap
 import Web.Rep.Html
@@ -42,6 +40,11 @@ import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Scotty hiding (get)
+import Data.Text (Text, pack)
+import GHC.Generics
+import Control.Monad
+import Control.Monad.State.Lazy
+import Data.Bifunctor
 
 socketPage :: Page
 socketPage =
@@ -126,7 +129,7 @@ defaultOutputCode :: (Monad m, Show a) => Either Text a -> m [Code]
 defaultOutputCode ea =
   pure $ case ea of
     Left err -> [Append "debug" err]
-    Right a -> [Replace "output" (show a)]
+    Right a -> [Replace "output" (pack $ show a)]
 
 wrangle :: Monad m => Box m Text Text -> Box m [Code] (Text, Text)
 wrangle (Box c e) = Box c' e'

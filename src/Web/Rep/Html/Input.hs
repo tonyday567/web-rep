@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
 
@@ -14,8 +13,11 @@ where
 import Data.Text (split)
 import Lucid
 import Lucid.Base
-import NumHask.Prelude hiding (for_)
 import Web.Rep.Html
+import Data.Text (Text, pack)
+import Data.Bool
+import GHC.Generics
+import Data.Maybe
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a = Input

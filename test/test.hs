@@ -1,18 +1,18 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
 module Main where
 
 import Control.Lens
 import Lucid
-import NumHask.Prelude
-import Test.DocTest
 import Test.Tasty
 import Test.Tasty.Hspec
 import Web.Rep
 import Web.Rep.Examples
 import qualified Data.Text.IO as Text
+import Data.Text (Text, pack)
+import Control.Monad.State.Lazy
+import Data.Foldable
 
 generatePage :: FilePath -> FilePath -> PageConfig -> Page -> IO ()
 generatePage dir stem pc =
@@ -70,14 +70,14 @@ testsBootstrap =
     describe "Web.Rep.Bootstrap" $ do
       it "bootstrapPage versus canned" $
         toText (renderPage bootstrapPage) `shouldBe`
-        "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"><link crossorigin=\"anonymous\" href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\" integrity=\"sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T\" rel=\"stylesheet\"><meta charset=\"utf-8\"><meta content=\"width=device-width, initial-scale=1, shrink-to-fit=no\" name=\"viewport\"></head><body><script crossorigin=\"anonymous\" integrity=\"sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo\" src=\"https://code.jquery.com/jquery-3.3.1.slim.min.js\"></script><script crossorigin=\"anonymous\" integrity=\"sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1\" src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js\"></script><script crossorigin=\"anonymous\" integrity=\"sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM\" src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js\"></script><script>window.onload=function(){}</script></body></html>"
+        "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"><link integrity=\"sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T\" href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\" rel=\"stylesheet\" crossorigin=\"anonymous\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\"></head><body><script integrity=\"sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo\" src=\"https://code.jquery.com/jquery-3.3.1.slim.min.js\" crossorigin=\"anonymous\"></script><script integrity=\"sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1\" src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js\" crossorigin=\"anonymous\"></script><script integrity=\"sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM\" src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js\" crossorigin=\"anonymous\"></script><script>window.onload=function(){}</script></body></html>"
       it "accordion versus canned" $
         ( toText .
           runIdentity .
           flip evalStateT 0 .
           accordion "acctest" Nothing $
           (\x -> (pack (show x), "filler")) <$> [1..2::Int]) `shouldBe`
-        "<div id=\"acctest1\" class=\" accordion m-1 \"><div class=\" card \"><div id=\"acctest2\" class=\" card-header p-0 \"><h2 class=\" m-0 \"><button data-toggle=\"collapse\" data-target=\"#acctest3\" aria-controls=\"acctest3\" type=\"button\" class=\" btn btn-link collapsed \" aria-expanded=\"false\">1</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest3\" aria-labelledby=\"acctest2\" class=\" collapse \"><div class=\" card-body \">filler</div></div></div><div class=\" card \"><div id=\"acctest4\" class=\" card-header p-0 \"><h2 class=\" m-0 \"><button data-toggle=\"collapse\" data-target=\"#acctest5\" aria-controls=\"acctest5\" type=\"button\" class=\" btn btn-link collapsed \" aria-expanded=\"false\">2</button></h2></div><div data-parent=\"#acctest1\" id=\"acctest5\" aria-labelledby=\"acctest4\" class=\" collapse \"><div class=\" card-body \">filler</div></div></div></div>"
+        "<div id=\"acctest1\" class=\" accordion m-1 \"><div class=\" card \"><div id=\"acctest2\" class=\" card-header p-0 \"><h2 class=\" m-0 \"><button data-target=\"#acctest3\" aria-expanded=\"false\" aria-controls=\"acctest3\" data-toggle=\"collapse\" class=\" btn btn-link collapsed \" type=\"button\">1</button></h2></div><div id=\"acctest3\" data-parent=\"#acctest1\" class=\" collapse \" aria-labelledby=\"acctest2\"><div class=\" card-body \">filler</div></div></div><div class=\" card \"><div id=\"acctest4\" class=\" card-header p-0 \"><h2 class=\" m-0 \"><button data-target=\"#acctest5\" aria-expanded=\"false\" aria-controls=\"acctest5\" data-toggle=\"collapse\" class=\" btn btn-link collapsed \" type=\"button\">2</button></h2></div><div id=\"acctest5\" data-parent=\"#acctest1\" class=\" collapse \" aria-labelledby=\"acctest4\"><div class=\" card-body \">filler</div></div></div></div>"
 
 -- The tests
 tests :: IO TestTree
@@ -88,5 +88,4 @@ tests = testGroup "the tests" <$> sequence
 
 main :: IO ()
 main = do
-  doctest ["src/Web/Rep/SharedReps.hs"]
   defaultMain =<< tests

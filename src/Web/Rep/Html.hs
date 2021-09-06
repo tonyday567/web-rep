@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -22,7 +21,8 @@ where
 import Data.List (intersperse)
 import qualified Data.Text.Lazy as Lazy
 import Lucid
-import NumHask.Prelude
+import Data.Text (Text, pack)
+import Data.Bool
 
 -- | FIXME: A horrible hack to separate class id's
 class__ :: Text -> Attribute
@@ -34,6 +34,7 @@ toText = Lazy.toStrict . renderText
 
 -- | Convert a link to a css library from text to html.
 --
+-- >>> :set -XOverloadedStrings
 -- >>> libCss "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
 -- <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
 libCss :: Text -> Html ()

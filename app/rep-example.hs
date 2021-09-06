@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import NumHask.Prelude
+import Prelude
 import Options.Generic
 import Web.Rep
 import Web.Rep.Examples

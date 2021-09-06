@@ -51,7 +51,6 @@ module Web.Rep
     module Web.Rep.Html,
     module Web.Rep.Html.Input,
     module Web.Rep.Bootstrap,
-    module Web.Rep.Mathjax,
 
     -- * re-exports
     HashMap.HashMap,
@@ -62,7 +61,6 @@ import qualified Data.HashMap.Strict as HashMap
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input
-import Web.Rep.Mathjax
 import Web.Rep.Page
 import Web.Rep.Render
 import Web.Rep.Server

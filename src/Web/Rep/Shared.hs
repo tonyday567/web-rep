@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
@@ -26,9 +25,12 @@ import Control.Lens
 import Data.Generics.Labels ()
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import GHC.Show (show)
 import Lucid
-import NumHask.Prelude hiding (show)
+import Data.Text (Text, pack)
+import Control.Monad.IO.Class
+import Data.Biapplicative
+import Control.Monad.State.Lazy
+import Control.Applicative
 
 -- |
 -- Information contained in a web page can usually be considered to be isomorphic to a map of named values - a 'HashMap'. This is especially true when considering a differential of information contained in a web page. Looking at a page from the outside, it often looks like a streaming differential of a hashmap.

@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Serve pages via 'ScottyM'
@@ -13,10 +12,12 @@ where
 import Control.Lens hiding (only)
 import Lucid
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
-import NumHask.Prelude hiding (get, replace)
 import Web.Rep.Page
 import Web.Rep.Render
 import Web.Scotty
+import Control.Monad.Trans.Class
+import Control.Monad
+import Data.Text (unpack)
 
 -- | serve a Page via a ScottyM
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
@@ -33,8 +34,8 @@ servePageWith rp pc p =
               get
                 rp
                 ( do
-                    lift $ writeFile' cssfp css
-                    lift $ writeFile' jsfp js
+                    lift $ writeFile' cssfp (unpack css)
+                    lift $ writeFile' jsfp (unpack js)
                     html $ renderText h
                 )
     cssfp = pc ^. #filenames . #cssConcern

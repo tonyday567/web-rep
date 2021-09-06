@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
 
@@ -19,10 +18,13 @@ where
 
 import Lucid
 import Lucid.Base
-import NumHask.Prelude
 import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Shared
+import Data.Text (Text)
+import Control.Monad.State.Lazy
+import Data.Bool
+import Data.Functor.Identity
 
 bootstrapCss :: [Html ()]
 bootstrapCss =

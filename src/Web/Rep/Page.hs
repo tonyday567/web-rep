@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
@@ -40,13 +39,14 @@ import Clay (Css)
 import qualified Clay
 import Control.Lens
 import Data.Generics.Labels ()
-import GHC.Show (show)
 import Language.JavaScript.Parser
 import Language.JavaScript.Parser.AST
 import Language.JavaScript.Process.Minify
 import Lucid
-import NumHask.Prelude hiding (show)
 import Text.InterpolatedString.Perl6
+import Data.Text (Text, unpack)
+import Data.Text.Lazy (toStrict)
+import GHC.Generics
 
 -- | Components of a web page.
 --

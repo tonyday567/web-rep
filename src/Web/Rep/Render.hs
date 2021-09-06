@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RebindableSyntax #-}
 
 -- | Page rendering
 module Web.Rep.Render
@@ -15,9 +14,12 @@ where
 
 import Control.Lens
 import Lucid
-import NumHask.Prelude
 import Web.Rep.Html
 import Web.Rep.Page
+import Data.Text (Text, pack, unpack)
+import Control.Applicative
+import Control.Monad
+import Data.Foldable
 
 -- | Render a Page with the default configuration into Html.
 renderPage :: Page -> Html ()
@@ -117,14 +119,14 @@ renderPageWith pc p =
 -- | Render Page concerns to files.
 renderPageToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageToFile dir pc page =
-  sequenceA_ $ liftA2 writeFile' (pc ^. #filenames) (renderPageAsText pc page)
+  sequenceA_ $ liftA2 writeFile' (pc ^. #filenames) (fmap unpack (renderPageAsText pc page))
   where
     writeFile' fp s = unless (s == mempty) (writeFile (dir <> "/" <> fp) s)
 
 -- | Render a page to just a Html file.
 renderPageHtmlToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageHtmlToFile file pc page =
-  writeFile file (toText $ renderPageHtmlWith pc page)
+  writeFile file (unpack $ toText $ renderPageHtmlWith pc page)
 
 -- | Render a Page as Text.
 renderPageAsText :: PageConfig -> Page -> Concerns Text

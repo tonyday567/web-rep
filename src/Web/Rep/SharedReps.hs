@@ -3,7 +3,6 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RebindableSyntax #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wall #-}
@@ -48,14 +47,18 @@ import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 import Data.Text (intercalate)
 import Lucid
-import NumHask.Prelude hiding (intercalate, takeWhile)
 import Text.InterpolatedString.Perl6
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input
 import Web.Rep.Page
 import Web.Rep.Shared
-import qualified Prelude as P
+import Prelude as P
+import Data.Text (Text, pack, unpack)
+import Control.Monad
+import Data.Biapplicative
+import Data.Bool
+import Control.Monad.State.Lazy
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -83,7 +86,7 @@ repMessage p _ i def a =
 --
 -- For Example, a slider between 0 and 1 with a step of 0.01 and a default value of 0.3 is:
 --
--- >>> :t slider (Just "label") 0 1 0.01 0.3
+-- > :t slider (Just "label") 0 1 0.01 0.3
 -- slider (Just "label") 0 1 0.01 0.3 :: Monad m => SharedRep m Double
 slider ::
   (Monad m) =>
@@ -104,7 +107,7 @@ slider label l u s v =
 --
 -- For Example, a slider between 0 and 1000 with a step of 10 and a default value of 300 is:
 --
--- >>> :t sliderI (Just "label") 0 1000 10 300
+-- > :t sliderI (Just "label") 0 1000 10 300
 -- sliderI (Just "label") 0 1000 10 300
 --   :: (Monad m, ToHtml a, P.Integral a, Show a) => SharedRep m a
 sliderI ::
@@ -124,7 +127,7 @@ sliderI label l u s v =
 
 -- | textbox classique
 --
--- >>> :t textbox (Just "label") "some text"
+-- > :t textbox (Just "label") "some text"
 -- textbox (Just "label") "some text" :: Monad m => SharedRep m Text
 textbox :: (Monad m) => Maybe Text -> Text -> SharedRep m Text
 textbox label v =
@@ -460,8 +463,8 @@ selectItems ks m =
 
 -- | rep of multiple items list
 repItemsSelect :: Monad m => [Text] -> [Text] -> SharedRep m [Text]
-repItemsSelect init full =
-  dropdownMultiple (A.takeWhile (`notElem` ([','] :: [Char]))) id (Just "items") full init
+repItemsSelect initial full =
+  dropdownMultiple (A.takeWhile (`notElem` ([','] :: [Char]))) id (Just "items") full initial
 
 subtype :: With a => a -> Text -> Text -> a
 subtype h origt t =
