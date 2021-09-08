@@ -58,7 +58,7 @@ testsRender =
       it "renderPage mempty" $
         renderText (renderPage mempty)
           `shouldBe` "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><script>window.onload=function(){}</script></body></html>"
-      let dir = "test/canned/"
+      let dir = "./test/canned/"
       it "renderPageToFile, renderPage (compared with default canned file)" $
         testVsFile dir "default" (defaultPageConfig "default") page1 `shouldReturn` True
       it "the various PageConfig's" $
