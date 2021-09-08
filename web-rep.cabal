@@ -80,8 +80,7 @@ test-suite test
   hs-source-dirs:     test
   build-depends:
     , base         >=4.12   && <5
-    , doctest      >=0.16   && <1.0
-    , lens         >=4.17   && <4.20
+    , lens         ^>=5.0
     , lucid        ^>=2.9.11
     , mtl          >=2.2.2
     , tasty        ^>=1.2.3
