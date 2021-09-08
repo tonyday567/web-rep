@@ -12,14 +12,14 @@ module Web.Rep.Render
   )
 where
 
+import Control.Applicative
 import Control.Lens
+import Control.Monad
+import Data.Foldable
+import Data.Text (Text, pack, unpack)
 import Lucid
 import Web.Rep.Html
 import Web.Rep.Page
-import Data.Text (Text, pack, unpack)
-import Control.Applicative
-import Control.Monad
-import Data.Foldable
 
 -- | Render a Page with the default configuration into Html.
 renderPage :: Page -> Html ()

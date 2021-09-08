@@ -26,10 +26,15 @@ where
 import Box
 import Box.Socket
 import Control.Lens
+import Control.Monad
 import Control.Monad.Conc.Class as C
+import Control.Monad.State.Lazy
 import qualified Data.Attoparsec.Text as A
+import Data.Bifunctor
 import Data.HashMap.Strict as HashMap
+import Data.Text (Text, pack)
 import qualified Data.Text as Text
+import GHC.Generics
 import Lucid as L
 import Network.Wai.Handler.WebSockets
 import qualified Network.WebSockets as WS
@@ -40,11 +45,6 @@ import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Scotty hiding (get)
-import Data.Text (Text, pack)
-import GHC.Generics
-import Control.Monad
-import Control.Monad.State.Lazy
-import Data.Bifunctor
 
 socketPage :: Page
 socketPage =

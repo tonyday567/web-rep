@@ -1,5 +1,9 @@
-[web-rep](https://github.com/tonyday567/web-rep) [![Build Status](https://travis-ci.org/tonyday567/web-rep.svg)](https://travis-ci.org/tonyday567/web-rep)
+[web-rep](https://github.com/tonyday567/web-rep)
 ===
+
+[![Hackage](https://img.shields.io/hackage/v/web-rep.svg)](https://hackage.haskell.org/package/web-rep)
+[![Build Status](https://github.com/tonyday567/web-rep/workflows/haskell-ci/badge.svg)](https://github.com/tonyday567/web-rep/actions?query=workflow%3Ahaskell-ci) [![Hackage Deps](https://img.shields.io/hackage-deps/v/web-rep.svg)](http://packdeps.haskellers.com/reverse/web-rep)
+
 
 Various functions and representations for a web page.
 

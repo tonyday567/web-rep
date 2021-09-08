@@ -16,15 +16,15 @@ module Web.Rep.Bootstrap
   )
 where
 
+import Control.Monad.State.Lazy
+import Data.Bool
+import Data.Functor.Identity
+import Data.Text (Text)
 import Lucid
 import Lucid.Base
 import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Shared
-import Data.Text (Text)
-import Control.Monad.State.Lazy
-import Data.Bool
-import Data.Functor.Identity
 
 bootstrapCss :: [Html ()]
 bootstrapCss =

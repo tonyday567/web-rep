@@ -41,11 +41,15 @@ where
 
 import Box.Cont ()
 import Control.Lens
+import Control.Monad
+import Control.Monad.State.Lazy
 import Data.Attoparsec.Text hiding (take)
 import qualified Data.Attoparsec.Text as A
+import Data.Biapplicative
+import Data.Bool
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
-import Data.Text (intercalate)
+import Data.Text (Text, intercalate, pack, unpack)
 import Lucid
 import Text.InterpolatedString.Perl6
 import Web.Rep.Bootstrap
@@ -54,11 +58,6 @@ import Web.Rep.Html.Input
 import Web.Rep.Page
 import Web.Rep.Shared
 import Prelude as P
-import Data.Text (Text, pack, unpack)
-import Control.Monad
-import Data.Biapplicative
-import Data.Bool
-import Control.Monad.State.Lazy
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -343,20 +342,15 @@ accordionBoolList :: (Monad m) => Maybe Text -> Text -> (a -> SharedRep m a) -> 
 accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
   (Rep h fa) <-
     unshare $
-      first (accordionChecked prefix) $
-        first (zipWith (\l (ch, a) -> (l, a, ch)) labels) $
-          foldr
+      first
+        ( accordionChecked prefix
+            . zipWith (\l (ch, a) -> (l, a, ch)) labels
+        )
+        ( foldr
             (\a x -> bimap (:) (:) a <<*>> x)
             (pure [])
-            ( ( \(ch, a) ->
-                  bimap
-                    (,)
-                    (,)
-                    (checkf ch)
-                    <<*>> bodyf a
-              )
-                <$> xs
-            )
+            ((\(ch, a) -> bimap (,) (,) (checkf ch) <<*>> bodyf a) <$> xs)
+        )
   h' <- zoom _1 h
   pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
 

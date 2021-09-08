@@ -21,16 +21,16 @@ module Web.Rep.Shared
   )
 where
 
+import Control.Applicative
 import Control.Lens
+import Control.Monad.IO.Class
+import Control.Monad.State.Lazy
+import Data.Biapplicative
 import Data.Generics.Labels ()
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import Lucid
 import Data.Text (Text, pack)
-import Control.Monad.IO.Class
-import Data.Biapplicative
-import Control.Monad.State.Lazy
-import Control.Applicative
+import Lucid
 
 -- |
 -- Information contained in a web page can usually be considered to be isomorphic to a map of named values - a 'HashMap'. This is especially true when considering a differential of information contained in a web page. Looking at a page from the outside, it often looks like a streaming differential of a hashmap.

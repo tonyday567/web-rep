@@ -29,40 +29,40 @@ where
 import qualified Clay
 import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
+import Data.Biapplicative
+import Data.Bool
+import Data.Text (Text, pack)
+import GHC.Generics
 import Lucid
 import Text.InterpolatedString.Perl6
 import Web.Rep
-import Data.Text (Text, pack)
-import GHC.Generics
-import Data.Bool
-import Data.Biapplicative
 
 -- | simple page example
 page1 :: Page
 page1 =
-  #htmlBody .~ button1
-    $ #cssBody .~ RepCss css1
-    $ #jsGlobal .~ mempty
-    $ #jsOnLoad .~ click
-    $ #libsCss .~ (libCss <$> cssLibs)
-    $ #libsJs .~ (libJs <$> jsLibs)
-    $ mempty
+  #htmlBody .~ button1 $
+    #cssBody .~ RepCss css1 $
+      #jsGlobal .~ mempty $
+        #jsOnLoad .~ click $
+          #libsCss .~ (libCss <$> cssLibs) $
+            #libsJs .~ (libJs <$> jsLibs) $
+              mempty
 
 -- | page with localised libraries
 page2 :: Page
 page2 =
-  #libsCss .~ (libCss <$> cssLibsLocal)
-    $ #libsJs .~ (libJs <$> jsLibsLocal)
-    $ page1
+  #libsCss .~ (libCss <$> cssLibsLocal) $
+    #libsJs .~ (libJs <$> jsLibsLocal) $
+      page1
 
 cfg2 :: PageConfig
 cfg2 =
-  #concerns .~ Separated
-    $ #pageRender .~ Pretty
-    $ #structure .~ Headless
-    $ #localdirs .~ ["test/static"]
-    $ #filenames .~ (("other/cfg2" <>) <$> suffixes)
-    $ defaultPageConfig ""
+  #concerns .~ Separated $
+    #pageRender .~ Pretty $
+      #structure .~ Headless $
+        #localdirs .~ ["test/static"] $
+          #filenames .~ (("other/cfg2" <>) <$> suffixes) $
+            defaultPageConfig ""
 
 cssLibs :: [Text]
 cssLibs =
@@ -105,19 +105,18 @@ button1 =
     ("Go " <> with i_ [class__ "fa fa-play"] mempty)
 
 -- | One of each sharedrep input instances.
-data RepExamples
-  = RepExamples
-      { repTextbox :: Text,
-        repTextarea :: Text,
-        repSliderI :: Int,
-        repSlider :: Double,
-        repCheckbox :: Bool,
-        repToggle :: Bool,
-        repDropdown :: Int,
-        repDropdownMultiple :: [Int],
-        repShape :: Shape,
-        repColor :: Text
-      }
+data RepExamples = RepExamples
+  { repTextbox :: Text,
+    repTextarea :: Text,
+    repSliderI :: Int,
+    repSlider :: Double,
+    repCheckbox :: Bool,
+    repToggle :: Bool,
+    repDropdown :: Int,
+    repDropdownMultiple :: [Int],
+    repShape :: Shape,
+    repColor :: Text
+  }
   deriving (Show, Eq, Generic)
 
 -- | For a typed dropdown example.

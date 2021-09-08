@@ -39,14 +39,14 @@ import Clay (Css)
 import qualified Clay
 import Control.Lens
 import Data.Generics.Labels ()
+import Data.Text (Text, unpack)
+import Data.Text.Lazy (toStrict)
+import GHC.Generics
 import Language.JavaScript.Parser
 import Language.JavaScript.Parser.AST
 import Language.JavaScript.Process.Minify
 import Lucid
 import Text.InterpolatedString.Perl6
-import Data.Text (Text, unpack)
-import Data.Text.Lazy (toStrict)
-import GHC.Generics
 
 -- | Components of a web page.
 --

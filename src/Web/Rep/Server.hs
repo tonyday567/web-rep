@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Serve pages via 'ScottyM'
@@ -10,14 +9,14 @@ module Web.Rep.Server
 where
 
 import Control.Lens hiding (only)
+import Control.Monad
+import Control.Monad.Trans.Class
+import Data.Text (unpack)
 import Lucid
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import Web.Rep.Page
 import Web.Rep.Render
 import Web.Scotty
-import Control.Monad.Trans.Class
-import Control.Monad
-import Data.Text (unpack)
 
 -- | serve a Page via a ScottyM
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()

@@ -8,10 +8,10 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import Prelude
 import Options.Generic
 import Web.Rep
 import Web.Rep.Examples
+import Prelude
 
 data AppType = SharedTest deriving (Eq, Read, Show, Generic)
 

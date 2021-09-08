@@ -10,14 +10,13 @@ module Web.Rep.Html.Input
   )
 where
 
-import Data.Text (split)
+import Data.Bool
+import Data.Maybe
+import Data.Text (Text, pack, split)
+import GHC.Generics
 import Lucid
 import Lucid.Base
 import Web.Rep.Html
-import Data.Text (Text, pack)
-import Data.Bool
-import GHC.Generics
-import Data.Maybe
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a = Input

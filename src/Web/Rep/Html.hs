@@ -18,11 +18,14 @@ module Web.Rep.Html
   )
 where
 
+import Data.Bool
 import Data.List (intersperse)
+import Data.Text (Text, pack)
 import qualified Data.Text.Lazy as Lazy
 import Lucid
-import Data.Text (Text, pack)
-import Data.Bool
+
+-- $setup
+-- >>> :set -XOverloadedStrings
 
 -- | FIXME: A horrible hack to separate class id's
 class__ :: Text -> Attribute
@@ -34,7 +37,6 @@ toText = Lazy.toStrict . renderText
 
 -- | Convert a link to a css library from text to html.
 --
--- >>> :set -XOverloadedStrings
 -- >>> libCss "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
 -- <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
 libCss :: Text -> Html ()
