@@ -38,7 +38,7 @@ toText = Lazy.toStrict . renderText
 -- | Convert a link to a css library from text to html.
 --
 -- >>> libCss "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
--- <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
 libCss :: Text -> Html ()
 libCss url =
   link_

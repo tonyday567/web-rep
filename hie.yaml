@@ -1,8 +1,0 @@
-cradle:
-  stack:
-    - path: "./src/"
-      component: "web-rep:lib"
-    - path: "./test/"
-      component: "web-rep:test"
-    - path: "./app/example.hs"
-      component: "web-rep:exe:page-example"

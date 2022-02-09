@@ -39,8 +39,7 @@ module Web.Rep.SharedReps
   )
 where
 
-import Box.Cont ()
-import Control.Lens
+import Box.Codensity ()
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Attoparsec.Text hiding (take)
@@ -51,6 +50,8 @@ import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 import Data.Text (Text, intercalate, pack, unpack)
 import Lucid
+import Optics.Core
+import Optics.Zoom
 import Text.InterpolatedString.Perl6
 import Web.Rep.Bootstrap
 import Web.Rep.Html

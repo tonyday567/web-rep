@@ -1,4 +1,4 @@
 packages:
   web-rep.cabal
 
-allow-newer: attoparsec
+allow-newer: memory:base, memory:ghc-prim, basement:base

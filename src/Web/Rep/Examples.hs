@@ -27,13 +27,13 @@ module Web.Rep.Examples
 where
 
 import qualified Clay
-import Control.Lens hiding ((.=))
 import Data.Attoparsec.Text
 import Data.Biapplicative
 import Data.Bool
 import Data.Text (Text, pack)
 import GHC.Generics
 import Lucid
+import Optics.Core
 import Text.InterpolatedString.Perl6
 import Web.Rep
 

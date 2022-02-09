@@ -8,12 +8,12 @@ module Web.Rep.Server
   )
 where
 
-import Control.Lens hiding (only)
 import Control.Monad
 import Control.Monad.Trans.Class
 import Data.Text (unpack)
 import Lucid
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
+import Optics.Core hiding (only)
 import Web.Rep.Page
 import Web.Rep.Render
 import Web.Scotty
@@ -37,7 +37,7 @@ servePageWith rp pc p =
                     lift $ writeFile' jsfp (unpack js)
                     html $ renderText h
                 )
-    cssfp = pc ^. #filenames . #cssConcern
-    jsfp = pc ^. #filenames . #jsConcern
+    cssfp = pc ^. #filenames % #cssConcern
+    jsfp = pc ^. #filenames % #jsConcern
     writeFile' fp s = unless (s == mempty) (writeFile fp s)
     servedir = (\x -> middleware $ staticPolicy (noDots <> addBase x)) <$> pc ^. #localdirs

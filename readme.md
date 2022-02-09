@@ -2,8 +2,7 @@
 ===
 
 [![Hackage](https://img.shields.io/hackage/v/web-rep.svg)](https://hackage.haskell.org/package/web-rep)
-[![Build Status](https://github.com/tonyday567/web-rep/workflows/haskell-ci/badge.svg)](https://github.com/tonyday567/web-rep/actions?query=workflow%3Ahaskell-ci) [![Hackage Deps](https://img.shields.io/hackage-deps/v/web-rep.svg)](http://packdeps.haskellers.com/reverse/web-rep)
-
+[![Build Status](https://github.com/tonyday567/web-rep/workflows/haskell-ci/badge.svg)](https://github.com/tonyday567/web-rep/actions?query=workflow%3Ahaskell-ci)
 
 Various functions and representations for a web page.
 
@@ -25,7 +24,7 @@ reference
 - [lucid](http://hackage.haskell.org/package/lucid)
 - [clay](https://www.stackage.org/clay)
 
-todo
+eval
 ---
 
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!

@@ -13,11 +13,11 @@ module Web.Rep.Render
 where
 
 import Control.Applicative
-import Control.Lens
 import Control.Monad
 import Data.Foldable
 import Data.Text (Text, pack, unpack)
 import Lucid
+import Optics.Core
 import Web.Rep.Html
 import Web.Rep.Page
 
@@ -108,13 +108,13 @@ renderPageWith pc p =
         Inline -> p ^. #libsCss
         Separated ->
           p ^. #libsCss
-            <> [libCss (pack $ pc ^. #filenames . #cssConcern)]
+            <> [libCss (pack $ pc ^. #filenames % #cssConcern)]
     libsJs' =
       case pc ^. #concerns of
         Inline -> p ^. #libsJs
         Separated ->
           p ^. #libsJs
-            <> [libJs (pack $ pc ^. #filenames . #jsConcern)]
+            <> [libJs (pack $ pc ^. #filenames % #jsConcern)]
 
 -- | Render Page concerns to files.
 renderPageToFile :: FilePath -> PageConfig -> Page -> IO ()

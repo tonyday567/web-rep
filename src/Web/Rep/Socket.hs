@@ -25,12 +25,12 @@ where
 
 import Box
 import Box.Socket
-import Control.Lens
 import Control.Monad
 import Control.Monad.Conc.Class as C
 import Control.Monad.State.Lazy
 import qualified Data.Attoparsec.Text as A
 import Data.Bifunctor
+import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
 import Data.Text (Text, pack)
 import qualified Data.Text as Text
@@ -38,6 +38,7 @@ import GHC.Generics
 import Lucid as L
 import Network.Wai.Handler.WebSockets
 import qualified Network.WebSockets as WS
+import Optics.Core
 import Text.InterpolatedString.Perl6
 import Web.Rep.Bootstrap
 import Web.Rep.Html
@@ -65,7 +66,7 @@ serveSocketBox cfg p b =
 sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> IO [Code]) -> IO ()
 sharedServer srep cfg p i o =
   serveSocketBox cfg p
-    <$.> fromAction (backendLoop srep i o . wrangle)
+    <$|> fromAction (backendLoop srep i o . wrangle)
 
 defaultSharedServer :: (Show a) => SharedRep IO a -> IO ()
 defaultSharedServer srep =
@@ -135,7 +136,11 @@ wrangle :: Monad m => Box m Text Text -> Box m [Code] (Text, Text)
 wrangle (Box c e) = Box c' e'
   where
     c' = listC $ contramap code c
-    e' = mapE (pure . either (const Nothing) Just) (parseE parserJ e)
+    e' = witherE (pure . either (const Nothing) Just) (parseE parserJ e)
+
+-- | attoparsec parse emitter which returns the original text on failure
+parseE :: (Functor m) => A.Parser a -> Emitter m Text -> Emitter m (Either Text a)
+parseE parser e = (\t -> either (const $ Left t) Right (A.parseOnly parser t)) <$> e
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
 parserJ :: A.Parser (Text, Text)

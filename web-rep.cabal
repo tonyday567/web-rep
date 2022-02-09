@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               web-rep
-version:            0.8.0
+version:            0.9.0
 synopsis:           representations of a web page
 category:           web
 description:
@@ -12,7 +12,7 @@ license:            MIT
 license-file:       LICENSE.md
 build-type:         Simple
 extra-source-files: ChangeLog.md
-tested-with:        GHC ==8.8.4 || ==8.10.4 || ==9.0.1 || ==9.2.0.20210821
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.2.1
 
 source-repository head
   type:     git
@@ -37,16 +37,16 @@ library
     , attoparsec                ^>=0.14
     , base                      >=4.12    && <5
     , bifunctors                ^>=5.5.11
-    , box                       ^>=0.7
-    , box-socket                ^>=0.2
+    , box                       ^>=0.8
+    , box-socket                ^>=0.3
     , clay                      ^>=0.13
     , concurrency               ^>=1.11
-    , generic-lens              ^>=2.2
     , interpolatedstring-perl6  ^>=1.0
     , language-javascript       >=0.6.0   && <0.8
-    , lens                      ^>=5.0
     , lucid                     ^>=2.9
     , mtl                       ^>=2.2.2
+    , optics-core               ^>=0.4
+    , optics-extra              ^>=0.4
     , scotty                    >=0.11.5  && <0.13
     , text                      ^>=1.2.3
     , transformers              ^>=0.5.6
