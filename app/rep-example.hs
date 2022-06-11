@@ -1,35 +1,42 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import Options.Generic
 import Web.Rep
 import Web.Rep.Examples
 import Prelude
+import Options.Applicative
 
-data AppType = SharedTest deriving (Eq, Read, Show, Generic)
+data AppType = SharedTest deriving (Eq, Show)
 
-instance ParseField AppType
-
-instance ParseRecord AppType
-
-instance ParseFields AppType
-
-newtype Opts w = Opts
-  { apptype :: w ::: AppType <?> "type of example"
+newtype Options = Options
+  { optionAppType :: AppType
   }
-  deriving (Generic)
+  deriving (Eq, Show)
 
-instance ParseRecord (Opts Wrapped)
+parseAppType :: Parser AppType
+parseAppType =
+  flag' SharedTest (long "shared" <> help "shared test")
+    <|> pure SharedTest
+
+options :: Parser Options
+options =
+  Options
+    <$> parseAppType
+
+opts :: ParserInfo Options
+opts =
+  info
+    (options <**> helper)
+    (fullDesc <> progDesc "web-rep testing" <> header "web-rep")
 
 main :: IO ()
 main = do
-  o :: Opts Unwrapped <- unwrapRecord "examples for web-page"
-  case apptype o of
+  o <- execParser opts
+  let a = optionAppType o
+  case a of
     SharedTest -> defaultSharedServer (maybeRep (Just "maybe") False repExamples)
