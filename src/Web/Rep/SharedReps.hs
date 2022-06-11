@@ -36,7 +36,7 @@ module Web.Rep.SharedReps
     subtype,
     selectItems,
     repItemsSelect,
-  )
+  toggle_)
 where
 
 import Box.Codensity ()
@@ -247,6 +247,15 @@ toggle label v =
     ((== "true") <$> takeText)
     (bool "false" "true")
     (Input v label mempty (Toggle v label))
+    v
+
+-- | a toggle button, with no label
+toggle_ :: (Monad m) => Maybe Text -> Bool -> SharedRep m Bool
+toggle_ label v =
+  repInput
+    ((== "true") <$> takeText)
+    (bool "false" "true")
+    (Input v Nothing mempty (Toggle v label))
     v
 
 -- | a button

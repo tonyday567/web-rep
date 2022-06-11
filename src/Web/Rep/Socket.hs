@@ -20,11 +20,10 @@ module Web.Rep.Socket
     Code (..),
     code,
     wrangle,
-  )
+  serveSocketCoBox)
 where
 
 import Box
-import Box.Socket
 import Control.Monad
 import Control.Monad.Conc.Class as C
 import Control.Monad.State.Lazy
@@ -46,6 +45,7 @@ import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Scotty hiding (get)
+import Box.Socket (serverApp)
 
 socketPage :: Page
 socketPage =
@@ -57,10 +57,31 @@ socketPage =
         preventEnter
       ]
 
+-- | Socket configuration
+--
+-- >>> defaultSocketConfig
+-- SocketConfig {host = "127.0.0.1", port = 9160, path = "/"}
+data SocketConfig = SocketConfig
+  { host :: Text,
+    port :: Int,
+    path :: Text
+  }
+  deriving (Show, Eq, Generic)
+
+-- | official default
+defaultSocketConfig :: SocketConfig
+defaultSocketConfig = SocketConfig "127.0.0.1" 9160 "/"
+
 serveSocketBox :: SocketConfig -> Page -> Box IO Text Text -> IO ()
 serveSocketBox cfg p b =
   scotty (cfg ^. #port) $ do
     middleware $ websocketsOr WS.defaultConnectionOptions (serverApp b)
+    servePageWith "/" (defaultPageConfig "") p
+
+serveSocketCoBox :: SocketConfig -> Page -> CoBox IO Text Text -> IO ()
+serveSocketCoBox cfg p b =
+  scotty (cfg ^. #port) $ do
+    middleware . websocketsOr WS.defaultConnectionOptions $ (\k -> Box.close $ serverApp <$> b <*> pure k)
     servePageWith "/" (defaultPageConfig "") p
 
 sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> IO [Code]) -> IO ()
