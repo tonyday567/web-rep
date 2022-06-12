@@ -46,6 +46,7 @@ import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Scotty hiding (get)
 import Box.Socket (serverApp)
+import Data.Bool
 
 socketPage :: Page
 socketPage =
@@ -89,13 +90,13 @@ sharedServer srep cfg p i o =
   serveSocketBox cfg p
     <$|> fromAction (backendLoop srep i o . wrangle)
 
-defaultSharedServer :: (Show a) => SharedRep IO a -> IO ()
-defaultSharedServer srep =
-  sharedServer srep defaultSocketConfig defaultSocketPage defaultInputCode defaultOutputCode
+defaultSharedServer :: (Show a) => BootstrapVersion -> SharedRep IO a -> IO ()
+defaultSharedServer v srep =
+  sharedServer srep defaultSocketConfig (defaultSocketPage v) defaultInputCode defaultOutputCode
 
-defaultSocketPage :: Page
-defaultSocketPage =
-  bootstrapPage
+defaultSocketPage :: BootstrapVersion -> Page
+defaultSocketPage v =
+  bool bootstrap5Page bootstrapPage (v==Boot4)
     <> socketPage
     & #htmlBody
     .~ divClass_

@@ -34,6 +34,7 @@ data Input a = Input
 -- | Various types of web page inputs, encapsulating practical bootstrap class functionality
 data InputType
   = Slider [Attribute]
+  | SliderV [Attribute]
   | TextBox
   | TextBox'
   | TextArea Int
@@ -62,6 +63,22 @@ instance (ToHtml a) => ToHtml (Input a) where
               ]
                 <> satts
             )
+      )
+  toHtml (Input v l i (SliderV satts)) =
+    with
+      div_
+      [class__ "form-group-sm"]
+      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
+          <> input_
+            ( [ type_ "range",
+                class__ " form-control-range form-control-sm custom-range jsbClassEventChange",
+                id_ i,
+                value_ (pack $ show $ toHtml v),
+                oninput_ ("$('#sliderv" <> i <> "').html($(this).val())")
+              ]
+                <> satts
+            )
+          <> span_ [id_ ("sliderv" <> i)] (toHtml v)
       )
   toHtml (Input v l i TextBox) =
     with
@@ -250,7 +267,7 @@ instance (ToHtml a) => ToHtml (Input a) where
           <> input_
             ( [ type_ "button",
                 class__ "btn btn-primary btn-sm jsbClassEventToggle",
-                data_ "toggle" "button",
+                data_ "bs-toggle" "button",
                 id_ i,
                 makeAttribute "aria-pressed" (bool "false" "true" pushed)
               ]

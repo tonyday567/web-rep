@@ -110,6 +110,8 @@ data RepExamples = RepExamples
     repTextarea :: Text,
     repSliderI :: Int,
     repSlider :: Double,
+    repSliderVI :: Int,
+    repSliderV :: Double,
     repCheckbox :: Bool,
     repToggle :: Bool,
     repDropdown :: Int,
@@ -141,13 +143,15 @@ repExamples = do
   ta <- textarea 3 (Just "textarea") "no initial value & multi-line text\\nrenders is not ok?/"
   n <- sliderI (Just "int slider") 0 5 1 3
   ds' <- slider (Just "double slider") 0 1 0.1 0.5
+  nV <- sliderVI (Just "int slider") 0 5 1 3
+  dsV' <- sliderV (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
   dr <- dropdown decimal (pack . show) (Just "dropdown") (pack . show <$> [1 .. 5 :: Int]) 3
   drm <- dropdownMultiple decimal (pack . show) (Just "dropdown multiple") (pack . show <$> [1 .. 5 :: Int]) [2, 4]
   drt <- toShape <$> dropdown takeText id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
   col <- colorPicker (Just "color") "#454e56"
-  pure (RepExamples t ta n ds' c tog dr drm drt col)
+  pure (RepExamples t ta n ds' nV dsV' c tog dr drm drt col)
 
 listExample :: (Monad m) => Int -> SharedRep m [Int]
 listExample n =

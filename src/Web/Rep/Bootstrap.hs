@@ -2,10 +2,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- | Some <https://getbootstrap.com/ bootstrap> assets and functionality.
 module Web.Rep.Bootstrap
-  ( bootstrapPage,
+  ( BootstrapVersion (..),
+    bootstrapPage,
+    bootstrap5Page,
     cardify,
     divClass_,
     accordion,
@@ -25,6 +28,9 @@ import Lucid.Base
 import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Shared
+import GHC.Generics
+
+data BootstrapVersion = Boot4 | Boot5 deriving (Eq, Show, Generic)
 
 bootstrapCss :: [Html ()]
 bootstrapCss =
@@ -32,6 +38,17 @@ bootstrapCss =
       [ rel_ "stylesheet",
         href_ "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css",
         integrity_ "sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T",
+        crossorigin_ "anonymous"
+      ]
+  ]
+
+-- | <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+bootstrap5Css :: [Html ()]
+bootstrap5Css =
+  [ link_
+      [ rel_ "stylesheet",
+        href_ "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css",
+        integrity_ "sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC",
         crossorigin_ "anonymous"
       ]
   ]
@@ -57,6 +74,23 @@ bootstrapJs =
         crossorigin_ "anonymous"
       ]
   ]
+-- | <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+bootstrap5Js :: [Html ()]
+bootstrap5Js =
+  [ with
+      (script_ mempty)
+      [ src_ "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js",
+        integrity_ "sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM",
+        crossorigin_ "anonymous"
+      ],
+    with
+      (script_ mempty)
+      [ src_ "https://code.jquery.com/jquery-3.3.1.slim.min.js",
+        integrity_ "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
+        crossorigin_ "anonymous"
+      ]
+  ]
+
 
 bootstrapMeta :: [Html ()]
 bootstrapMeta =
@@ -78,6 +112,19 @@ bootstrapPage =
     mempty
     (mconcat bootstrapMeta)
     mempty
+
+-- | A page containing all the <https://getbootstrap.com/ bootstrap> needs for a web page.
+bootstrap5Page :: Page
+bootstrap5Page =
+  Page
+    bootstrap5Css
+    bootstrap5Js
+    mempty
+    mempty
+    mempty
+    (mconcat bootstrapMeta)
+    mempty
+
 
 -- | wrap some Html with the bootstrap <https://getbootstrap.com/docs/4.3/components/card/ card> class
 cardify :: (Html (), [Attribute]) -> Maybe Text -> (Html (), [Attribute]) -> Html ()

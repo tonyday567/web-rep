@@ -13,6 +13,8 @@ module Web.Rep.SharedReps
     repMessage,
     sliderI,
     slider,
+    sliderV,
+    sliderVI,
     dropdown,
     dropdownMultiple,
     datalist,
@@ -22,6 +24,7 @@ module Web.Rep.SharedReps
     textarea,
     checkbox,
     toggle,
+    toggle_,
     button,
     chooseFile,
     maybeRep,
@@ -36,8 +39,7 @@ module Web.Rep.SharedReps
     subtype,
     selectItems,
     repItemsSelect,
-  toggle_)
-where
+  ) where
 
 import Box.Codensity ()
 import Control.Monad
@@ -103,6 +105,28 @@ slider label l u s v =
     (Input v label mempty (Slider [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
     v
 
+-- | double slider with shown value
+--
+-- For Example, a slider between 0 and 1 with a step of 0.01 and a default value of 0.3 is:
+--
+-- > :t slider (Just "label") 0 1 0.01 0.3
+-- slider (Just "label") 0 1 0.01 0.3 :: Monad m => SharedRep m Double
+sliderV ::
+  (Monad m) =>
+  Maybe Text ->
+  Double ->
+  Double ->
+  Double ->
+  Double ->
+  SharedRep m Double
+sliderV label l u s v =
+  repInput
+    double
+    (pack . show)
+    (Input v label mempty (SliderV [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
+    v
+
+
 -- | integral slider
 --
 -- For Example, a slider between 0 and 1000 with a step of 10 and a default value of 300 is:
@@ -125,6 +149,22 @@ sliderI label l u s v =
     (Input v label mempty (Slider [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
     v
 
+-- | integral slider with shown value
+--
+sliderVI ::
+  (Monad m, ToHtml a, P.Integral a, Show a) =>
+  Maybe Text ->
+  a ->
+  a ->
+  a ->
+  a ->
+  SharedRep m a
+sliderVI label l u s v =
+  repInput
+    decimal
+    (pack . show)
+    (Input v label mempty (SliderV [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
+    v
 -- | textbox classique
 --
 -- > :t textbox (Just "label") "some text"
