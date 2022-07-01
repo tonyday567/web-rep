@@ -5,11 +5,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 import Web.Rep
 import Web.Rep.Examples
 import Prelude
 import Options.Applicative
+import Box
+import Data.Time
+import Data.Text
+import qualified Lucid as L
+import Control.Monad.Conc.Class as C
+import GHC.Generics
+import Optics.Core
+import Data.Fixed
+import Data.Maybe
 
 data AppType = SharedTest deriving (Eq, Show)
 
@@ -49,3 +60,91 @@ main = do
   let v = optionBootstrapVersion o
   case a of
     SharedTest -> defaultSharedServer v (maybeRep (Just "maybe") False repExamples)
+
+countTest :: IO ()
+countTest = sharedServer (repPlayConfig defaultPlayConfig) defaultSocketConfig defaultIPage defaultInputCode (iCodeE' 1000)
+
+countingE :: C.MonadConc m => Integer -> CoEmitter m (LocalTime, Integer)
+countingE n = qList ((\x -> (addLocalTime (secondsToNominalDiffTime (MkFixed (1000000000000 * x))) t0, x)) <$> [0 .. (n - 1)])
+  where
+    t0 = LocalTime (fromGregorian 2022 6 6) (TimeOfDay 0 0 (MkFixed 0))
+{-
+iSim :: SimConfig -> IO ()
+iSim cfg =
+  backendLoop (repPlayConfig (view #playConfig cfg))
+  (\speed skip c -> glue c <$|> (fmap iCode <$> (replay speed skip =<< countingE 100))) <$|>
+  (wrangle <$>
+   fromAction
+   (serveSocketBox (view #socket cfg) (view #page cfg)))
+
+-}
+
+outputCodeI :: Either Text PlayConfig -> IO [Code]
+outputCodeI ea =
+  case ea of
+    Left err -> pure [Append "debug" err]
+    Right a -> pure [Replace "output" (pack $ show a)]
+
+iCodeE :: Integer -> PlayConfig -> IO [Code]
+iCodeE m cfg = fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) =<< countingE m)
+
+iCodeE' :: Integer -> Either Text PlayConfig -> IO [Code]
+iCodeE' m cfg' = case cfg' of
+  Left txt -> pure (iCode txt)
+  Right cfg -> fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) =<< countingE m)
+
+iCode :: (Show a) => a -> [Code]
+iCode x = ((: []) . Replace "output") . pack . show $ x
+
+data SimConfig = SimConfig
+  { playConfig :: PlayConfig,
+    socket :: SocketConfig,
+    page :: Page,
+    maxFrames :: Integer
+  }
+  deriving (Show, Generic)
+
+defaultSimConfigI :: SimConfig
+defaultSimConfigI = SimConfig defaultPlayConfig defaultSocketConfig defaultIPage 1000
+
+defaultIPage :: Page
+defaultIPage =
+  bootstrap5Page
+    <> socketPage
+    & #htmlBody
+    .~ divClass_
+      "container"
+      ( mconcat
+          [ divClass_ "row" . mconcat $ ((\(t, h, c) -> divClass_ "col" (L.with L.div_ [L.id_ t, L.class_ c] h)) <$> sections)
+          ]
+      )
+  where
+    sections =
+      [ ("input", mempty, "w-50"),
+        ("output", mempty, "")
+      ]
+
+sb :: Codensity IO (Box IO [Code] (Text, Text))
+sb = wrangle <$> fromAction (serveSocketBox defaultSocketConfig defaultIPage)
+
+sim :: (Either Text PlayConfig -> IO [Code]) -> IO ()
+sim iE = backendLoop (repPlayConfig defaultPlayConfig) defaultInputCode iE <$|> sb
+
+sim' :: IO ()
+sim' = backendLoop' (repPlayConfig defaultPlayConfig) ie' <$|> sb
+
+ie' :: Double -> Int -> Committer IO [Code] -> IO ()
+ie' speed skip c = glue c <$|> (fmap iCode <$> (replay speed =<< countingE 1000))
+
+{-
+sim :: IO ()
+sim =
+  backendLoop (repPlayConfig defaultPlayConfig)
+  (\speed c -> glue c <$|> iE speed) <$|>
+  (wrangle <$>
+   fromAction
+   (serveSocketBox defaultSocketConfig defaultIPage))
+
+iE = undefined
+
+-}

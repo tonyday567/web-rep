@@ -28,3 +28,7 @@ eval
 ---
 
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!
+
+#+begin_src elisp
+(setq haskell-process-args-cabal-repl '("poker-fold:exe:poker-fold-speed"))
+#+end_src

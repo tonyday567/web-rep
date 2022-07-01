@@ -5,6 +5,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Eta reduce" #-}
 
 -- | A socket between a web page and haskell, based on the box library.
 module Web.Rep.Socket
@@ -20,7 +22,11 @@ module Web.Rep.Socket
     Code (..),
     code,
     wrangle,
-  serveSocketCoBox)
+  serveSocketCoBox,
+  backendLoop,
+  backendLoop', defaultPlayConfig, repPlayConfig,
+  PlayConfig (..),
+  )
 where
 
 import Box
@@ -47,6 +53,8 @@ import Web.Rep.Shared
 import Web.Scotty hiding (get)
 import Box.Socket (serverApp)
 import Data.Bool
+import Control.Concurrent.Async
+import Web.Rep.SharedReps
 
 socketPage :: Page
 socketPage =
@@ -112,7 +120,6 @@ defaultSocketPage v =
         ("output", mempty)
       ]
 
--- I am proud of this.
 backendLoop ::
   (MonadConc m) =>
   SharedRep m a ->
@@ -144,6 +151,75 @@ backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empt
       let (m', ea) = fa (snd s)
       modify (second (const m'))
       lift $ outputCode ea
+
+data PlayConfig = PlayConfig
+  { playToggle :: Bool,
+    playSpeed :: Double,
+    playFrame :: Int
+  }
+  deriving (Eq, Show, Generic)
+
+defaultPlayConfig :: PlayConfig
+defaultPlayConfig = PlayConfig False 1 0
+
+repPlayConfig :: PlayConfig -> SharedRep IO PlayConfig
+repPlayConfig cfg = PlayConfig <$> repOnOff (view #playToggle cfg) <*> repSpeed (view #playSpeed cfg) <*> repFrame (view #playFrame cfg)
+
+repFrame :: Int -> SharedRep IO Int
+repFrame x = read . Text.unpack <$> textbox (Just "frame") (pack $ show x)
+
+repSpeed :: Double -> SharedRep IO Double
+repSpeed x = sliderV (Just "speed") 0.1 100 0.01 x
+
+repOnOff :: Bool -> SharedRep IO Bool
+repOnOff initial = toggle_ (Just "start/stop") initial
+
+backendLoop' ::
+  SharedRep IO PlayConfig ->
+  -- | [Code] is push instructions to change the page
+  -- | (Text, Text) is the key-value pair for the shared representation
+  (Double -> Int -> Committer IO [Code] -> IO ()) ->
+  Box IO [Code] (Text, Text) ->
+  IO ()
+backendLoop' sr ccode (Box c e) = do
+  refFaker <- C.newIORef Nothing -- Async ()
+  flip evalStateT (0, HashMap.empty) $ do
+    -- you only want to run unshare once for a SharedRep
+    (Rep h fa) <- unshare sr
+    b <- lift $ commit c [Replace "input" (toText h)]
+    step' refFaker fa
+    when b (go refFaker fa)
+  where
+    go ref fa = do
+      incoming <- lift $ emit e
+      modify (updateS incoming)
+      step' ref fa
+      go ref fa
+    updateS Nothing s = s
+    updateS (Just (k, v)) s = second (HashMap.insert k v) s
+    step' ref fa = do
+      s <- get
+      let (m', ea) = fa (snd s)
+      modify (second (const m'))
+      liftIO $ case ea of
+        (Right (PlayConfig togg speed skip)) -> ccode speed skip (play togg ref c)
+        Left _ -> pure ()
+
+-- | a committer with a toggle
+play :: Bool -> C.IORef IO (Maybe (Async Bool)) -> Committer IO [Code] -> Committer IO [Code]
+play togg ref c = Committer $ \a -> do
+  s <- C.readIORef ref
+  case (s, togg) of
+    (Nothing, True) -> do
+      ref' <- async $ commit c a
+      C.writeIORef ref (Just ref')
+      pure True
+    (Nothing, False) -> pure False
+    (Just _, True) -> pure False
+    (Just ref', False) -> do
+      cancel ref'
+      C.writeIORef ref Nothing
+      pure False
 
 defaultInputCode :: Html () -> [Code]
 defaultInputCode h = [Append "input" (toText h)]
