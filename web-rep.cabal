@@ -37,7 +37,7 @@ library
     , attoparsec                ^>=0.14
     , base                      >=4.12    && <5
     , bifunctors                ^>=5.5.11
-    , box                       ^>=0.8
+    , box                       >=0.9
     , box-socket                ^>=0.3
     , clay                      ^>=0.13
     , concurrency               ^>=1.11

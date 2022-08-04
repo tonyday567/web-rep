@@ -7,6 +7,9 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Eta reduce" #-}
 
 import Web.Rep
 import Web.Rep.Examples
@@ -20,7 +23,6 @@ import Control.Monad.Conc.Class as C
 import GHC.Generics
 import Optics.Core
 import Data.Fixed
-import Data.Maybe
 
 data AppType = SharedTest deriving (Eq, Show)
 
@@ -64,6 +66,9 @@ main = do
 countTest :: IO ()
 countTest = sharedServer (repPlayConfig defaultPlayConfig) defaultSocketConfig defaultIPage defaultInputCode (iCodeE' 1000)
 
+-- |
+-- >>> toListM <$|> countingE 10
+-- [(2022-06-06 00:00:00,0),(2022-06-06 00:00:01,1),(2022-06-06 00:00:02,2),(2022-06-06 00:00:03,3),(2022-06-06 00:00:04,4),(2022-06-06 00:00:05,5),(2022-06-06 00:00:06,6),(2022-06-06 00:00:07,7),(2022-06-06 00:00:08,8),(2022-06-06 00:00:09,9)]
 countingE :: C.MonadConc m => Integer -> CoEmitter m (LocalTime, Integer)
 countingE n = qList ((\x -> (addLocalTime (secondsToNominalDiffTime (MkFixed (1000000000000 * x))) t0, x)) <$> [0 .. (n - 1)])
   where
@@ -86,12 +91,12 @@ outputCodeI ea =
     Right a -> pure [Replace "output" (pack $ show a)]
 
 iCodeE :: Integer -> PlayConfig -> IO [Code]
-iCodeE m cfg = fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) =<< countingE m)
+iCodeE u cfg = fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE u)
 
 iCodeE' :: Integer -> Either Text PlayConfig -> IO [Code]
 iCodeE' m cfg' = case cfg' of
   Left txt -> pure (iCode txt)
-  Right cfg -> fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) =<< countingE m)
+  Right cfg -> fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE m)
 
 iCode :: (Show a) => a -> [Code]
 iCode x = ((: []) . Replace "output") . pack . show $ x
@@ -134,17 +139,6 @@ sim' :: IO ()
 sim' = backendLoop' (repPlayConfig defaultPlayConfig) ie' <$|> sb
 
 ie' :: Double -> Int -> Committer IO [Code] -> IO ()
-ie' speed skip c = glue c <$|> (fmap iCode <$> (replay speed =<< countingE 1000))
+ie' speed skip c = glue c <$|> (fmap iCode <$> (replay speed skip =<< countingE 1000))
 
-{-
-sim :: IO ()
-sim =
-  backendLoop (repPlayConfig defaultPlayConfig)
-  (\speed c -> glue c <$|> iE speed) <$|>
-  (wrangle <$>
-   fromAction
-   (serveSocketBox defaultSocketConfig defaultIPage))
-
-iE = undefined
-
--}
+-- glue showStdout <$|> (replay 1 0 =<< countingE 100)

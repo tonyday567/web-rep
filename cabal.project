@@ -1,4 +1,6 @@
 packages:
   web-rep.cabal
+  ../box/box.cabal
+  ../box-socket/box-socket.cabal
 
 allow-newer: memory:base, memory:ghc-prim, basement:base
