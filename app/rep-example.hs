@@ -139,6 +139,6 @@ sim' :: IO ()
 sim' = backendLoop' (repPlayConfig defaultPlayConfig) ie' <$|> sb
 
 ie' :: Double -> Int -> Committer IO [Code] -> IO ()
-ie' speed skip c = glue c <$|> (fmap iCode <$> (replay speed skip =<< countingE 1000))
+ie' speed skip c = glue c <$|> (fmap iCode <$> (replay speed skip =<< countingE 4))
 
 -- glue showStdout <$|> (replay 1 0 =<< countingE 100)
