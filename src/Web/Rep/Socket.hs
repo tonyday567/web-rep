@@ -26,6 +26,9 @@ module Web.Rep.Socket
   backendLoop,
   backendLoop', defaultPlayConfig, repPlayConfig,
   PlayConfig (..),
+  play,
+  repOnOff,
+  repSpeed,
   )
 where
 
@@ -206,7 +209,7 @@ backendLoop' sr ccode (Box c e) = do
         Left _ -> pure ()
 
 -- | a committer with a toggle
-play :: Bool -> C.IORef IO (Maybe (Async Bool)) -> Committer IO [Code] -> Committer IO [Code]
+play :: Bool -> C.IORef IO (Maybe (Async Bool)) -> Committer IO a -> Committer IO a
 play togg ref c = Committer $ \a -> do
   s <- C.readIORef ref
   case (s, togg) of

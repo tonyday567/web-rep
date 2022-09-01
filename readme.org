@@ -113,8 +113,8 @@ Ok, one module loaded.
  : [Replace "output" "3"]
 
 #+begin_src elisp
-(setq haskell-process-args-cabal-repl '("web-rep:exe:web-rep-example"))
+(setq haskell-process-args-cabal-repl '("web-rep:exe:web-rep-replay-example"))
 #+end_src
 
 #+RESULTS:
-| web-rep:exe:web-rep-example |
+| web-rep:exe:web-rep-replay-example |
