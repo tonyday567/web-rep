@@ -84,3 +84,29 @@ executable web-rep-example
     -Wincomplete-uni-patterns -Wredundant-constraints
     -funbox-strict-fields -fforce-recomp -threaded -rtsopts
     -with-rtsopts=-N -fwrite-ide-info -hiedir=.hie
+
+executable web-rep-replay-example
+  main-is:            replay-example.hs
+  hs-source-dirs:     app
+  build-depends:
+    , base              >=4.12 && <5
+    , optparse-applicative
+    , web-rep
+    , time
+    , box
+    , text
+    , lucid
+    , concurrency               ^>=1.11
+    , optics-core
+    , mtl
+    , unordered-containers
+    , async
+
+
+  default-language:   Haskell2010
+  default-extensions:
+  ghc-options:
+    -Wall -Wcompat -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wredundant-constraints
+    -funbox-strict-fields -fforce-recomp -threaded -rtsopts
+    -with-rtsopts=-N -fwrite-ide-info -hiedir=.hie

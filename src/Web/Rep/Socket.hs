@@ -202,7 +202,7 @@ backendLoop' sr ccode (Box c e) = do
       let (m', ea) = fa (snd s)
       modify (second (const m'))
       liftIO $ case ea of
-        (Right (PlayConfig togg speed skip)) -> ccode speed skip (play togg ref c)
+        (Right (PlayConfig togg speed sk)) -> ccode speed sk (play togg ref c)
         Left _ -> pure ()
 
 -- | a committer with a toggle

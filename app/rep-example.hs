@@ -10,6 +10,8 @@
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
+{-# LANGUAGE TupleSections #-}
+{-# HLINT ignore "Use tuple-section" #-}
 
 import Web.Rep
 import Web.Rep.Examples
@@ -69,10 +71,11 @@ countTest = sharedServer (repPlayConfig defaultPlayConfig) defaultSocketConfig d
 -- |
 -- >>> toListM <$|> countingE 10
 -- [(2022-06-06 00:00:00,0),(2022-06-06 00:00:01,1),(2022-06-06 00:00:02,2),(2022-06-06 00:00:03,3),(2022-06-06 00:00:04,4),(2022-06-06 00:00:05,5),(2022-06-06 00:00:06,6),(2022-06-06 00:00:07,7),(2022-06-06 00:00:08,8),(2022-06-06 00:00:09,9)]
-countingE :: C.MonadConc m => Integer -> CoEmitter m (LocalTime, Integer)
-countingE n = qList ((\x -> (addLocalTime (secondsToNominalDiffTime (MkFixed (1000000000000 * x))) t0, x)) <$> [0 .. (n - 1)])
+countingE :: C.MonadConc m => Integer -> Double -> CoEmitter m (LocalTime, Integer)
+countingE n speed = fromGaps t0 =<< qList ((speed,) <$> [0 .. (n - 1)])
   where
     t0 = LocalTime (fromGregorian 2022 6 6) (TimeOfDay 0 0 (MkFixed 0))
+
 {-
 iSim :: SimConfig -> IO ()
 iSim cfg =
@@ -84,6 +87,7 @@ iSim cfg =
 
 -}
 
+
 outputCodeI :: Either Text PlayConfig -> IO [Code]
 outputCodeI ea =
   case ea of
@@ -91,12 +95,12 @@ outputCodeI ea =
     Right a -> pure [Replace "output" (pack $ show a)]
 
 iCodeE :: Integer -> PlayConfig -> IO [Code]
-iCodeE u cfg = fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE u)
+iCodeE u cfg = fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE u 1)
 
 iCodeE' :: Integer -> Either Text PlayConfig -> IO [Code]
 iCodeE' m cfg' = case cfg' of
   Left txt -> pure (iCode txt)
-  Right cfg -> fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE m)
+  Right cfg -> fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE m 1)
 
 iCode :: (Show a) => a -> [Code]
 iCode x = ((: []) . Replace "output") . pack . show $ x
@@ -136,9 +140,11 @@ sim :: (Either Text PlayConfig -> IO [Code]) -> IO ()
 sim iE = backendLoop (repPlayConfig defaultPlayConfig) defaultInputCode iE <$|> sb
 
 sim' :: IO ()
-sim' = backendLoop' (repPlayConfig defaultPlayConfig) ie' <$|> sb
+sim' = backendLoop' (repPlayConfig (PlayConfig True 1 0)) ie' <$|> sb
 
 ie' :: Double -> Int -> Committer IO [Code] -> IO ()
-ie' speed skip c = glue c <$|> (fmap iCode <$> (replay speed skip =<< countingE 4))
+ie' speed sk c = glue c <$|> (fmap iCode <$> (replay speed sk =<< countingE 4 1))
 
--- glue showStdout <$|> (replay 1 0 =<< countingE 100)
+-- glue showStdout <$|> replay 1 0 =<< countingE 5 1
+
+-- :t serveSocketBox defaultSocketConfig defaultIPage

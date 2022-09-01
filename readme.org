@@ -111,3 +111,10 @@ Ok, one module loaded.
  : [Replace "output" "1"]
  : [Replace "output" "2"]
  : [Replace "output" "3"]
+
+#+begin_src elisp
+(setq haskell-process-args-cabal-repl '("web-rep:exe:web-rep-example"))
+#+end_src
+
+#+RESULTS:
+| web-rep:exe:web-rep-example |
