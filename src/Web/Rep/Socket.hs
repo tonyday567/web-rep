@@ -22,13 +22,15 @@ module Web.Rep.Socket
     Code (..),
     code,
     wrangle,
-  serveSocketCoBox,
   backendLoop,
   backendLoop', defaultPlayConfig, repPlayConfig,
   PlayConfig (..),
   play,
   repOnOff,
   repSpeed,
+  serveCodeBox,
+  CodeBox,
+  CoCodeBox,
   )
 where
 
@@ -90,11 +92,12 @@ serveSocketBox cfg p b =
     middleware $ websocketsOr WS.defaultConnectionOptions (serverApp b)
     servePageWith "/" (defaultPageConfig "") p
 
-serveSocketCoBox :: SocketConfig -> Page -> CoBox IO Text Text -> IO ()
-serveSocketCoBox cfg p b =
-  scotty (cfg ^. #port) $ do
-    middleware . websocketsOr WS.defaultConnectionOptions $ (\k -> Box.close $ serverApp <$> b <*> pure k)
-    servePageWith "/" (defaultPageConfig "") p
+type CodeBox = Box IO [Code] (Text, Text)
+
+type CoCodeBox = Codensity IO (Box IO [Code] (Text, Text))
+
+serveCodeBox :: SocketConfig -> Page -> CoBox IO [Code] (Text,Text)
+serveCodeBox scfg p = wrangle <$> fromAction (serveSocketBox scfg p)
 
 sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> IO [Code]) -> IO ()
 sharedServer srep cfg p i o =
@@ -177,12 +180,13 @@ repSpeed x = sliderV (Just "speed") 0.1 100 0.01 x
 repOnOff :: Bool -> SharedRep IO Bool
 repOnOff initial = toggle_ (Just "start/stop") initial
 
+
 backendLoop' ::
   SharedRep IO PlayConfig ->
   -- | [Code] is push instructions to change the page
   -- | (Text, Text) is the key-value pair for the shared representation
   (Double -> Int -> Committer IO [Code] -> IO ()) ->
-  Box IO [Code] (Text, Text) ->
+  CodeBox ->
   IO ()
 backendLoop' sr ccode (Box c e) = do
   refFaker <- C.newIORef Nothing -- Async ()

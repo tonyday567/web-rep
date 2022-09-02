@@ -14,7 +14,6 @@ import Control.Category
 import Control.Monad.Conc.Class as C
 import Control.Monad.State.Lazy
 import Data.Bifunctor
-import qualified Data.HashMap.Strict as HashMap
 import Data.Text (Text, pack)
 import Prelude hiding ((.))
 import Optics.Core
@@ -23,6 +22,9 @@ import Lucid as L
 import Control.Concurrent.Async
 import Control.Monad.STM.Class
 import Data.Bool
+import Data.Hashable
+import Data.HashMap.Strict as HashMap
+import Data.Functor.Contravariant
 
 replayPage :: Page
 replayPage = defaultSocketPage Boot5 & #htmlBody
@@ -143,27 +145,90 @@ backendLoopX' sr (Box c e) = do
         (Right (PlayConfig togg speed _)) -> playX togg ref (\c -> glue c <$|> simX 100 speed) c
         Left _ -> pure ()
 
+step' :: (MonadState (a1, t) m, MonadIO m) => IO () -> (t -> (t, Either a2 PlayConfig)) -> m ()
+step' x fa = do
+      s <- get
+      let (m', ea) = fa (snd s)
+      modify (second (const m'))
+      liftIO $ case ea of
+        (Right PlayConfig {}) -> x
+        Left _ -> pure ()
 
-pauseLoop :: Bool -> Emitter IO Bool -> Box (STM IO) a a -> IO ()
-pauseLoop b0 toggleE (Box c e) = do
-  b <- atomically (newTVar b0)
-  a0 <- async (togg toggleE b)
-  a1 <- async (pause b c e)
-  _ <- waitAnyCancel [a0,a1]
+loop' :: (Hashable k, Monad m, MonadTrans t, MonadState (a1, HashMap k v) (t m), MonadIO (t m)) => Emitter m (k, v) -> IO () -> (HashMap k v -> (HashMap k v, Either a2 PlayConfig)) -> t m b
+loop' e x fa = do
+  incoming <- lift $ emit e
+  modify (updateS incoming)
+  _ <- step' x fa
+  loop' e x fa
+  where
+    updateS Nothing s = s
+    updateS (Just (k, v)) s = second (HashMap.insert k v) s
+
+
+-- | A pauseable stream
+-- > b = Box toStdout . fmap (pack . show) <$> (gapEffect <$> qList (zip (0:repeat (1::Double)) [1..100::Int]))
+-- > pauseLoop True ((==" ") <$> fromStdin) <$|> b
+--
+pauseLoop :: Bool -> Emitter IO Bool -> Box IO a a -> IO ()
+pauseLoop switch0 toggleE b = do
+  switch <- atomically (newTVar switch0)
+  _ <- race (togg toggleE switch) (pause switch b)
   pure ()
 
-togg :: (MonadConc f) => Emitter f Bool -> TVar (STM f) Bool -> f ()
+togg :: Emitter IO Bool -> TVar (STM IO) Bool -> IO ()
 togg toggleE b = do
   incoming <- emit toggleE
   case incoming of
     Nothing -> pure ()
     Just incoming' -> atomically (writeTVar b incoming') >> togg toggleE b
 
-pause :: MonadConc f => TVar (STM f) Bool -> Committer (STM f) a -> Emitter (STM f) a -> f ()
-pause b c e = atomically $ fix $ \rec -> do
-  b' <- readTVar b
-  check b'
+togg' :: IO Bool -> TVar (STM IO) Bool -> IO ()
+togg' b sw = do
+  incoming' <- b
+  atomically (writeTVar sw incoming')
+  togg' b sw
+
+pauseGlue :: Bool -> IO Bool -> Box IO a a -> IO ()
+pauseGlue switch0 bm b = do
+  switch <- atomically (newTVar switch0)
+  _ <- race (togg' bm switch) (pause switch b)
+  pure ()
+
+pause :: TVar (STM IO) Bool -> Box IO a a -> IO ()
+pause b (Box c e) = fix $ \rec -> do
+  atomically $ do
+    b' <- readTVar b
+    check b'
   e' <- emit e
   c' <- maybe (pure False) (commit c) e'
   bool (pure ()) rec c'
 
+evalSwitch :: Committer IO Bool -> Box IO [Code] (Text, Text) -> IO ()
+evalSwitch cr (Box c e) = evalShared (repOnOff False) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) cr) e
+
+evalShared :: Monad m => SharedRep m a -> Committer m (Html ()) -> Committer m (Either Text a) -> Emitter m (Text, Text) -> m ()
+evalShared sr ch c e =
+  flip evalStateT (0, HashMap.empty) $ do
+    -- you only want to run unshare once for a SharedRep
+    (Rep h fa) <- unshare sr
+    b <- lift $ commit ch h
+    when b (go fa)
+    where
+      go fa = do
+        e' <- lift $ emit e
+        case e' of
+          Nothing -> pure ()
+          Just (k,v) -> do
+            hmap <- snd <$> get
+            let hmap' = insert k v hmap
+            let (hmap'', r) = fa hmap'
+            modify (second (const hmap''))
+            b <- lift $ commit c r
+            when b (go fa)
+
+x1 :: Bool -> Emitter IO [Code] -> Box IO [Code] (Text, Text) -> IO (Either () ())
+x1 switch0 pipe (Box c e) = do
+  switch <- atomically (newTVar switch0)
+  race
+    (evalShared (repOnOff False) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (Committer (\a -> atomically (writeTVar switch a) >> pure True) )) e)
+    (pause switch (Box c pipe))
