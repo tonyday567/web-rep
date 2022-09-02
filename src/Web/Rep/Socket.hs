@@ -31,7 +31,7 @@ module Web.Rep.Socket
   serveCodeBox,
   CodeBox,
   CoCodeBox,
-  )
+  serveSocketCoBox)
 where
 
 import Box
@@ -96,8 +96,14 @@ type CodeBox = Box IO [Code] (Text, Text)
 
 type CoCodeBox = Codensity IO (Box IO [Code] (Text, Text))
 
-serveCodeBox :: SocketConfig -> Page -> CoBox IO [Code] (Text,Text)
+serveCodeBox :: SocketConfig -> Page -> CoCodeBox
 serveCodeBox scfg p = wrangle <$> fromAction (serveSocketBox scfg p)
+
+serveSocketCoBox :: SocketConfig -> Page -> CoBox IO Text Text -> IO ()
+serveSocketCoBox cfg p b =
+  scotty (cfg ^. #port) $ do
+    middleware . websocketsOr WS.defaultConnectionOptions $ (\k -> Box.close $ serverApp <$> b <*> pure k)
+    servePageWith "/" (defaultPageConfig "") p
 
 sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> IO [Code]) -> IO ()
 sharedServer srep cfg p i o =

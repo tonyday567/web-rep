@@ -226,9 +226,13 @@ evalShared sr ch c e =
             b <- lift $ commit c r
             when b (go fa)
 
-x1 :: Bool -> Emitter IO [Code] -> Box IO [Code] (Text, Text) -> IO (Either () ())
+x1 :: Bool -> Emitter IO [Code] -> Box IO [Code] (Text, Text) -> IO ()
 x1 switch0 pipe (Box c e) = do
   switch <- atomically (newTVar switch0)
-  race
+  _ <- race
     (evalShared (repOnOff False) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (Committer (\a -> atomically (writeTVar switch a) >> pure True) )) e)
     (pause switch (Box c pipe))
+  pure ()
+
+x2 :: IO ()
+x2 = Box.close $ x1 False <$> simX 10000 100 <*> serveCodeBox defaultSocketConfig replayPage
