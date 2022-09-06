@@ -129,8 +129,8 @@ quitEffect reset as =
       (Just r', Just a') -> pure (bool (Just a') Nothing r')
       _ -> pure Nothing
 
-finishEffect :: Monad m => Emitter m Bool -> Emitter m (Either Finish a) -> Emitter m a
-finishEffect reset e =
+resetEffect :: Monad m => Emitter m Bool -> Emitter m (Either Finish a) -> Emitter m a
+resetEffect reset e =
   Emitter $ do
     r <- emit reset
     a <- emit e
@@ -143,21 +143,21 @@ ef :: (MonadConc m, Alternative m) => Emitter m a -> Codensity m (Emitter m (Eit
 ef e = (<>) (Right <$> e) <$> source 1 (pure (Left Finish))
 
 ef' :: (MonadConc m, Alternative m) => Emitter m Bool -> Emitter m a -> CoEmitter m a
-ef' reset e = finishEffect reset <$> ef e
+ef' reset e = resetEffect reset <$> ef e
 
-efs :: (MonadConc m, Alternative m) => Emitter m a -> Codensity m (Emitter m (Either Finish a))
-efs e = Data.Foldable.foldr (\a x -> (<|>) <$> x <*> a) mempty (replicate 4 (ef e))
+efs :: (MonadConc m, Alternative m) => CoEmitter m a -> CoEmitter m (Either Finish a)
+efs e = Data.Foldable.foldr (\a x -> (<|>) <$> x <*> a) mempty (replicate 4 (ef =<< e))
 
 data Finish = Finish deriving (Show, Eq, Ord)
 
-intE :: (MonadConc m, Num a, Enum a) => a -> CoEmitter m a
+intE :: (MonadConc m) => Int -> CoEmitter m Int
 intE n = qList [0..n]
 
 killSwitch :: MonadConc m => Int -> CoEmitter m Bool
 killSwitch n = qList (replicate n False <> [True])
 
-qf :: (MonadConc m, Num a, Enum a, Alternative m) => Int -> a -> Codensity m (Emitter m a)
-qf k n = finishEffect <$> killSwitch k <*> (ef =<< intE n)
+qf :: (MonadConc m, Alternative m) => Int -> Int -> Codensity m (Emitter m Int)
+qf k n = resetEffect <$> killSwitch k <*> (ef =<< intE n)
 
 -- toListM <$|> ((<>) <$> (ef =<< (intE 4)) <*> (ef =<< intE 5))
 
@@ -165,3 +165,8 @@ repE :: (MonadConc m, Alternative m) => Emitter m a -> CoEmitter m (Either Finis
 repE e = Data.Foldable.foldr (\x a -> (<>) <$> x <*> a) mempty (replicate 4 (ef e))
 
 -- toListM <$|> Data.Foldable.foldr (\x a -> (<>) <$> x <*> a) mempty (replicate 4 (ef =<< (intE 3)))
+
+-- FIXME: Emitter as an argument doesnt work
+repE' :: (Monad m, Alternative m, MonadConc m) => Int -> CoEmitter m Int -> CoEmitter m (Either Finish Int)
+repE' m e = Data.Foldable.foldr (\x a -> (<>) <$> x <*> a) mempty (replicate m (ef =<< e))
+
