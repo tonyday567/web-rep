@@ -9,7 +9,7 @@
 module Main where
 
 import Box hiding (fileE)
-import Control.Applicative hiding ((<|>))
+import Control.Applicative
 import Control.Category
 import Control.Monad.Conc.Class as C
 import Control.Monad.State.Lazy
@@ -24,11 +24,14 @@ import Control.Monad.STM.Class
 import Data.Bool
 import Data.HashMap.Strict as HashMap
 import Data.Functor.Contravariant
-
--- main = Box.close $ sharedPausable False <$> simX 10000 100 <*> serveCodeBox defaultSocketConfig replayPage
+import Data.Foldable
 
 main :: IO ()
-main = Box.close $ playStream' defaultPlayConfig <$> simX 10000 (view #playSpeed defaultPlayConfig) <*> serveCodeBox defaultSocketConfig replayPage
+main =
+  Box.close $
+  playStream defaultPlayConfig <$>
+  simX 10000 (view #playSpeed defaultPlayConfig) <*>
+  serveCodeBox defaultSocketConfig replayPage
 
 replayPage :: Page
 replayPage = defaultSocketPage Boot5 & #htmlBody
@@ -36,32 +39,16 @@ replayPage = defaultSocketPage Boot5 & #htmlBody
       "container"
       ( mconcat
           [ divClass_ "row" (h1_ "Replay Simulation"),
-            divClass_ "row" . mconcat $ ((\(t, h) -> divClass_ "col" (L.with div_ [id_ t] h)) <$>
+            divClass_ "row" . mconcat $ (\(t, h) -> divClass_ "col" (L.with div_ [id_ t] h)) <$>
                                          [ ("input", mempty),
                                            ("output", mempty)
-                                         ])
+                                         ]
           ]
       )
 
-sharedPausable :: Bool -> Emitter IO [Code] -> Box IO [Code] (Text, Text) -> IO ()
-sharedPausable switch0 pipe (Box c e) = do
-  switch <- atomically (newTVar switch0)
-  _ <- race
-    (sharedStream (repOnOff switch0) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (Committer (\a -> atomically (writeTVar switch a) >> pure True) )) e)
-    (pause switch (Box c pipe))
-  pure ()
-
-playStream :: PlayConfig -> Emitter IO [Code] -> Box IO [Code] (Text, Text) -> IO ()
+playStream :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
 playStream pcfg pipe (Box c e) = do
-  switch <- atomically (newTVar (view #playToggle pcfg))
-  _ <- race
-    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (Committer (\a -> atomically (writeTVar switch (view #playToggle a)) >> pure True) )) e)
-    (pause switch (Box c pipe))
-  pure ()
-
-playStream' :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
-playStream' pcfg pipe (Box c e) = do
-  ref <- atomically (newTVar pcfg)
+  ref <- newTVarConc pcfg
   _ <- race
     (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (Committer (\a -> atomically (writeTVar ref a) >> pure True) )) e)
     (playS ref (Box c pipe))
@@ -100,20 +87,11 @@ pause b (Box c e) = fix $ \rec -> do
   c' <- maybe (pure False) (commit c) e'
   bool (pure ()) rec c'
 
-playSwitch :: TVar (STM IO) PlayConfig -> Box IO a a -> IO ()
-playSwitch b (Box c e) = fix $ \rec -> do
-  atomically $ do
-    b' <- readTVar b
-    check (view #playToggle b')
-  e' <- emit e
-  c' <- maybe (pure False) (commit c) e'
-  bool (pure ()) rec c'
-
 playE :: TVar (STM IO) PlayConfig -> Emitter IO PlayConfig
 playE ref = Emitter $ do
   p <- atomically $ do
     p' <- readTVar ref
-    check (view #playToggle p')
+    check (not $ view #playPause p')
     pure p'
   pure (Just p)
 
@@ -135,3 +113,55 @@ speedEffect speeds as =
     case (s,a) of
       (Just s', Just (g, a')) -> sleep (g/s') >> pure (Just a')
       _ -> pure Nothing
+
+
+-- > b = Box toStdout . fmap (pack . show) <$> (quitEffect (Emitter $ sleep 5 >> Just True) <$> gapEffect <$> qList (zip (0:repeat (1::Double)) [1..100::Int]))
+quitEffect ::
+  C.MonadConc m =>
+  Emitter m Bool ->
+  Emitter m a ->
+  Emitter m a
+quitEffect reset as =
+  Emitter $ do
+    r <- emit reset
+    a <- emit as
+    case (r,a) of
+      (Just r', Just a') -> pure (bool (Just a') Nothing r')
+      _ -> pure Nothing
+
+finishEffect :: Monad m => Emitter m Bool -> Emitter m (Either Finish a) -> Emitter m a
+finishEffect reset e =
+  Emitter $ do
+    r <- emit reset
+    a <- emit e
+    case (r,a) of
+      (Just r', Just (Right a')) -> pure (bool Nothing (Just a') r')
+      (_, Just (Left Finish)) -> pure Nothing
+      _ -> pure Nothing
+
+ef :: (MonadConc m, Alternative m) => Emitter m a -> Codensity m (Emitter m (Either Finish a))
+ef e = (<>) (Right <$> e) <$> source 1 (pure (Left Finish))
+
+ef' :: (MonadConc m, Alternative m) => Emitter m Bool -> Emitter m a -> CoEmitter m a
+ef' reset e = finishEffect reset <$> ef e
+
+efs :: (MonadConc m, Alternative m) => Emitter m a -> Codensity m (Emitter m (Either Finish a))
+efs e = Data.Foldable.foldr (\a x -> (<|>) <$> x <*> a) mempty (replicate 4 (ef e))
+
+data Finish = Finish deriving (Show, Eq, Ord)
+
+intE :: (MonadConc m, Num a, Enum a) => a -> CoEmitter m a
+intE n = qList [0..n]
+
+killSwitch :: MonadConc m => Int -> CoEmitter m Bool
+killSwitch n = qList (replicate n False <> [True])
+
+qf :: (MonadConc m, Num a, Enum a, Alternative m) => Int -> a -> Codensity m (Emitter m a)
+qf k n = finishEffect <$> killSwitch k <*> (ef =<< intE n)
+
+-- toListM <$|> ((<>) <$> (ef =<< (intE 4)) <*> (ef =<< intE 5))
+
+repE :: (MonadConc m, Alternative m) => Emitter m a -> CoEmitter m (Either Finish a)
+repE e = Data.Foldable.foldr (\x a -> (<>) <$> x <*> a) mempty (replicate 4 (ef e))
+
+-- toListM <$|> Data.Foldable.foldr (\x a -> (<>) <$> x <*> a) mempty (replicate 4 (ef =<< (intE 3)))

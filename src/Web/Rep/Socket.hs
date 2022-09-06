@@ -26,7 +26,8 @@ module Web.Rep.Socket
   backendLoop', defaultPlayConfig, repPlayConfig,
   PlayConfig (..),
   play,
-  repOnOff,
+  repPause,
+  repReset,
   repSpeed,
   serveCodeBox,
   CodeBox,
@@ -165,17 +166,23 @@ backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empt
       lift $ outputCode ea
 
 data PlayConfig = PlayConfig
-  { playToggle :: Bool,
+  { playPause :: Bool,
+    playReset :: Bool,
     playSpeed :: Double,
     playFrame :: Int
   }
   deriving (Eq, Show, Generic)
 
 defaultPlayConfig :: PlayConfig
-defaultPlayConfig = PlayConfig False 1 0
+defaultPlayConfig = PlayConfig True False 1 0
 
 repPlayConfig :: PlayConfig -> SharedRep IO PlayConfig
-repPlayConfig cfg = PlayConfig <$> repOnOff (view #playToggle cfg) <*> repSpeed (view #playSpeed cfg) <*> repFrame (view #playFrame cfg)
+repPlayConfig cfg =
+  PlayConfig <$>
+  repPause (view #playPause cfg) <*>
+  repReset (view #playReset cfg) <*>
+  repSpeed (view #playSpeed cfg) <*>
+  repFrame (view #playFrame cfg)
 
 repFrame :: Int -> SharedRep IO Int
 repFrame x = read . Text.unpack <$> textbox (Just "frame") (pack $ show x)
@@ -183,9 +190,11 @@ repFrame x = read . Text.unpack <$> textbox (Just "frame") (pack $ show x)
 repSpeed :: Double -> SharedRep IO Double
 repSpeed x = sliderV (Just "speed") 0.1 100 0.01 x
 
-repOnOff :: Bool -> SharedRep IO Bool
-repOnOff initial = toggle_ (Just "start/stop") initial
+repPause :: Bool -> SharedRep IO Bool
+repPause initial = toggle_ (Just "play/pause") initial
 
+repReset :: Bool -> SharedRep IO Bool
+repReset initial = toggle_ (Just "stop/restart") initial
 
 backendLoop' ::
   SharedRep IO PlayConfig ->
@@ -215,7 +224,7 @@ backendLoop' sr ccode (Box c e) = do
       let (m', ea) = fa (snd s)
       modify (second (const m'))
       liftIO $ case ea of
-        (Right (PlayConfig togg speed sk)) -> ccode speed sk (play togg ref c)
+        (Right (PlayConfig _ togg speed sk)) -> ccode speed sk (play togg ref c)
         Left _ -> pure ()
 
 -- | a committer with a toggle
