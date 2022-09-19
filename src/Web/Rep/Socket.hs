@@ -7,6 +7,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 
 -- | A socket between a web page and haskell, based on the box library.
 module Web.Rep.Socket
@@ -27,12 +28,26 @@ module Web.Rep.Socket
   PlayConfig (..),
   play,
   repPause,
-  repReset,
   repSpeed,
+  playStream,
+  sharedStream,
+  pause,
+  playS,
+  speedEffect,
+  quitEffect,
+
   serveCodeBox,
   CodeBox,
   CoCodeBox,
-  serveSocketCoBox)
+  serveSocketCoBox,
+  quit,
+  restart,
+  pauser,
+  checkE,
+  playStreamX,
+  playStreamSpeed,
+  playStreamPause,
+  playStreamA, changer, skipEffect, playStreamB)
 where
 
 import Box
@@ -56,11 +71,12 @@ import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
-import Web.Scotty hiding (get)
+import Web.Scotty ( middleware, scotty )
 import Box.Socket (serverApp)
 import Data.Bool
 import Control.Concurrent.Async
 import Web.Rep.SharedReps
+import Control.Monad.STM.Class as C
 
 socketPage :: Page
 socketPage =
@@ -167,20 +183,18 @@ backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empt
 
 data PlayConfig = PlayConfig
   { playPause :: Bool,
-    playReset :: Bool,
     playSpeed :: Double,
     playFrame :: Int
   }
   deriving (Eq, Show, Generic)
 
 defaultPlayConfig :: PlayConfig
-defaultPlayConfig = PlayConfig True False 1 0
+defaultPlayConfig = PlayConfig True 1 0
 
 repPlayConfig :: PlayConfig -> SharedRep IO PlayConfig
 repPlayConfig cfg =
   PlayConfig <$>
   repPause (view #playPause cfg) <*>
-  repReset (view #playReset cfg) <*>
   repSpeed (view #playSpeed cfg) <*>
   repFrame (view #playFrame cfg)
 
@@ -193,8 +207,198 @@ repSpeed x = sliderV (Just "speed") 0.1 100 0.01 x
 repPause :: Bool -> SharedRep IO Bool
 repPause initial = toggle_ (Just "play/pause") initial
 
-repReset :: Bool -> SharedRep IO Bool
-repReset initial = toggle_ (Just "stop/restart") initial
+playStreamX :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamX pcfg mainE (Box c e) = do
+  (playBox, _) <- toBoxM (Latest pcfg)
+  race_
+    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (restart (playPause <$> emitter playBox) (glue c (snd <$> mainE)))
+  pure ()
+
+playStream :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStream pcfg pipe (Box c e) = do
+  ref <- newTVarConc pcfg
+  race_
+    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (Committer (\a -> atomically (writeTVar ref a) >> pure True) )) e)
+    (playS ref (Box c pipe))
+  pure ()
+
+-- just the speed effect
+playStreamSpeed :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamSpeed pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest pcfg)
+  race_
+    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (glue c (speedEffect (playSpeed <$> emitter playBox) pipe))
+  pure ()
+
+playStreamPause :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamPause pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest pcfg)
+  race_
+    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (glue c (speedEffect (pure 1) $ pauser (playPause <$> emitter playBox) pipe))
+  pure ()
+
+playStreamA :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamA pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest pcfg)
+  race_
+    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (glue c (speedEffect (playSpeed <$> emitter playBox) $ pauser (playPause <$> emitter playBox) pipe))
+  pure ()
+
+-- | initial frame skip only
+playStreamB :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamB pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest pcfg)
+  race_
+    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (glue c <$|> (speedEffect <$> skipEffect (playFrame pcfg) (playSpeed <$> emitter playBox) <*> pure (pauser (playPause <$> emitter playBox) pipe)))
+  pure ()
+
+pauser :: Emitter IO Bool -> Emitter IO a -> Emitter IO a
+pauser b e = Emitter $ fix $ \rec -> do
+  b' <- emit b
+  case b' of
+    Nothing -> pure Nothing
+    Just False -> emit e
+    Just True -> rec
+
+changer :: (Eq a, MonadConc m) => a -> Emitter m a -> CoEmitter m Bool
+changer a0 e = evalEmitter a0 $ Emitter $ do
+  r <- lift $ emit e
+  case r of
+    Nothing -> pure Nothing
+    Just r' -> do
+      r'' <- get
+      put r'
+      pure (Just (r'==r''))
+
+sharedStream ::
+  Monad m => SharedRep m a -> Committer m (Html ()) -> Committer m (Either Text a) -> Emitter m (Text, Text) -> m ()
+sharedStream sr ch c e =
+  flip evalStateT (0, HashMap.empty) $ do
+    -- you only want to run unshare once for a SharedRep
+    (Rep h fa) <- unshare sr
+    b <- lift $ commit ch h
+    when b (go fa)
+    where
+      go fa = do
+        e' <- lift $ emit e
+        case e' of
+          Nothing -> pure ()
+          Just (k,v) -> do
+            hmap <- snd <$> get
+            let hmap' = insert k v hmap
+            let (hmap'', r) = fa hmap'
+            modify (second (const hmap''))
+            b <- lift $ commit c r
+            when b (go fa)
+
+pause :: TVar (STM IO) Bool -> Box IO a a -> IO ()
+pause b (Box c e) = fix $ \rec -> do
+  atomically $ do
+    b' <- readTVar b
+    check b'
+  e' <- emit e
+  c' <- maybe (pure False) (commit c) e'
+  bool (pure ()) rec c'
+
+
+
+playE :: TVar (STM IO) PlayConfig -> Emitter IO PlayConfig
+playE ref = Emitter $ do
+  p <- atomically $ do
+    p' <- readTVar ref
+    check (not $ view #playPause p')
+    pure p'
+  pure (Just p)
+
+playS :: TVar (STM IO) PlayConfig -> Box IO a (Gap, a) -> IO ()
+playS ref (Box c e) = fix $ \rec -> do
+  e' <- emit (speedEffect (view #playSpeed <$> playE ref) e)
+  c' <- maybe (pure False) (commit c) e'
+  bool (pure ()) rec c'
+
+-- | quit a process if an emitter signals
+--
+-- > quit <$> speedEffect (pure 2) <$> (resetGap 5) <*|> pure io
+-- 0
+-- 1
+-- 2
+-- 3
+-- 4
+-- Left True
+quit :: Emitter IO Bool -> IO a -> IO (Either Bool a)
+quit flag io = race (checkE flag) io
+
+-- | restart a process if flagged
+-- > io = glue showStdout . speedEffect (pure 2) <$|> (intGap 8)
+-- > rb = speedEffect (pure 2) <$> ((<>) <$> resetGap 5 <*> resetGap 20)
+-- > restart <$> rb <*|> pure io
+--
+restart :: Emitter IO Bool -> IO a -> IO (Either Bool a)
+restart flag io = fix $ \rec -> do
+  res <- quit flag io
+  case res of
+    Left True -> rec
+    Left False -> pure (Left False)
+    Right r -> pure (Right r)
+
+checkE :: MonadConc m => Emitter m Bool -> m Bool
+checkE e = fix $ \rec -> do
+  a <- emit e
+  -- atomically $ check (a == Just False)
+  case a of
+    Nothing -> pure False
+    Just True -> pure True
+    Just False -> rec
+
+speedEffect ::
+  C.MonadConc m =>
+  Emitter m Gap ->
+  Emitter m (Gap, a) ->
+  Emitter m a
+speedEffect speeds as =
+  Emitter $ do
+    s <- emit speeds
+    a <- emit as
+    case (s,a) of
+      (Just s', Just (g, a')) -> sleep (g/s') >> pure (Just a')
+      _ -> pure Nothing
+
+
+-- | FIXME: over-skipping
+skipEffect ::
+  C.MonadConc m =>
+  Int ->
+  Emitter m Gap ->
+  CoEmitter m Gap
+skipEffect n e = evalEmitter n $ Emitter $ do
+    e' <- lift $ emit e
+    n' <- get
+    case e' of
+      Nothing -> pure Nothing
+      Just _ ->
+        bool
+        (pure (Just 0))
+        (modify (\x -> x - 1) >> pure e')
+        (n' == 0)
+
+-- > b = Box toStdout . fmap (pack . show) <$> (quitEffect (Emitter $ sleep 5 >> Just True) <$> gapEffect <$> qList (zip (0:repeat (1::Double)) [1..100::Int]))
+quitEffect ::
+  C.MonadConc m =>
+  Emitter m Bool ->
+  Emitter m a ->
+  Emitter m a
+quitEffect r as =
+  Emitter $ do
+    r' <- emit r
+    a <- emit as
+    case (r',a) of
+      (Just r'', Just a') -> pure (bool (Just a') Nothing r'')
+      _ -> pure Nothing
 
 backendLoop' ::
   SharedRep IO PlayConfig ->
@@ -224,7 +428,7 @@ backendLoop' sr ccode (Box c e) = do
       let (m', ea) = fa (snd s)
       modify (second (const m'))
       liftIO $ case ea of
-        (Right (PlayConfig _ togg speed sk)) -> ccode speed sk (play togg ref c)
+        (Right (PlayConfig togg speed sk)) -> ccode speed sk (play togg ref c)
         Left _ -> pure ()
 
 -- | a committer with a toggle
