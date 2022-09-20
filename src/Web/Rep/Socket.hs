@@ -47,7 +47,11 @@ module Web.Rep.Socket
   playStreamX,
   playStreamSpeed,
   playStreamPause,
-  playStreamA, changer, skipEffect, playStreamB)
+  playStreamA,
+  changer,
+  skipEffect,
+  playStreamB,
+  speedSkipEffect, playStreamC)
 where
 
 import Box
@@ -202,7 +206,7 @@ repFrame :: Int -> SharedRep IO Int
 repFrame x = read . Text.unpack <$> textbox (Just "frame") (pack $ show x)
 
 repSpeed :: Double -> SharedRep IO Double
-repSpeed x = sliderV (Just "speed") 0.1 100 0.01 x
+repSpeed x = sliderV (Just "speed") 0.5 100 0.5 x
 
 repPause :: Bool -> SharedRep IO Bool
 repPause initial = toggle_ (Just "play/pause") initial
@@ -248,14 +252,24 @@ playStreamA pcfg pipe (Box c e) = do
     (glue c (speedEffect (playSpeed <$> emitter playBox) $ pauser (playPause <$> emitter playBox) pipe))
   pure ()
 
--- | initial frame skip only
+-- | not registering speed properly
 playStreamB :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
 playStreamB pcfg pipe (Box c e) = do
   (playBox, _) <- toBoxM (Latest pcfg)
   race_
     (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
-    (glue c <$|> (speedEffect <$> skipEffect (playFrame pcfg) (playSpeed <$> emitter playBox) <*> pure (pauser (playPause <$> emitter playBox) pipe)))
+    (glue c <$|> (speedEffect <$> skipEffect (playFrame <$> emitter playBox) (playSpeed <$> emitter playBox) <*> pure (pauser (playPause <$> emitter playBox) pipe)))
   pure ()
+
+-- | this may be problematic in that the play config emitter may switch between emits, losing information.
+playStreamC :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamC pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest pcfg)
+  race_
+    (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (glue c <$|> speedSkipEffect ((\x -> (playFrame x, playSpeed x)) <$> emitter playBox) (pauser (playPause <$> emitter playBox) pipe))
+  pure ()
+
 
 pauser :: Emitter IO Bool -> Emitter IO a -> Emitter IO a
 pauser b e = Emitter $ fix $ \rec -> do
@@ -369,22 +383,43 @@ speedEffect speeds as =
       _ -> pure Nothing
 
 
--- | FIXME: over-skipping
+-- | Only add a Gap if greater than the Int emitter
+--
+-- effect is similar to a fast-forward of the first n emits
 skipEffect ::
   C.MonadConc m =>
-  Int ->
+  Emitter m Int ->
   Emitter m Gap ->
   CoEmitter m Gap
-skipEffect n e = evalEmitter n $ Emitter $ do
+skipEffect n e = evalEmitter 0 $ Emitter $ do
+    n' <- lift $ emit n
     e' <- lift $ emit e
-    n' <- get
-    case e' of
-      Nothing -> pure Nothing
-      Just _ ->
-        bool
-        (pure (Just 0))
-        (modify (\x -> x - 1) >> pure e')
-        (n' == 0)
+    count <- get
+    modify (1+)
+    case (n', e') of
+      (_, Nothing) -> pure Nothing
+      (Nothing, _) -> pure Nothing
+      (Just n'', Just e'') ->
+        pure $ Just (bool e'' 0 (n'' >= count))
+
+-- | Only add a Gap if greater than the Int emitter
+--
+-- effect is similar to a fast-forward of the first n emits
+speedSkipEffect ::
+  C.MonadConc m =>
+  Emitter m (Int, Gap) ->
+  Emitter m (Gap, a) ->
+  CoEmitter m a
+speedSkipEffect p e = evalEmitter 0 $ Emitter $ do
+    p' <- lift $ emit p
+    e' <- lift $ emit e
+    count <- get
+    modify (1+)
+    case (p', e') of
+      (_, Nothing) -> pure Nothing
+      (Nothing, _) -> pure Nothing
+      (Just (n,s), Just (g,a)) ->
+        sleep (bool (g/s) 0 (n >= count)) >> pure (Just a)
 
 -- > b = Box toStdout . fmap (pack . show) <$> (quitEffect (Emitter $ sleep 5 >> Just True) <$> gapEffect <$> qList (zip (0:repeat (1::Double)) [1..100::Int]))
 quitEffect ::

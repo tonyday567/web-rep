@@ -38,9 +38,24 @@ run =
 runB :: IO ()
 runB =
   Box.close $
-  playStreamB (PlayConfig True 1 100) <$>
+  playStreamB (PlayConfig True 2 10) <$>
   simX 10000 1 <*>
   serveCodeBox defaultSocketConfig replayPage
+
+runC :: IO ()
+runC =
+  Box.close $
+  playStreamC (PlayConfig True 2 10) <$>
+  simX 10000 1 <*>
+  serveCodeBox defaultSocketConfig replayPage
+
+runSpeed :: IO ()
+runSpeed =
+  Box.close $
+  playStreamSpeed (PlayConfig True 2 10) <$>
+  simX 10000 1 <*>
+  serveCodeBox defaultSocketConfig replayPage
+
 
 
 replayPage :: Page
