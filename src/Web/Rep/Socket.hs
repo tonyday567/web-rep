@@ -8,6 +8,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# HLINT ignore "Redundant <$>" #-}
 
 -- | A socket between a web page and haskell, based on the box library.
 module Web.Rep.Socket
@@ -51,7 +52,7 @@ module Web.Rep.Socket
   changer,
   skipEffect,
   playStreamB,
-  speedSkipEffect, playStreamC)
+  speedSkipEffect, playStreamC, repReset, playStreamD, playStreamE, playStreamReset, sharedStream', playStreamReset', logE, playStreamResetOutside, serve1, parserJ, parseE , serve2, serve3, serve4, playStreamDecomp, sharedStreamSimplified, playStreamDecomp', playStreamResetOutside', runReseter, playReseter, runReseter', runReseterNoExtra, restart', logC, speedEffect', speedEffect'', playRestart, playRestartCo, playStreamDecompCo', playStreamECo, codeBox, playStreamOld)
 where
 
 import Box
@@ -81,6 +82,7 @@ import Data.Bool
 import Control.Concurrent.Async
 import Web.Rep.SharedReps
 import Control.Monad.STM.Class as C
+import Data.Profunctor
 
 socketPage :: Page
 socketPage =
@@ -112,6 +114,24 @@ serveSocketBox cfg p b =
   scotty (cfg ^. #port) $ do
     middleware $ websocketsOr WS.defaultConnectionOptions (serverApp b)
     servePageWith "/" (defaultPageConfig "") p
+
+serve1 :: Box IO Text Text -> IO ()
+serve1 b = serveSocketBox defaultSocketConfig (defaultSocketPage Boot5) b
+
+serve2 :: Box IO (Either String (Text, Text)) [Code] -> IO ()
+serve2 b = serve1 (dimap (A.parseOnly parserJ) (mconcat . fmap code) b)
+
+serve3 :: Box IO (Text, Text) [Code] -> IO ()
+serve3 b = serve1 (dimap (either undefined id . A.parseOnly parserJ) (mconcat . fmap code) b)
+
+serve4 :: CoBox IO [Code] (Text, Text)
+serve4 = fromActionWith Single Single serve3
+
+codeBox :: CoCodeBox
+codeBox =
+  fromActionWith Single Single
+  (serveSocketBox defaultSocketConfig (defaultSocketPage Boot5) .
+   dimap (either undefined id . A.parseOnly parserJ) (mconcat . fmap code))
 
 type CodeBox = Box IO [Code] (Text, Text)
 
@@ -211,6 +231,21 @@ repSpeed x = sliderV (Just "speed") 0.5 100 0.5 x
 repPause :: Bool -> SharedRep IO Bool
 repPause initial = toggle_ (Just "play/pause") initial
 
+repReset :: SharedRep IO Bool
+repReset = button (Just "reset")
+
+-- | replay example candidate
+playStream :: PlayConfig -> CoEmitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStream pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest (False, pcfg))
+  race_
+    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) =<< pauser (playPause . snd <$> emitter playBox) <$> pipe))
+  pure ()
+
+
+
+
 playStreamX :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
 playStreamX pcfg mainE (Box c e) = do
   (playBox, _) <- toBoxM (Latest pcfg)
@@ -219,8 +254,8 @@ playStreamX pcfg mainE (Box c e) = do
     (restart (playPause <$> emitter playBox) (glue c (snd <$> mainE)))
   pure ()
 
-playStream :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
-playStream pcfg pipe (Box c e) = do
+playStreamOld :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamOld pcfg pipe (Box c e) = do
   ref <- newTVarConc pcfg
   race_
     (sharedStream (repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (Committer (\a -> atomically (writeTVar ref a) >> pure True) )) e)
@@ -270,6 +305,152 @@ playStreamC pcfg pipe (Box c e) = do
     (glue c <$|> speedSkipEffect ((\x -> (playFrame x, playSpeed x)) <$> emitter playBox) (pauser (playPause <$> emitter playBox) pipe))
   pure ()
 
+-- | adding reset, but not wired in
+playStreamD :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamD pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest (False, pcfg))
+  race_
+    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) (pauser (playPause . snd <$> emitter playBox) pipe))
+  pure ()
+
+-- | restart
+playStreamE :: PlayConfig -> Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamE pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest (False, pcfg))
+  race_
+    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) (pauser (playPause . snd <$> emitter playBox) pipe)))
+  pure ()
+
+-- | replay example candidate
+playStreamECo :: PlayConfig -> CoEmitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO ()
+playStreamECo pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest (False, pcfg))
+  race_
+    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) =<< pauser (playPause . snd <$> emitter playBox) <$> pipe))
+  pure ()
+
+-- | the restart may seal the resetBox, so that the sharedStream closes on restart, or before the restarted pipe has a chance to get going.
+playStreamReset :: Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO (Either () (Either Bool ()))
+playStreamReset pipe (Box c e) = do
+  (resetBox, _) <- toBoxM (Latest False)
+  race
+    (sharedStream repReset (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer resetBox)) e)
+    (restart (emitter resetBox) (glue c (speedEffect (pure 1) pipe)))
+
+playStreamReset' :: Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO (Either () (Either Bool ()))
+playStreamReset' pipe (Box c e) = do
+  (resetBox, _) <- toBoxM Single
+  race
+    (sharedStream' repReset (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer resetBox)) e)
+    (restart' (logE "resetBox emitter: " $ emitter resetBox) (glue c (logE "pipe emitter: " $ speedEffect (pure 1) pipe)))
+
+playStreamResetOutside :: (Show a) => IO a -> Box IO [Code] (Text, Text) -> IO (Either () (Either Bool a))
+playStreamResetOutside io (Box c e) = do
+  (resetBox, _) <- toBoxM Single
+  race
+    (sharedStream' repReset (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer resetBox)) e)
+    (restart' (logE "resetBox emitter: " $ emitter resetBox) io)
+
+playStreamResetOutside' :: Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO (Either () (Either Bool ()))
+playStreamResetOutside' es b = playStreamDecomp es showStdout (committer b) (emitter b)
+
+playStreamDecomp ::
+  Show a =>
+  Emitter IO (Gap, a)
+  -> Committer IO a
+  -> Committer IO [Code]
+  -> Emitter IO (Text, Text)
+  -> IO (Either () (Either Bool ()))
+playStreamDecomp es c c' e = do
+  (Box cr er, _) <- toBoxM Single
+  race
+    (sharedStreamSimplified repReset (\h -> [Replace "input" (toText h)]) (witherC (either (const (pure Nothing)) (pure . Just)) (logC "resetBox committer: " cr)) (Box c' e))
+    (restart' (logE "resetBox emitter: " er) (glue (logC "pipe committer: " c) (logE "pipe emitter: " $ speedEffect (pure 1) es)))
+
+playStreamDecompCo ::
+  Show a =>
+  CoEmitter IO (Gap, a)
+  -> Committer IO a
+  -> Committer IO [Code]
+  -> Emitter IO (Text, Text)
+  -> IO (Either () (Either Bool ()))
+playStreamDecompCo es c c' e = do
+  (Box cr er, _) <- toBoxM Single
+  race
+    (sharedStreamSimplified repReset (\h -> [Replace "input" (toText h)]) (witherC (either (const (pure Nothing)) (pure . Just)) (logC "resetBox committer: " cr)) (Box c' e))
+    (restart' (logE "resetBox emitter: " er) (glue (logC "pipe committer: " c) <$|> (logE "pipe emitter: " . speedEffect (pure 1) <$> es)))
+
+playStreamDecomp' :: Emitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO (Either () (Either Bool ()))
+playStreamDecomp' es b = playStreamDecomp es (committer b) (committer b) (emitter b)
+
+playStreamDecompCo' :: CoEmitter IO (Gap, [Code]) -> Box IO [Code] (Text, Text) -> IO (Either () (Either Bool ()))
+playStreamDecompCo' es b = playStreamDecompCo es (committer b) (committer b) (emitter b)
+
+playReseter :: Show a => Emitter IO (Gap, a) -> Emitter IO Bool -> IO (Either () (Either Bool ()))
+playReseter es eb = runReseter es showStdout eb
+
+runReseter ::
+  Show a =>
+  Emitter IO (Gap, a)
+  -> Committer IO a
+  -> Emitter IO Bool
+  -> IO (Either () (Either Bool ()))
+runReseter es c e = do
+  (Box cr er, _) <- toBoxM Single
+  race
+    (glue (logC "glue committer: " cr) (logE "glue emitter: " e))
+    (restart' (logE "resetBox emitter: " er) (glue (logC "pipe committer: " c) (logE "pipe emitter: " $ speedEffect (pure 1) es)))
+
+runReseter' ::
+  Show a =>
+  Emitter IO (Gap, a)
+  -> Committer IO a
+  -> Emitter IO Bool
+  -> IO (Either () (Either Bool ()))
+runReseter' es c e = do
+  (Box cr er, _) <- toBoxM New
+  race
+    (glue (logC "glue committer: " cr) (logE "glue emitter: " e))
+    (restart' (logE "resetBox emitter: " er) (glue (logC "pipe committer: " c) (logE "pipe emitter: " $ speedEffect (pure 1) es)))
+
+runReseterNoExtra ::
+  Show a =>
+  Emitter IO (Gap, a)
+  -> Committer IO a
+  -> Emitter IO Bool
+  -> IO (Either Bool ())
+runReseterNoExtra es c e =
+  restart' (logE "reset emitter: " e) (glue (logC "pipe committer: " c) (logE "pipe emitter: " $ speedEffect (pure 1) es))
+
+playRestart ::
+  Emitter IO Bool ->
+  Committer IO a ->
+  Emitter IO a ->
+  IO (Either Bool ())
+playRestart flag c e =
+  restart flag (glue c e)
+
+playRestartCo ::
+  Emitter IO Bool ->
+  Committer IO a ->
+  CoEmitter IO a ->
+  IO (Either Bool ())
+playRestartCo flag c e =
+  restart flag (glue c <$|> e)
+
+logE :: Show a => String -> Emitter IO a -> Emitter IO a
+logE label e = Emitter $ do
+  a <- emit e
+  putStrLn (label <> show a)
+  pure a
+
+logC :: Show a => String -> Committer IO a -> Committer IO a
+logC label c = Committer $ \a -> do
+  putStrLn (label <> show a)
+  commit c a
 
 pauser :: Emitter IO Bool -> Emitter IO a -> Emitter IO a
 pauser b e = Emitter $ fix $ \rec -> do
@@ -308,6 +489,56 @@ sharedStream sr ch c e =
             let (hmap'', r) = fa hmap'
             modify (second (const hmap''))
             b <- lift $ commit c r
+            when b (go fa)
+
+sharedStream' ::
+  (MonadIO m, Show a) => SharedRep m a -> Committer m (Html ()) -> Committer m (Either Text a) -> Emitter m (Text, Text) -> m ()
+sharedStream' sr ch c e =
+  flip evalStateT (0, HashMap.empty) $ do
+    -- you only want to run unshare once for a SharedRep
+    (Rep h fa) <- unshare sr
+    b <- lift $ commit ch h
+    liftIO $ putStrLn $ "initial commit returned: " <> show b
+    when b (go fa)
+    where
+      go fa = do
+        e' <- lift $ emit e
+        liftIO $ putStrLn $ "sharedStream emit: " <> show e'
+        case e' of
+          Nothing -> pure ()
+          Just (k,v) -> do
+            hmap <- snd <$> get
+            let hmap' = insert k v hmap
+            let (hmap'', r) = fa hmap'
+            modify (second (const hmap''))
+            liftIO $ putStrLn $ "sharedStream pre-commit of: " <> show r
+            b <- lift $ commit c r
+            liftIO $ putStrLn $ "ahredStream post-commit returned: " <> show b
+            when b (go fa)
+
+sharedStreamSimplified ::
+  (MonadIO m, Show a) => SharedRep m a -> (Html () -> [Code]) -> Committer m (Either Text a) -> Box m [Code] (Text, Text) -> m ()
+sharedStreamSimplified sr htmlCode ca (Box c e) =
+  flip evalStateT (0, HashMap.empty) $ do
+    -- you only want to run unshare once for a SharedRep
+    (Rep h fa) <- unshare sr
+    b <- lift $ commit c (htmlCode h)
+    liftIO $ putStrLn $ "initial commit returned: " <> show b
+    when b (go fa)
+    where
+      go fa = do
+        e' <- lift $ emit e
+        liftIO $ putStrLn $ "sharedStream emit: " <> show e'
+        case e' of
+          Nothing -> pure ()
+          Just (k,v) -> do
+            hmap <- snd <$> get
+            let hmap' = insert k v hmap
+            let (hmap'', r) = fa hmap'
+            modify (second (const hmap''))
+            liftIO $ putStrLn $ "sharedStream pre-commit of: " <> show r
+            b <- lift $ commit ca r
+            liftIO $ putStrLn $ "sharedStream post-commit returned: " <> show b
             when b (go fa)
 
 pause :: TVar (STM IO) Bool -> Box IO a a -> IO ()
@@ -360,6 +591,16 @@ restart flag io = fix $ \rec -> do
     Left False -> pure (Left False)
     Right r -> pure (Right r)
 
+restart' :: (Show a) => Emitter IO Bool -> IO a -> IO (Either Bool a)
+restart' flag io = fix $ \rec -> do
+  putStrLn "restart: restarting"
+  res <- quit flag io
+  putStrLn $ "restart process quit with: " <> show res
+  case res of
+    Left True -> rec
+    Left False -> pure (Left False)
+    Right r -> pure (Right r)
+
 checkE :: MonadConc m => Emitter m Bool -> m Bool
 checkE e = fix $ \rec -> do
   a <- emit e
@@ -382,6 +623,29 @@ speedEffect speeds as =
       (Just s', Just (g, a')) -> sleep (g/s') >> pure (Just a')
       _ -> pure Nothing
 
+speedEffect' ::
+  C.MonadConc m =>
+  Emitter m Gap ->
+  Emitter m a ->
+  Emitter m a
+speedEffect' speeds as =
+  Emitter $ do
+    s <- emit speeds
+    a <- emit as
+    case (s,a) of
+      (Just s', Just a') -> sleep s' >> pure (Just a')
+      _ -> pure Nothing
+
+speedEffect'' ::
+  C.MonadConc m =>
+  Emitter m (Gap, a) ->
+  Emitter m a
+speedEffect'' as =
+  Emitter $ do
+    a <- emit as
+    case a of
+      Just (s,a') -> sleep s >> pure (Just a')
+      _ -> pure Nothing
 
 -- | Only add a Gap if greater than the Int emitter
 --
