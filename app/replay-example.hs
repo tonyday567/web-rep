@@ -10,7 +10,6 @@
 module Main where
 
 import Box hiding (fileE)
-import Control.Applicative
 import Control.Category
 import Control.Monad.Conc.Class as C
 import Control.Monad.State.Lazy
@@ -22,176 +21,38 @@ import Web.Rep
 import Lucid as L
 
 main :: IO ()
-main =
-  Box.close $
-  playStreamSpeed defaultPlayConfig <$>
-  simX 10000 (view #playSpeed defaultPlayConfig) <*>
-  serveCodeBox defaultSocketConfig replayPage
+main = runReplayExample
 
-run :: IO ()
-run =
-  Box.close $
-  playStreamA defaultPlayConfig <$>
-  simX 10000 (view #playSpeed defaultPlayConfig) <*>
-  serveCodeBox defaultSocketConfig replayPage
+-- | target main example
+runReplayExample :: IO ()
+runReplayExample = playStream (PlayConfig True 10 0) (simX 100 1)
 
+runJustSpeed :: IO ()
+runJustSpeed =
+  playStreamSpeed (PlayConfig True 10 0) (simX 100 1) <$|> codeBox
 
-runSpeed :: IO ()
-runSpeed =
-  Box.close $
-  playStreamSpeed (PlayConfig True 2 10) <$>
-  simX 10000 1 <*>
-  serveCodeBox defaultSocketConfig replayPage
+runJustPause :: IO ()
+runJustPause =
+  Box.close $ playStreamPause (PlayConfig True 10 0) <$> simX 100 1 <*> codeBox
 
-runB :: IO ()
-runB =
-  Box.close $
-  playStreamB (PlayConfig True 2 10) <$>
-  simX 10000 1 <*>
-  serveCodeBox defaultSocketConfig replayPage
+runNoReset :: IO ()
+runNoReset = playStreamNoReset (PlayConfig True 10 0) (simX 100 1) <$|> codeBox
 
-runC :: IO ()
-runC =
-  Box.close $
-  playStreamC (PlayConfig True 2 10) <$>
-  simX 10000 1 <*>
-  serveCodeBox defaultSocketConfig replayPage
-
-runD :: IO ()
-runD =
-  Box.close $
-  playStreamD (PlayConfig True 2 10) <$>
-  simX 10000 1 <*>
-  serveCodeBox defaultSocketConfig replayPage
-
-runE :: IO ()
-runE =
-  Box.close $
-  playStreamE (PlayConfig True 2 10) <$>
-  simX 10000 1 <*>
-  serveCodeBox defaultSocketConfig replayPage
-
--- Behaviour of this is messy (ignores speed effects on restart?)
-runECo :: IO ()
-runECo =
-  playStreamECo (PlayConfig True 2 10) (simX 10000 1)
-  <$|> serveCodeBox defaultSocketConfig replayPage
-
-runReset :: IO (Either () (Either Bool ()))
-runReset =
-  Box.close $
-  playStreamReset <$>
-  simX 10 1 <*>
-  serveCodeBox defaultSocketConfig replayPage
-
-runReset' :: IO (Either () (Either Bool ()))
-runReset' =
-  Box.close $
-  playStreamReset' <$>
-  simX' 100 1 <*>
-  serveCodeBox defaultSocketConfig replayPage
-
-runServe4 :: IO (Either () (Either Bool ()))
-runServe4 =
-  Box.close $
-  playStreamReset' <$>
-  simX' 100 1 <*>
-  serve4
-
-runResetOutside :: IO (Either () (Either Bool ()))
-runResetOutside =
-  Box.close $
-  playStreamResetOutside
-  io <$>
-  serve4
-  where
-    io = glue showStdout . speedEffect (pure 1) <$|> simX' 100 1
-
-runResetOutside' :: IO (Either () (Either Bool ()))
-runResetOutside' =
-  Box.close $
-  playStreamResetOutside' <$>
-  simX' 100 1 <*>
-  serve4
-
-runDecomp :: IO (Either () (Either Bool ()))
-runDecomp =
-  Box.close $
-  playStreamDecomp' <$>
-  simX' 100 1 <*>
-  serve4
-
-
--- The problem is in playReseter and not in shared stream.
--- behaviour is:
--- reset committer looks ok, but this
---
--- - skips a single emit
--- - then, continues with original.
---
-runPlayReseter :: IO (Either () (Either Bool ()))
-runPlayReseter =
-  Box.close $
-  playReseter <$>
-  simX' 100 1 <*>
-  pure ((== "q") <$> fromStdin)
-
-reseter' :: IO (Either () (Either Bool ()))
-reseter' =
-  Box.close $
-  runReseter' <$>
-  simX' 100 1 <*>
-  pure showStdout <*>
-  pure ((== "q") <$> fromStdin)
-
--- | problem is in restart'?
-reseterNoExtra :: IO (Either Bool ())
-reseterNoExtra =
-  Box.close $
-  runReseterNoExtra <$>
-  simX' 20 1 <*>
-  pure showStdout <*>
-  pure ((== "q") <$> fromStdin)
-
--- | problem is in restart'?
-runRestart :: IO (Either Bool ())
-runRestart =
-  Box.close $ playRestart ((== "q") <$> fromStdin) showStdout
-  <$> (speedEffect'' . fmap (1,) <$> intE 20)
-
--- | problem is in restart'?
-runRestartCo :: IO (Either Bool ())
-runRestartCo =
-  playRestartCo ((== "q") <$> fromStdin) showStdout (speedEffect'' . fmap (1,) <$> intE 20)
-
-runRestart' :: IO (Either Bool ())
-runRestart' = restart' (logE "reset emitter: " ((== "q") <$> fromStdin)) (glue (logC "pipe committer: " showStdout) . logE "pipe emitter: " . speedEffect'' . fmap (1,) <$|> intE 100)
-
--- | Problem is in the usage of <$|>
+-- | FIXME: document problem in the usage of <$|>
 --
 works :: IO (Either Bool ())
-works = restart' flag io
+works = restart flag io
   where
     io = glue showStdout . speedEffect (pure 1) <$|> simX' 20 1
     flag = (== "q") <$> fromStdin
 
 -- | Doesn't work here due to ythe floating of <$|> to the right. The IO process is 'continued' rather than restarted.
 worksNot :: IO (Either Bool ())
-worksNot = restart' ((== "q") <$> fromStdin) . glue showStdout . speedEffect (pure 1) <$|> simX' 20 1
+worksNot = restart ((== "q") <$> fromStdin) . glue showStdout . speedEffect (pure 1) <$|> simX' 20 1
 
-runDecompCo :: IO (Either () (Either Bool ()))
-runDecompCo =
-  playStreamDecompCo' (simX' 100 1) <$|> serve4
+runReplayExampleNoReset :: IO ()
+runReplayExampleNoReset = playStreamNoReset (PlayConfig True 10 0) (simX 100 1) <$|> codeBox
 
--- Behaviour of this is dodgyish, especially if reset button is pushed when not paused.
-runECo' :: IO ()
-runECo' =
-  playStreamECo (PlayConfig True 10 0) (simX 100 1) <$|> serve4
-
-
--- | target main example
-runReplayExample :: IO ()
-runReplayExample = playStreamECo (PlayConfig True 10 0) (simX 100 1) <$|> codeBox
 
 -- other stuff
 

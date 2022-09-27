@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -5,28 +6,29 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE TupleSections #-}
-{-# HLINT ignore "Use tuple-section" #-}
+
+
 
 import Web.Rep
 import Web.Rep.Examples
 import Prelude
 import Options.Applicative
 import Box
-import Data.Time
-import Data.Text
+import Data.Text (pack)
+import Data.Bifunctor
 import qualified Lucid as L
-import Control.Monad.Conc.Class as C
-import GHC.Generics
 import Optics.Core
-import Data.Fixed
+import Control.Monad
 
-data AppType = SharedTest deriving (Eq, Show)
+data AppType =
+  SharedTest |
+  PlayTest |
+  RestartTest
+  deriving (Eq, Show)
 
 data Options = Options
   { optionAppType :: AppType,
@@ -36,8 +38,10 @@ data Options = Options
 
 parseAppType :: Parser AppType
 parseAppType =
-  flag' SharedTest (long "shared" <> help "shared test")
-    <|> pure SharedTest
+  flag' SharedTest (long "shared" <> help "shared test") <|>
+  flag' PlayTest (long "play" <> help "play functionality test") <|>
+  flag' RestartTest (long "restart" <> help "console restart test") <|>
+  pure SharedTest
 
 parseBV :: Parser BootstrapVersion
 parseBV =
@@ -57,6 +61,10 @@ opts =
     (options <**> helper)
     (fullDesc <> progDesc "web-rep testing" <> header "web-rep")
 
+-- | A simple count stream
+countStream :: Int -> Double -> CoEmitter IO (Gap, [Code])
+countStream n speed = fmap (second ((:[]) . Replace "output" . pack . show)) <$> qList (zip (0:repeat (1/speed)) [0..n])
+
 main :: IO ()
 main = do
   o <- execParser opts
@@ -64,87 +72,47 @@ main = do
   let v = optionBootstrapVersion o
   case a of
     SharedTest -> defaultSharedServer v (maybeRep (Just "maybe") False repExamples)
+    PlayTest -> playStreamWith (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeBoxPage .~ replayPage) (countStream 100 1)
+    RestartTest -> void restartTest
 
-countTest :: IO ()
-countTest = sharedServer (repPlayConfig defaultPlayConfig) defaultSocketConfig defaultIPage defaultInputCode (iCodeE' 1000)
+restartTest :: IO (Either Bool ())
+restartTest = restart <$> (speedEffect (pure 1) . fmap (1,) <$> resetE 5 10) <*|> pure (glue showStdout . speedEffect (pure 1) <$|> countStream 100 1)
 
--- |
--- >>> toListM <$|> countingE 10
--- [(2022-06-06 00:00:00,0),(2022-06-06 00:00:01,1),(2022-06-06 00:00:02,2),(2022-06-06 00:00:03,3),(2022-06-06 00:00:04,4),(2022-06-06 00:00:05,5),(2022-06-06 00:00:06,6),(2022-06-06 00:00:07,7),(2022-06-06 00:00:08,8),(2022-06-06 00:00:09,9)]
-countingE :: C.MonadConc m => Integer -> Double -> CoEmitter m (LocalTime, Integer)
-countingE n speed = fromGaps t0 =<< qList ((speed,) <$> [0 .. (n - 1)])
+resetE :: Int -> Int -> CoEmitter IO Bool
+resetE n m = qList (replicate (n-1) False <> [True] <> replicate m False)
+
+runJustSpeed :: IO ()
+runJustSpeed =
+  playStreamSpeed (PlayConfig True 10 0) (countStream 100 1) <$|> codeBox
+
+runJustPause :: IO ()
+runJustPause =
+  Box.close $ playStreamPause (PlayConfig True 10 0) <$> countStream 100 1 <*> codeBox
+
+runNoReset :: IO ()
+runNoReset = playStreamNoReset (PlayConfig True 10 0) (countStream 100 1) <$|> codeBox
+
+-- | FIXME: document problem in the usage of <$|>
+--
+works :: IO (Either Bool ())
+works = restart f io
   where
-    t0 = LocalTime (fromGregorian 2022 6 6) (TimeOfDay 0 0 (MkFixed 0))
+    io = glue showStdout . speedEffect (pure 1) <$|> countStream 20 1
+    f = (== "q") <$> fromStdin
 
-{-
-iSim :: SimConfig -> IO ()
-iSim cfg =
-  backendLoop (repPlayConfig (view #playConfig cfg))
-  (\speed skip c -> glue c <$|> (fmap iCode <$> (replay speed skip =<< countingE 100))) <$|>
-  (wrangle <$>
-   fromAction
-   (serveSocketBox (view #socket cfg) (view #page cfg)))
+-- | Doesn't work here due to ythe floating of <$|> to the right. The IO process is 'continued' rather than restarted.
+worksNot :: IO (Either Bool ())
+worksNot = restart ((== "q") <$> fromStdin) . glue showStdout . speedEffect (pure 1) <$|> countStream 20 1
 
--}
-
-
-outputCodeI :: Either Text PlayConfig -> IO [Code]
-outputCodeI ea =
-  case ea of
-    Left err -> pure [Append "debug" err]
-    Right a -> pure [Replace "output" (pack $ show a)]
-
-iCodeE :: Integer -> PlayConfig -> IO [Code]
-iCodeE u cfg = fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE u 1)
-
-iCodeE' :: Integer -> Either Text PlayConfig -> IO [Code]
-iCodeE' m cfg' = case cfg' of
-  Left txt -> pure (iCode txt)
-  Right cfg -> fmap (maybe [] iCode) <$> emit <$|> (replay (view #playSpeed cfg) (view #playFrame cfg) =<< countingE m 1)
-
-iCode :: (Show a) => a -> [Code]
-iCode x = ((: []) . Replace "output") . pack . show $ x
-
-data SimConfig = SimConfig
-  { playConfig :: PlayConfig,
-    socket :: SocketConfig,
-    page :: Page,
-    maxFrames :: Integer
-  }
-  deriving (Show, Generic)
-
-defaultSimConfigI :: SimConfig
-defaultSimConfigI = SimConfig defaultPlayConfig defaultSocketConfig defaultIPage 1000
-
-defaultIPage :: Page
-defaultIPage =
-  bootstrap5Page
-    <> socketPage
-    & #htmlBody
-    .~ divClass_
+replayPage :: Page
+replayPage = defaultSocketPage Boot5 & #htmlBody
+      .~ divClass_
       "container"
       ( mconcat
-          [ divClass_ "row" . mconcat $ ((\(t, h, c) -> divClass_ "col" (L.with L.div_ [L.id_ t, L.class_ c] h)) <$> sections)
+          [ divClass_ "row" (L.h1_ "Replay Simulation"),
+            divClass_ "row" . mconcat $ (\(t, h) -> divClass_ "col" (L.with L.div_ [L.id_ t] h)) <$>
+                                         [ ("input", mempty),
+                                           ("output", mempty)
+                                         ]
           ]
       )
-  where
-    sections =
-      [ ("input", mempty, "w-50"),
-        ("output", mempty, "")
-      ]
-
-sb :: Codensity IO (Box IO [Code] (Text, Text))
-sb = wrangle <$> fromAction (serveSocketBox defaultSocketConfig defaultIPage)
-
-sim :: (Either Text PlayConfig -> IO [Code]) -> IO ()
-sim iE = backendLoop (repPlayConfig defaultPlayConfig) defaultInputCode iE <$|> sb
-
-sim' :: IO ()
-sim' = backendLoop' (repPlayConfig (PlayConfig True 1 0)) ie' <$|> sb
-
-ie' :: Double -> Int -> Committer IO [Code] -> IO ()
-ie' speed sk c = glue c <$|> (fmap iCode <$> (replay speed sk =<< countingE 4 1))
-
--- glue showStdout <$|> replay 1 0 =<< countingE 5 1
-
--- :t serveSocketBox defaultSocketConfig defaultIPage
