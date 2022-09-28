@@ -10,6 +10,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE TupleSections #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 
 
 
@@ -27,12 +28,12 @@ import Control.Monad
 data AppType =
   SharedTest |
   PlayTest |
-  RestartTest
+  RestartTest |
+  ClosureBug
   deriving (Eq, Show)
 
 data Options = Options
-  { optionAppType :: AppType,
-    optionBootstrapVersion :: BootstrapVersion
+  { optionAppType :: AppType
   }
   deriving (Eq, Show)
 
@@ -41,19 +42,13 @@ parseAppType =
   flag' SharedTest (long "shared" <> help "shared test") <|>
   flag' PlayTest (long "play" <> help "play functionality test") <|>
   flag' RestartTest (long "restart" <> help "console restart test") <|>
+  flag' ClosureBug (long "closure" <> help "documents the closure bug") <|>
   pure SharedTest
-
-parseBV :: Parser BootstrapVersion
-parseBV =
-  flag' Boot4 (long "boot4" <> help "version 4") <|>
-  flag' Boot5 (long "boot5" <> help "version 5")
-    <|> pure Boot5
 
 options :: Parser Options
 options =
   Options
     <$> parseAppType
-    <*> parseBV
 
 opts :: ParserInfo Options
 opts =
@@ -69,43 +64,25 @@ main :: IO ()
 main = do
   o <- execParser opts
   let a = optionAppType o
-  let v = optionBootstrapVersion o
   case a of
-    SharedTest -> defaultSharedServer v (maybeRep (Just "maybe") False repExamples)
-    PlayTest -> playStreamWith (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeBoxPage .~ replayPage) (countStream 100 1)
+    SharedTest -> sharedTest
+    PlayTest -> playTest
     RestartTest -> void restartTest
+    ClosureBug -> void closureBug
 
-restartTest :: IO (Either Bool ())
-restartTest = restart <$> (speedEffect (pure 1) . fmap (1,) <$> resetE 5 10) <*|> pure (glue showStdout . speedEffect (pure 1) <$|> countStream 100 1)
+sharedTest :: IO ()
+sharedTest =
+  serveRep
+  (maybeRep (Just "maybe") False repExamples)
+  replaceInput
+  replaceOutput
+  defaultCodeBoxConfig
 
-resetE :: Int -> Int -> CoEmitter IO Bool
-resetE n m = qList (replicate (n-1) False <> [True] <> replicate m False)
+playTest :: IO ()
+playTest = servePlayStream (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeBoxPage .~ playPage) (countStream 100 1)
 
-runJustSpeed :: IO ()
-runJustSpeed =
-  playStreamSpeed (PlayConfig True 10 0) (countStream 100 1) <$|> codeBox
-
-runJustPause :: IO ()
-runJustPause =
-  Box.close $ playStreamPause (PlayConfig True 10 0) <$> countStream 100 1 <*> codeBox
-
-runNoReset :: IO ()
-runNoReset = playStreamNoReset (PlayConfig True 10 0) (countStream 100 1) <$|> codeBox
-
--- | FIXME: document problem in the usage of <$|>
---
-works :: IO (Either Bool ())
-works = restart f io
-  where
-    io = glue showStdout . speedEffect (pure 1) <$|> countStream 20 1
-    f = (== "q") <$> fromStdin
-
--- | Doesn't work here due to ythe floating of <$|> to the right. The IO process is 'continued' rather than restarted.
-worksNot :: IO (Either Bool ())
-worksNot = restart ((== "q") <$> fromStdin) . glue showStdout . speedEffect (pure 1) <$|> countStream 20 1
-
-replayPage :: Page
-replayPage = defaultSocketPage Boot5 & #htmlBody
+playPage :: Page
+playPage = defaultSocketPage Boot5 & #htmlBody
       .~ divClass_
       "container"
       ( mconcat
@@ -116,3 +93,20 @@ replayPage = defaultSocketPage Boot5 & #htmlBody
                                          ]
           ]
       )
+
+restartTest :: IO (Either Bool ())
+restartTest = restart <$> (gapEffect . fmap (1,) <$> resetE 5 10) <*|> pure (glue showStdout . gapEffect <$|> countStream 100 1)
+
+resetE :: Int -> Int -> CoEmitter IO Bool
+resetE n m = qList (replicate (n-1) False <> [True] <> replicate m False)
+
+-- | documenting the issue with left floating compositions in the usage of <$|>
+--
+closureBug :: IO (Either Bool ())
+closureBug = do
+  putStrLn "restart ((== \"q\") <$> fromStdin) (glue showStdout . gapEffect <$|> countStream 10 2)"
+  putStrLn "type 'q' to restart"
+  restart ((== "q") <$> fromStdin) (glue showStdout . gapEffect <$|> countStream 10 2)
+  putStrLn "buggy version"
+  putStrLn "restart ((== \"q\") <$> fromStdin) . glue showStdout . gapEffect <$|> countStream 20 1"
+  restart ((== "q") <$> fromStdin) . glue showStdout . gapEffect <$|> countStream 10 2
