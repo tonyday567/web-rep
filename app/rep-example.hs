@@ -1,35 +1,34 @@
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
 {-# HLINT ignore "Use newtype instead of data" #-}
 
-
-
+import Box
+import Control.Monad
+import Data.Bifunctor
+import Data.Text (pack)
+import qualified Lucid as L
+import Optics.Core
+import Options.Applicative
 import Web.Rep
 import Web.Rep.Examples
 import Prelude
-import Options.Applicative
-import Box
-import Data.Text (pack)
-import Data.Bifunctor
-import qualified Lucid as L
-import Optics.Core
-import Control.Monad
 
-data AppType =
-  SharedTest |
-  PlayTest |
-  RestartTest |
-  ClosureBug
+data AppType
+  = SharedTest
+  | PlayTest
+  | RestartTest
+  | ClosureBug
   deriving (Eq, Show)
 
 data Options = Options
@@ -39,11 +38,11 @@ data Options = Options
 
 parseAppType :: Parser AppType
 parseAppType =
-  flag' SharedTest (long "shared" <> help "shared test") <|>
-  flag' PlayTest (long "play" <> help "play functionality test") <|>
-  flag' RestartTest (long "restart" <> help "console restart test") <|>
-  flag' ClosureBug (long "closure" <> help "documents the closure bug") <|>
-  pure SharedTest
+  flag' SharedTest (long "shared" <> help "shared test")
+    <|> flag' PlayTest (long "play" <> help "play functionality test")
+    <|> flag' RestartTest (long "restart" <> help "console restart test")
+    <|> flag' ClosureBug (long "closure" <> help "documents the closure bug")
+    <|> pure SharedTest
 
 options :: Parser Options
 options =
@@ -58,7 +57,7 @@ opts =
 
 -- | A simple count stream
 countStream :: Int -> Double -> CoEmitter IO (Gap, [Code])
-countStream n speed = fmap (second ((:[]) . Replace "output" . pack . show)) <$> qList (zip (0:repeat (1/speed)) [0..n])
+countStream n speed = fmap (second ((: []) . Replace "output" . pack . show)) <$> qList (zip (0 : repeat (1 / speed)) [0 .. n])
 
 main :: IO ()
 main = do
@@ -73,35 +72,37 @@ main = do
 sharedTest :: IO ()
 sharedTest =
   serveRep
-  (maybeRep (Just "maybe") False repExamples)
-  replaceInput
-  replaceOutput
-  defaultCodeBoxConfig
+    (maybeRep (Just "maybe") False repExamples)
+    replaceInput
+    replaceOutput
+    defaultCodeBoxConfig
 
 playTest :: IO ()
 playTest = servePlayStream (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeBoxPage .~ playPage) (countStream 100 1)
 
 playPage :: Page
-playPage = defaultSocketPage Boot5 & #htmlBody
+playPage =
+  defaultSocketPage Boot5
+    & #htmlBody
       .~ divClass_
-      "container"
-      ( mconcat
-          [ divClass_ "row" (L.h1_ "Replay Simulation"),
-            divClass_ "row" . mconcat $ (\(t, h) -> divClass_ "col" (L.with L.div_ [L.id_ t] h)) <$>
-                                         [ ("input", mempty),
-                                           ("output", mempty)
-                                         ]
-          ]
-      )
+        "container"
+        ( mconcat
+            [ divClass_ "row" (L.h1_ "Replay Simulation"),
+              divClass_ "row" . mconcat $
+                (\(t, h) -> divClass_ "col" (L.with L.div_ [L.id_ t] h))
+                  <$> [ ("input", mempty),
+                        ("output", mempty)
+                      ]
+            ]
+        )
 
 restartTest :: IO (Either Bool ())
 restartTest = restart <$> (gapEffect . fmap (1,) <$> resetE 5 10) <*|> pure (glue showStdout . gapEffect <$|> countStream 100 1)
 
 resetE :: Int -> Int -> CoEmitter IO Bool
-resetE n m = qList (replicate (n-1) False <> [True] <> replicate m False)
+resetE n m = qList (replicate (n - 1) False <> [True] <> replicate m False)
 
 -- | documenting the issue with left floating compositions in the usage of <$|>
---
 closureBug :: IO (Either Bool ())
 closureBug = do
   putStrLn "restart ((== \"q\") <$> fromStdin) (glue showStdout . gapEffect <$|> countStream 10 2)"

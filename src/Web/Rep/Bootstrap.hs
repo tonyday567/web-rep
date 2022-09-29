@@ -1,8 +1,8 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 -- | Some <https://getbootstrap.com/ bootstrap> assets and functionality.
 module Web.Rep.Bootstrap
@@ -23,12 +23,12 @@ import Control.Monad.State.Lazy
 import Data.Bool
 import Data.Functor.Identity
 import Data.Text (Text)
+import GHC.Generics
 import Lucid
 import Lucid.Base
 import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Shared
-import GHC.Generics
 
 data BootstrapVersion = Boot4 | Boot5 deriving (Eq, Show, Generic)
 
@@ -74,6 +74,7 @@ bootstrapJs =
         crossorigin_ "anonymous"
       ]
   ]
+
 -- | <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 bootstrap5Js :: [Html ()]
 bootstrap5Js =
@@ -90,7 +91,6 @@ bootstrap5Js =
         crossorigin_ "anonymous"
       ]
   ]
-
 
 bootstrapMeta :: [Html ()]
 bootstrapMeta =
@@ -124,7 +124,6 @@ bootstrap5Page =
     mempty
     (mconcat bootstrapMeta)
     mempty
-
 
 -- | wrap some Html with the bootstrap <https://getbootstrap.com/docs/4.3/components/card/ card> class
 cardify :: (Html (), [Attribute]) -> Maybe Text -> (Html (), [Attribute]) -> Html ()
@@ -191,7 +190,7 @@ accordion pre x hs = do
   idp' <- genNamePre pre
   with div_ [class__ "accordion m-1", id_ idp'] <$> aCards idp'
   where
-    aCards par = mconcat <$> sequence (aCard par <$> hs)
+    aCards par = mconcat <$> mapM (aCard par) hs
     aCard par (t, b) = do
       idh <- genNamePre pre
       idb <- genNamePre pre
@@ -203,7 +202,7 @@ accordionChecked pre hs = do
   idp' <- genNamePre pre
   with div_ [class__ "accordion m-1", id_ idp'] <$> aCards idp'
   where
-    aCards par = mconcat <$> sequence (aCard par <$> hs)
+    aCards par = mconcat <$> mapM (aCard par) hs
     aCard par (l, bodyhtml, checkhtml) = do
       idh <- genNamePre pre
       idb <- genNamePre pre

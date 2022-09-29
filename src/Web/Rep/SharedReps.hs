@@ -39,7 +39,8 @@ module Web.Rep.SharedReps
     subtype,
     selectItems,
     repItemsSelect,
-  ) where
+  )
+where
 
 import Box.Codensity ()
 import Control.Monad
@@ -126,7 +127,6 @@ sliderV label l u s v =
     (Input v label mempty (SliderV [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
     v
 
-
 -- | integral slider
 --
 -- For Example, a slider between 0 and 1000 with a step of 10 and a default value of 300 is:
@@ -150,7 +150,6 @@ sliderI label l u s v =
     v
 
 -- | integral slider with shown value
---
 sliderVI ::
   (Monad m, ToHtml a, P.Integral a, Show a) =>
   Maybe Text ->
@@ -165,6 +164,7 @@ sliderVI label l u s v =
     (pack . show)
     (Input v label mempty (SliderV [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
     v
+
 -- | textbox classique
 --
 -- > :t textbox (Just "label") "some text"
@@ -356,9 +356,10 @@ checkboxShow label id' v =
         ( \s ->
             ( s,
               join $
-                maybe (Left "HashMap.lookup failed") Right $
-                  either (Left . pack) Right . parseOnly ((== "true") <$> takeText)
-                    <$> HashMap.lookup name s
+                maybe
+                  (Left "HashMap.lookup failed")
+                  (Right . either (Left . pack) Right . parseOnly ((== "true") <$> takeText))
+                  (HashMap.lookup name s)
             )
         )
 

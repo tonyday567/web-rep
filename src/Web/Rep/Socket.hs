@@ -5,21 +5,26 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Redundant <$>" #-}
 
 -- | A socket between a web page and haskell, based on the box library.
-module Web.Rep.Socket ( socketPage, defaultSocketPage, defaultSocketConfig, serveSocketBox, CodeBox, CoCodeBox, CodeBoxConfig (..), defaultCodeBoxConfig, codeBox, codeBoxWith, serveRep, serveRepWithBox, replaceInput, replaceOutput, replaceOutput_, sharedStream, PlayConfig (..), defaultPlayConfig, repPlayConfig, servePlayStream, servePlayStreamWithBox, parserJ, Code (..), code, console, val, replace, append, clean, webSocket, refreshJsbJs, preventEnter, runScriptJs, ) where
+module Web.Rep.Socket (socketPage, defaultSocketPage, SocketConfig (..), defaultSocketConfig, serveSocketBox, CodeBox, CoCodeBox, CodeBoxConfig (..), defaultCodeBoxConfig, codeBox, codeBoxWith, serveRep, serveRepWithBox, replaceInput, replaceOutput, replaceOutput_, sharedStream, PlayConfig (..), defaultPlayConfig, repPlayConfig, servePlayStream, servePlayStreamWithBox, parserJ, Code (..), code, console, val, replace, append, clean, webSocket, refreshJsbJs, preventEnter, runScriptJs) where
 
 import Box
+import Box.Socket (serverApp)
+import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
 import qualified Data.Attoparsec.Text as A
 import Data.Bifunctor
+import Data.Bool
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
+import Data.Profunctor
 import Data.Text (Text, pack)
 import qualified Data.Text as Text
 import GHC.Generics
@@ -33,36 +38,33 @@ import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
-import Web.Scotty ( middleware, scotty )
-import Box.Socket (serverApp)
-import Data.Bool
-import Control.Concurrent.Async
 import Web.Rep.SharedReps
-import Data.Profunctor
+import Web.Scotty (middleware, scotty)
 
 -- | Page with all the trimmings for a sharedRep Box
 socketPage :: Page
 socketPage =
-  mempty & #jsOnLoad
-    .~ mconcat
-      [ webSocket,
-        runScriptJs,
-        refreshJsbJs,
-        preventEnter
-      ]
+  mempty
+    & #jsOnLoad
+      .~ mconcat
+        [ webSocket,
+          runScriptJs,
+          refreshJsbJs,
+          preventEnter
+        ]
 
 defaultSocketPage :: BootstrapVersion -> Page
 defaultSocketPage v =
-  bool bootstrap5Page bootstrapPage (v==Boot4)
+  bool bootstrap5Page bootstrapPage (v == Boot4)
     <> socketPage
     & #htmlBody
-    .~ divClass_
-      "container"
-      ( mconcat
-          [ divClass_ "row" (h1_ "web-rep testing"),
-            divClass_ "row" $ mconcat $ (\(t, h) -> divClass_ "col" (h2_ (toHtml t) <> L.with div_ [id_ t] h)) <$> sections
-          ]
-      )
+      .~ divClass_
+        "container"
+        ( mconcat
+            [ divClass_ "row" (h1_ "web-rep testing"),
+              divClass_ "row" $ mconcat $ (\(t, h) -> divClass_ "col" (h2_ (toHtml t) <> L.with div_ [id_ t] h)) <$> sections
+            ]
+        )
   where
     sections =
       [ ("input", mempty),
@@ -103,7 +105,8 @@ data CodeBoxConfig = CodeBoxConfig
     codeBoxPage :: Page,
     codeBoxCommitterQueue :: Queue [Code],
     codeBoxEmitterQueue :: Queue (Text, Text)
-  } deriving (Generic)
+  }
+  deriving (Generic)
 
 -- | official default config.
 defaultCodeBoxConfig :: CodeBoxConfig
@@ -112,9 +115,12 @@ defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig (defaultSocketPage Boot
 -- | Turn a configuration into a live (Codensity) CodeBox
 codeBoxWith :: CodeBoxConfig -> CoCodeBox
 codeBoxWith cfg =
-  fromActionWith (view #codeBoxEmitterQueue cfg) (view #codeBoxCommitterQueue cfg)
-  (serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg) .
-   dimap (either undefined id . A.parseOnly parserJ) (mconcat . fmap code))
+  fromActionWith
+    (view #codeBoxEmitterQueue cfg)
+    (view #codeBoxCommitterQueue cfg)
+    ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
+        . dimap (either undefined id . A.parseOnly parserJ) (mconcat . fmap code)
+    )
 
 -- | Turn the default configuration into a live (Codensity) CodeBox
 codeBox :: CoCodeBox
@@ -157,19 +163,18 @@ sharedStream sr ch c e =
     (Rep h fa) <- unshare sr
     b <- lift $ commit ch h
     when b (go fa)
-    where
-      go fa = do
-        e' <- lift $ emit e
-        case e' of
-          Nothing -> pure ()
-          Just (k,v) -> do
-            hmap <- snd <$> get
-            let hmap' = insert k v hmap
-            let (hmap'', r) = fa hmap'
-            modify (second (const hmap''))
-            b <- lift $ commit c r
-            when b (go fa)
-
+  where
+    go fa = do
+      e' <- lift $ emit e
+      case e' of
+        Nothing -> pure ()
+        Just (k, v) -> do
+          hmap <- snd <$> get
+          let hmap' = insert k v hmap
+          let (hmap'', r) = fa hmap'
+          modify (second (const hmap''))
+          b <- lift $ commit c r
+          when b (go fa)
 
 -- * Play
 
@@ -188,10 +193,10 @@ defaultPlayConfig = PlayConfig True 1 0
 -- | representation of a PlayConfig
 repPlayConfig :: PlayConfig -> SharedRep IO PlayConfig
 repPlayConfig cfg =
-  PlayConfig <$>
-  repPause (view #playPause cfg) <*>
-  repSpeed (view #playSpeed cfg) <*>
-  repFrame (view #playFrame cfg)
+  PlayConfig
+    <$> repPause (view #playPause cfg)
+    <*> repSpeed (view #playSpeed cfg)
+    <*> repFrame (view #playFrame cfg)
 
 -- | representation of the playFrame in a PlayConfig
 repFrame :: Int -> SharedRep IO Int
@@ -281,7 +286,8 @@ append d t =
 
 clean :: Text -> Text
 clean =
-  Text.intercalate "\\'" . Text.split (== '\'')
+  Text.intercalate "\\'"
+    . Text.split (== '\'')
     . Text.intercalate "\\n"
     . Text.lines
 

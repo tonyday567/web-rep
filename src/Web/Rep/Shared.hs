@@ -148,9 +148,10 @@ register p pr f a =
         ( \s ->
             ( s,
               join $
-                maybe (Left "lookup failed") Right $
-                  either (Left . (\x -> name <> ": " <> x)) Right . p
-                    <$> HashMap.lookup name s
+                maybe
+                  (Left "lookup failed")
+                  (Right . either (Left . (\x -> name <> ": " <> x)) Right . p)
+                  (HashMap.lookup name s)
             )
         )
 
@@ -175,9 +176,7 @@ message p f a d =
         ( \s ->
             ( HashMap.delete name s,
               join $
-                maybe (Right $ Right d) Right $
-                  p
-                    <$> HashMap.lookup name s
+                maybe (Right $ Right d) (Right . p) (HashMap.lookup name s)
             )
         )
 
