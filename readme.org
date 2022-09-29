@@ -1,0 +1,120 @@
+[web-rep](https://github.com/tonyday567/web-rep)
+===
+
+[![Hackage](https://img.shields.io/hackage/v/web-rep.svg)](https://hackage.haskell.org/package/web-rep)
+[![Build Status](https://github.com/tonyday567/web-rep/workflows/haskell-ci/badge.svg)](https://github.com/tonyday567/web-rep/actions?query=workflow%3Ahaskell-ci)
+
+Various functions and representations for a web page.
+
+The best way to understand functionality is via running the example app:
+
+```
+stack build --test --exec "$(stack path --local-install-root)/bin/page-example --apptype SharedTest" --file-watch
+```
+
+http://localhost:9160/
+
+reference
+---
+
+- [scotty](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html#flag-reference)
+- get [bootstrap](https://getbootstrap.com/)
+- [bootstrap-slider](https://seiyria.com/bootstrap-slider)
+- [blaze](http://hackage.haskell.org/package/blaze-html)
+- [lucid](http://hackage.haskell.org/package/lucid)
+- [clay](https://www.stackage.org/clay)
+
+eval
+---
+
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!
+
+#+begin_src elisp
+(setq haskell-process-args-cabal-repl '("web-rep:exe:web-rep-example"))
+#+end_src
+
+#+RESULTS:
+| web-rep:exe:web-rep-example |
+
+
+* debugging backend
+
+replay does not do the sleep effect ...
+
+#+begin_src haskell :results output
+:set -Wno-type-defaults
+glue showStdout <$|> (countingE 10)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Loaded GHCi configuration from /Users/tonyday/haskell/web-rep/.ghci
+[1 of 1] Compiling Main             ( app/rep-example.hs, interpreted )
+Ok, one module loaded.
+,*Main> *Main> (2022-06-06 00:00:00,0)
+(2022-06-06 00:00:01,1)
+(2022-06-06 00:00:02,2)
+(2022-06-06 00:00:03,3)
+(2022-06-06 00:00:04,4)
+(2022-06-06 00:00:05,5)
+(2022-06-06 00:00:06,6)
+(2022-06-06 00:00:07,7)
+(2022-06-06 00:00:08,8)
+(2022-06-06 00:00:09,9)
+#+end_example
+
+ #+begin_src haskell :results output
+ glue showStdout <$|> delayBy 1 =<< (countingE 10)
+ #+end_src
+
+ #+RESULTS:
+ : (1.0,1)
+ : (1.0,2)
+ : (1.0,3)
+ : (1.0,4)
+ : (1.0,5)
+ : (1.0,6)
+ : (1.0,7)
+ : (1.0,8)
+ : (1.0,9)
+
+
+ This works:
+
+ #+begin_src haskell :results output
+ glue showStdout <$|> emitIn 0 =<< delayBy 1 =<< (countingE 4)
+ #+end_src
+
+ #+RESULTS:
+ : 0
+ : 1
+ : 2
+ : 3
+
+
+  #+begin_src haskell
+  glue showStdout <$|> replay 1 2 =<< (countingE 4)
+  #+end_src
+
+  #+RESULTS:
+  : 0
+  : 1
+  : 2
+  : 3
+
+ #+begin_src haskell :results output
+ glue showStdout <$|> (fmap iCode <$> (replay 1 2 =<< (countingE 4)))
+ #+end_src
+
+ #+RESULTS:
+ : [Replace "output" "0"]
+ : [Replace "output" "1"]
+ : [Replace "output" "2"]
+ : [Replace "output" "3"]
+
+#+begin_src elisp
+(setq haskell-process-args-cabal-repl '("web-rep:exe:web-rep-replay-example"))
+#+end_src
+
+#+RESULTS:
+| web-rep:exe:web-rep-replay-example |

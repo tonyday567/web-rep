@@ -5,32 +5,26 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# HLINT ignore "Eta reduce" #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Redundant <$>" #-}
 
 -- | A socket between a web page and haskell, based on the box library.
-module Web.Rep.Socket
-  ( socketPage,
-    serveSocketBox,
-    sharedServer,
-    defaultSharedServer,
-    SocketConfig (..),
-    defaultSocketConfig,
-    defaultSocketPage,
-    defaultInputCode,
-    defaultOutputCode,
-    Code (..),
-    code,
-    wrangle,
-  serveSocketCoBox)
-where
+module Web.Rep.Socket (socketPage, defaultSocketPage, SocketConfig (..), defaultSocketConfig, serveSocketBox, CodeBox, CoCodeBox, CodeBoxConfig (..), defaultCodeBoxConfig, codeBox, codeBoxWith, serveRep, serveRepWithBox, replaceInput, replaceOutput, replaceOutput_, sharedStream, PlayConfig (..), defaultPlayConfig, repPlayConfig, servePlayStream, servePlayStreamWithBox, parserJ, Code (..), code, console, val, replace, append, clean, webSocket, refreshJsbJs, preventEnter, runScriptJs) where
 
 import Box
+import Box.Socket (serverApp)
+import Control.Concurrent.Async
 import Control.Monad
-import Control.Monad.Conc.Class as C
 import Control.Monad.State.Lazy
 import qualified Data.Attoparsec.Text as A
 import Data.Bifunctor
+import Data.Bool
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
+import Data.Profunctor
 import Data.Text (Text, pack)
 import qualified Data.Text as Text
 import GHC.Generics
@@ -44,17 +38,37 @@ import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
-import Web.Scotty hiding (get)
-import Box.Socket (serverApp)
+import Web.Rep.SharedReps
+import Web.Scotty (middleware, scotty)
 
+-- | Page with all the trimmings for a sharedRep Box
 socketPage :: Page
 socketPage =
-  mempty & #jsOnLoad
-    .~ mconcat
-      [ webSocket,
-        runScriptJs,
-        refreshJsbJs,
-        preventEnter
+  mempty
+    & #jsOnLoad
+      .~ mconcat
+        [ webSocket,
+          runScriptJs,
+          refreshJsbJs,
+          preventEnter
+        ]
+
+defaultSocketPage :: BootstrapVersion -> Page
+defaultSocketPage v =
+  bool bootstrap5Page bootstrapPage (v == Boot4)
+    <> socketPage
+    & #htmlBody
+      .~ divClass_
+        "container"
+        ( mconcat
+            [ divClass_ "row" (h1_ "web-rep testing"),
+              divClass_ "row" $ mconcat $ (\(t, h) -> divClass_ "col" (h2_ (toHtml t) <> L.with div_ [id_ t] h)) <$> sections
+            ]
+        )
+  where
+    sections =
+      [ ("input", mempty),
+        ("output", mempty)
       ]
 
 -- | Socket configuration
@@ -72,96 +86,148 @@ data SocketConfig = SocketConfig
 defaultSocketConfig :: SocketConfig
 defaultSocketConfig = SocketConfig "127.0.0.1" 9160 "/"
 
+-- | bidirectional websocket serving a 'Box'
 serveSocketBox :: SocketConfig -> Page -> Box IO Text Text -> IO ()
 serveSocketBox cfg p b =
   scotty (cfg ^. #port) $ do
     middleware $ websocketsOr WS.defaultConnectionOptions (serverApp b)
     servePageWith "/" (defaultPageConfig "") p
 
-serveSocketCoBox :: SocketConfig -> Page -> CoBox IO Text Text -> IO ()
-serveSocketCoBox cfg p b =
-  scotty (cfg ^. #port) $ do
-    middleware . websocketsOr WS.defaultConnectionOptions $ (\k -> Box.close $ serverApp <$> b <*> pure k)
-    servePageWith "/" (defaultPageConfig "") p
+-- | A common Box pattern. [Code] is typically committed to the websocket and key-value elements, representing changes to the shared objects that are in the Dom are emitted.
+type CodeBox = Box IO [Code] (Text, Text)
 
-sharedServer :: SharedRep IO a -> SocketConfig -> Page -> (Html () -> [Code]) -> (Either Text a -> IO [Code]) -> IO ()
-sharedServer srep cfg p i o =
-  serveSocketBox cfg p
-    <$|> fromAction (backendLoop srep i o . wrangle)
+-- | Codensity CodeBox
+type CoCodeBox = Codensity IO (Box IO [Code] (Text, Text))
 
-defaultSharedServer :: (Show a) => SharedRep IO a -> IO ()
-defaultSharedServer srep =
-  sharedServer srep defaultSocketConfig defaultSocketPage defaultInputCode defaultOutputCode
+-- | Configuration for a CodeBox serving.
+data CodeBoxConfig = CodeBoxConfig
+  { codeBoxSocket :: SocketConfig,
+    codeBoxPage :: Page,
+    codeBoxCommitterQueue :: Queue [Code],
+    codeBoxEmitterQueue :: Queue (Text, Text)
+  }
+  deriving (Generic)
 
-defaultSocketPage :: Page
-defaultSocketPage =
-  bootstrapPage
-    <> socketPage
-    & #htmlBody
-    .~ divClass_
-      "container"
-      ( mconcat
-          [ divClass_ "row" (h1_ "web-rep testing"),
-            divClass_ "row" $ mconcat $ (\(t, h) -> divClass_ "col" (h2_ (toHtml t) <> L.with div_ [id_ t] h)) <$> sections
-          ]
-      )
-  where
-    sections =
-      [ ("input", mempty),
-        ("output", mempty)
-      ]
+-- | official default config.
+defaultCodeBoxConfig :: CodeBoxConfig
+defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig (defaultSocketPage Boot5) Single Single
 
--- I am proud of this.
-backendLoop ::
-  (MonadConc m) =>
-  SharedRep m a ->
-  -- | initial code to place html of the SharedRep
-  (Html () -> [Code]) ->
-  -- | output code
-  (Either Text a -> m [Code]) ->
-  Box m [Code] (Text, Text) ->
-  m ()
-backendLoop sr inputCode outputCode (Box c e) = flip evalStateT (0, HashMap.empty) $ do
-  -- you only want to run unshare once for a SharedRep
-  (Rep h fa) <- unshare sr
-  b <- lift $ commit c (inputCode h)
-  o <- step' fa
-  b' <- lift $ commit c o
-  when (b && b') (go fa)
-  where
-    go fa = do
-      incoming <- lift $ emit e
-      modify (updateS incoming)
-      o <- step' fa
-      b <- lift $ commit c o
-      when b (go fa)
-    updateS Nothing s = s
-    updateS (Just (k, v)) s = second (insert k v) s
+-- | Turn a configuration into a live (Codensity) CodeBox
+codeBoxWith :: CodeBoxConfig -> CoCodeBox
+codeBoxWith cfg =
+  fromActionWith
+    (view #codeBoxEmitterQueue cfg)
+    (view #codeBoxCommitterQueue cfg)
+    ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
+        . dimap (either undefined id . A.parseOnly parserJ) (mconcat . fmap code)
+    )
 
-    step' fa = do
-      s <- get
-      let (m', ea) = fa (snd s)
-      modify (second (const m'))
-      lift $ outputCode ea
+-- | Turn the default configuration into a live (Codensity) CodeBox
+codeBox :: CoCodeBox
+codeBox = codeBoxWith defaultCodeBoxConfig
 
-defaultInputCode :: Html () -> [Code]
-defaultInputCode h = [Append "input" (toText h)]
+-- | serve a SharedRep
+serveRep :: SharedRep IO a -> (Html () -> [Code]) -> (Either Text a -> [Code]) -> CodeBoxConfig -> IO ()
+serveRep srep i o cfg =
+  serveRepWithBox srep i o <$|> codeBoxWith cfg
 
-defaultOutputCode :: (Monad m, Show a) => Either Text a -> m [Code]
-defaultOutputCode ea =
-  pure $ case ea of
+-- | non-codensity sharedRep server.
+serveRepWithBox :: SharedRep IO a -> (Html () -> [Code]) -> (Either Text a -> [Code]) -> CodeBox -> IO ()
+serveRepWithBox srep i o (Box c e) =
+  sharedStream srep (contramap i c) (contramap o c) e
+
+-- | Convert HTML representation to Code, replacing the input section of a page.
+replaceInput :: Html () -> [Code]
+replaceInput h = [Replace "input" (toText h)]
+
+-- | Convert (typically parsed representation) to Code, replacing the output section of a page, and appending errors.
+replaceOutput :: (Show a) => Either Text a -> [Code]
+replaceOutput ea =
+  case ea of
     Left err -> [Append "debug" err]
     Right a -> [Replace "output" (pack $ show a)]
 
-wrangle :: Monad m => Box m Text Text -> Box m [Code] (Text, Text)
-wrangle (Box c e) = Box c' e'
-  where
-    c' = listC $ contramap code c
-    e' = witherE (pure . either (const Nothing) Just) (parseE parserJ e)
+-- | Convert (typically parsed representation) to Code, replacing the output section of a page, and throwing away errors.
+replaceOutput_ :: (Show a) => Either Text a -> [Code]
+replaceOutput_ ea =
+  case ea of
+    Left _ -> []
+    Right a -> [Replace "output" (pack $ show a)]
 
--- | attoparsec parse emitter which returns the original text on failure
-parseE :: (Functor m) => A.Parser a -> Emitter m Text -> Emitter m (Either Text a)
-parseE parser e = (\t -> either (const $ Left t) Right (A.parseOnly parser t)) <$> e
+-- | Stream a SharedRep
+sharedStream ::
+  Monad m => SharedRep m a -> Committer m (Html ()) -> Committer m (Either Text a) -> Emitter m (Text, Text) -> m ()
+sharedStream sr ch c e =
+  flip evalStateT (0, HashMap.empty) $ do
+    -- you only want to run unshare once for a SharedRep
+    (Rep h fa) <- unshare sr
+    b <- lift $ commit ch h
+    when b (go fa)
+  where
+    go fa = do
+      e' <- lift $ emit e
+      case e' of
+        Nothing -> pure ()
+        Just (k, v) -> do
+          hmap <- snd <$> get
+          let hmap' = insert k v hmap
+          let (hmap'', r) = fa hmap'
+          modify (second (const hmap''))
+          b <- lift $ commit c r
+          when b (go fa)
+
+-- * Play
+
+-- | Configuration to control a (re)play of an emitter with a Gap (timing) element.
+data PlayConfig = PlayConfig
+  { playPause :: Bool,
+    playSpeed :: Double,
+    playFrame :: Int
+  }
+  deriving (Eq, Show, Generic)
+
+-- | Start on pause at normal speed and at frame 0.
+defaultPlayConfig :: PlayConfig
+defaultPlayConfig = PlayConfig True 1 0
+
+-- | representation of a PlayConfig
+repPlayConfig :: PlayConfig -> SharedRep IO PlayConfig
+repPlayConfig cfg =
+  PlayConfig
+    <$> repPause (view #playPause cfg)
+    <*> repSpeed (view #playSpeed cfg)
+    <*> repFrame (view #playFrame cfg)
+
+-- | representation of the playFrame in a PlayConfig
+repFrame :: Int -> SharedRep IO Int
+repFrame x = read . Text.unpack <$> textbox (Just "frame") (pack $ show x)
+
+-- | representation of the playSpeed in a PlayConfig
+repSpeed :: Double -> SharedRep IO Double
+repSpeed x = sliderV (Just "speed") 0.5 100 0.5 x
+
+-- | representation of the playPause toggle in a PlayConfig
+repPause :: Bool -> SharedRep IO Bool
+repPause initial = toggle_ (Just "play/pause") initial
+
+-- | representation of a Bool reset button
+repReset :: SharedRep IO Bool
+repReset = button (Just "reset")
+
+-- | Serve an emitter controlled by a PlayConfig representation, with an explicit CodeBox.
+servePlayStreamWithBox :: PlayConfig -> CoEmitter IO (Gap, [Code]) -> CodeBox -> IO ()
+servePlayStreamWithBox pcfg pipe (Box c e) = do
+  (playBox, _) <- toBoxM (Latest (False, pcfg))
+  race_
+    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) =<< pauser (playPause . snd <$> emitter playBox) <$> pipe))
+  pure ()
+
+-- | Serve an emitter controlled by a PlayConfig representation.
+servePlayStream :: PlayConfig -> CodeBoxConfig -> CoEmitter IO (Gap, [Code]) -> IO ()
+servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cbcfg
+
+-- * low-level JS conversions
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
 parserJ :: A.Parser (Text, Text)
@@ -220,7 +286,8 @@ append d t =
 
 clean :: Text -> Text
 clean =
-  Text.intercalate "\\'" . Text.split (== '\'')
+  Text.intercalate "\\'"
+    . Text.split (== '\'')
     . Text.intercalate "\\n"
     . Text.lines
 

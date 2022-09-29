@@ -1,4 +1,2 @@
 packages:
   web-rep.cabal
-
-allow-newer: memory:base, memory:ghc-prim, basement:base
