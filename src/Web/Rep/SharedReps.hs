@@ -507,11 +507,11 @@ selectItems ks m =
     HashMap.filterWithKey (\k _ -> k `elem` ks) m
 
 -- | rep of multiple items list
-repItemsSelect :: Monad m => [Text] -> [Text] -> SharedRep m [Text]
+repItemsSelect :: (Monad m) => [Text] -> [Text] -> SharedRep m [Text]
 repItemsSelect initial full =
   dropdownMultiple (A.takeWhile (`notElem` ([','] :: [Char]))) id (Just "items") full initial
 
-subtype :: With a => a -> Text -> Text -> a
+subtype :: (With a) => a -> Text -> Text -> a
 subtype h origt t =
   with
     h
