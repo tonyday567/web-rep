@@ -22,7 +22,6 @@ module Web.Rep.Shared
 where
 
 import Control.Applicative
-import Control.Monad.IO.Class
 import Control.Monad.State.Lazy
 import Data.Biapplicative
 import Data.HashMap.Strict (HashMap)
@@ -81,7 +80,7 @@ instance (Monoid r) => Applicative (RepF r) where
 
 -- | stateful result of one step, given a 'Rep', and a monadic action.
 -- Useful for testing and for initialising a page.
-oneRep :: (Monad m, MonadIO m) => Rep a -> (Rep a -> HashMap Text Text -> m ()) -> StateT (HashMap Text Text) m (HashMap Text Text, Either Text a)
+oneRep :: (Monad m) => Rep a -> (Rep a -> HashMap Text Text -> m ()) -> StateT (HashMap Text Text) m (HashMap Text Text, Either Text a)
 oneRep r@(Rep _ fa) action = do
   m <- get
   let (m', a) = fa m

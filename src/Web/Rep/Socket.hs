@@ -156,7 +156,7 @@ replaceOutput_ ea =
 
 -- | Stream a SharedRep
 sharedStream ::
-  Monad m => SharedRep m a -> Committer m (Html ()) -> Committer m (Either Text a) -> Emitter m (Text, Text) -> m ()
+  (Monad m) => SharedRep m a -> Committer m (Html ()) -> Committer m (Either Text a) -> Emitter m (Text, Text) -> m ()
 sharedStream sr ch c e =
   flip evalStateT (0, HashMap.empty) $ do
     -- you only want to run unshare once for a SharedRep
