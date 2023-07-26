@@ -57,7 +57,7 @@ module Web.Rep
   )
 where
 
-import qualified Data.HashMap.Strict as HashMap
+import Data.HashMap.Strict qualified as HashMap
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input

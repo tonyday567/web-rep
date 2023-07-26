@@ -1,10 +1,4 @@
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
-{-# OPTIONS_HADDOCK hide, not-home #-}
 
 module Web.Rep.Shared
   ( RepF (..),
@@ -25,7 +19,7 @@ import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Biapplicative
 import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
+import Data.HashMap.Strict qualified as HashMap
 import Data.Text (Text, pack)
 import Lucid
 import Optics.Core

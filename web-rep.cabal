@@ -12,14 +12,80 @@ license:            MIT
 license-file:       LICENSE.md
 build-type:         Simple
 extra-source-files: ChangeLog.md
-tested-with:
-  GHC ==8.6.5 || ==8.8.4 || ==8.10.7 || ==9.2.5 || ==9.4.4
+tested-with:        GHC == 8.10.7 || ==9.2.8 || ==9.4.5 || ==9.6.2
 
 source-repository head
   type:     git
   location: https://github.com/tonyday567/web-rep
+common ghc2021-stanza
+  if impl(ghc >=9.2)
+    default-language:
+      GHC2021
+  if impl(ghc <9.2)
+    default-language:
+      Haskell2010
+    default-extensions:
+      BangPatterns
+      BinaryLiterals
+      ConstrainedClassMethods
+      ConstraintKinds
+      DeriveDataTypeable
+      DeriveFoldable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveLift
+      DeriveTraversable
+      DoAndIfThenElse
+      EmptyCase
+      EmptyDataDecls
+      EmptyDataDeriving
+      ExistentialQuantification
+      ExplicitForAll
+      FlexibleContexts
+      FlexibleInstances
+      ForeignFunctionInterface
+      GADTSyntax
+      GeneralisedNewtypeDeriving
+      HexFloatLiterals
+      ImplicitPrelude
+      InstanceSigs
+      KindSignatures
+      MonomorphismRestriction
+      MultiParamTypeClasses
+      NamedFieldPuns
+      NamedWildCards
+      NumericUnderscores
+      PatternGuards
+      PolyKinds
+      PostfixOperators
+      RankNTypes
+      RelaxedPolyRec
+      ScopedTypeVariables
+      StandaloneDeriving
+      StarIsType
+      TraditionalRecordSyntax
+      TupleSections
+      TypeApplications
+      TypeOperators
+      TypeSynonymInstances
+  if impl(ghc <9.2) && impl(ghc >=8.10)
+    default-extensions:
+      ImportQualifiedPost
+      StandaloneKindSignatures
+
+common ghc-options-stanza
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+    -Widentities
+    -Wpartial-fields
 
 library
+  import: ghc2021-stanza
+  import: ghc-options-stanza
   exposed-modules:
     Web.Rep
     Web.Rep.Bootstrap
@@ -47,7 +113,7 @@ library
     , mtl                       >=2.2.2 && <2.4
     , optics-core               ^>=0.4
     , optics-extra              ^>=0.4
-    , profunctors
+    , profunctors               ^>=5.6.2
     , scotty                    >=0.11.5  && <0.13
     , text                      >=1.2.3 && <2.1
     , transformers              >=0.5.6 && <0.6.2
@@ -55,15 +121,11 @@ library
     , wai-middleware-static     ^>=0.9
     , wai-websockets            ^>=3.0.1.2
     , websockets                ^>=0.12
-    , async
-
-  default-language:   Haskell2010
-  default-extensions:
-  ghc-options:
-    -Wall -Wcompat -Wincomplete-record-updates
-    -Wincomplete-uni-patterns -Wredundant-constraints
+    , async                     ^>=2.2.4
 
 executable web-rep-example
+  import: ghc2021-stanza
+  import: ghc-options-stanza
   main-is:            rep-example.hs
   hs-source-dirs:     app
   build-depends:
@@ -71,14 +133,10 @@ executable web-rep-example
     , optparse-applicative
     , web-rep
     , box
-    , text
+    , text >=1.2.3 && <2.1
     , lucid
     , optics-core
 
-  default-language:   Haskell2010
-  default-extensions:
   ghc-options:
-    -Wall -Wcompat -Wincomplete-record-updates
-    -Wincomplete-uni-patterns -Wredundant-constraints
     -funbox-strict-fields -fforce-recomp -threaded -rtsopts
     -with-rtsopts=-N

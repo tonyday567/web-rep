@@ -1,23 +1,13 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# HLINT ignore "Eta reduce" #-}
-{-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-
-{-# HLINT ignore "Use newtype instead of data" #-}
 
 import Box
 import Control.Monad
 import Data.Bifunctor
 import Data.Text (pack)
-import qualified Lucid as L
+import Lucid qualified as L
 import Optics.Core
 import Options.Applicative
 import Web.Rep

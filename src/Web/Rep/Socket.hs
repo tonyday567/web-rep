@@ -1,15 +1,6 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wall #-}
-{-# HLINT ignore "Eta reduce" #-}
-{-# OPTIONS_GHC -Wno-type-defaults #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Redundant <$>" #-}
 
 -- | A socket between a web page and haskell, based on the box library.
 module Web.Rep.Socket (socketPage, defaultSocketPage, SocketConfig (..), defaultSocketConfig, serveSocketBox, CodeBox, CoCodeBox, CodeBoxConfig (..), defaultCodeBoxConfig, codeBox, codeBoxWith, serveRep, serveRepWithBox, replaceInput, replaceOutput, replaceOutput_, sharedStream, PlayConfig (..), defaultPlayConfig, repPlayConfig, servePlayStream, servePlayStreamWithBox, parserJ, Code (..), code, console, val, replace, append, clean, webSocket, refreshJsbJs, preventEnter, runScriptJs) where
@@ -19,18 +10,18 @@ import Box.Socket (serverApp)
 import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
-import qualified Data.Attoparsec.Text as A
+import Data.Attoparsec.Text qualified as A
 import Data.Bifunctor
 import Data.Bool
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
 import Data.Profunctor
 import Data.Text (Text, pack)
-import qualified Data.Text as Text
+import Data.Text qualified as Text
 import GHC.Generics
 import Lucid as L
 import Network.Wai.Handler.WebSockets
-import qualified Network.WebSockets as WS
+import Network.WebSockets qualified as WS
 import Optics.Core
 import Text.InterpolatedString.Perl6
 import Web.Rep.Bootstrap
@@ -220,7 +211,7 @@ servePlayStreamWithBox pcfg pipe (Box c e) = do
   (playBox, _) <- toBoxM (Latest (False, pcfg))
   race_
     (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
-    (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) =<< pauser (playPause . snd <$> emitter playBox) <$> pipe))
+    (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) . pauser (playPause . snd <$> emitter playBox) =<< pipe))
   pure ()
 
 -- | Serve an emitter controlled by a PlayConfig representation.
