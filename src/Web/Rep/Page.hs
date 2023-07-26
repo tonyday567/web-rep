@@ -1,13 +1,7 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
-{-# OPTIONS_HADDOCK hide, not-home #-}
 
 module Web.Rep.Page
   ( -- $page
@@ -36,7 +30,7 @@ module Web.Rep.Page
 where
 
 import Clay (Css)
-import qualified Clay
+import Clay qualified
 import Data.Text (Text, unpack)
 import Data.Text.Lazy (toStrict)
 import GHC.Generics

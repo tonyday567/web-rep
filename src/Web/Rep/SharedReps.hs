@@ -1,11 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -Wall #-}
 
 -- | Various SharedRep instances for common html input elements.
 module Web.Rep.SharedReps
@@ -46,11 +42,11 @@ import Box.Codensity ()
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Attoparsec.Text hiding (take)
-import qualified Data.Attoparsec.Text as A
+import Data.Attoparsec.Text qualified as A
 import Data.Biapplicative
 import Data.Bool
-import qualified Data.HashMap.Strict as HashMap
-import qualified Data.List as List
+import Data.HashMap.Strict qualified as HashMap
+import Data.List qualified as List
 import Data.Text (Text, intercalate, pack, unpack)
 import Lucid
 import Optics.Core

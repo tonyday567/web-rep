@@ -1,6 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# OPTIONS_GHC -Wall #-}
 
 -- | Serve pages via 'ScottyM'
 module Web.Rep.Server

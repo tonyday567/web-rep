@@ -1,8 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Key generators and miscellaneous html utilities.
@@ -21,7 +17,7 @@ where
 import Data.Bool
 import Data.List (intersperse)
 import Data.Text (Text, pack)
-import qualified Data.Text.Lazy as Lazy
+import Data.Text.Lazy qualified as Lazy
 import Lucid
 
 -- $setup

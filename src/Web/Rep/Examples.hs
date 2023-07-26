@@ -1,11 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wall #-}
 
 module Web.Rep.Examples
   ( page1,
@@ -26,7 +22,7 @@ module Web.Rep.Examples
   )
 where
 
-import qualified Clay
+import Clay qualified
 import Data.Attoparsec.Text
 import Data.Biapplicative
 import Data.Bool

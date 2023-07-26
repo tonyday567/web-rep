@@ -1,7 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wall #-}
 
 -- | Common web page input elements, often with bootstrap scaffolding.
 module Web.Rep.Html.Input
@@ -245,7 +242,6 @@ instance (ToHtml a) => ToHtml (Input a) where
                   <$> opts
             )
       )
-  -- FIXME: How can you refactor to eliminate this polymorphic wart?
   toHtml (Input _ l i (Checkbox checked)) =
     with
       div_
