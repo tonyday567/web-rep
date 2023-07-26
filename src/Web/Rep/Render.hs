@@ -12,6 +12,7 @@ module Web.Rep.Render
   )
 where
 
+import Control.Applicative
 import Control.Monad
 import Data.Foldable
 import Data.Text (Text, pack, unpack)

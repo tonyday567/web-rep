@@ -15,6 +15,7 @@ module Web.Rep.Shared
   )
 where
 
+import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Biapplicative
