@@ -21,7 +21,7 @@ data AppType
   | ClosureBug
   deriving (Eq, Show)
 
-data Options = Options
+newtype Options = Options
   { optionAppType :: AppType
   }
   deriving (Eq, Show)
