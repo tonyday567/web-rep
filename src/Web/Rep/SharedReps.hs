@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | Various SharedRep instances for common html input elements.
 module Web.Rep.SharedReps
@@ -51,7 +52,7 @@ import Data.Text (Text, intercalate, pack, unpack)
 import Lucid
 import Optics.Core
 import Optics.Zoom
-import Text.InterpolatedString.Perl6
+import Data.String.Interpolate
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input
@@ -363,11 +364,11 @@ checkboxShow label id' v =
 scriptToggleShow :: (Monad m) => Text -> Text -> HtmlT m ()
 scriptToggleShow checkName toggleId =
   script_
-    [qq|
-$('#{checkName}').on('change', (function()\{
+    [i|
+$('\##{checkName}').on('change', (function(){
   var vis = this.checked ? "block" : "none";
-  document.getElementById("{toggleId}").style.display = vis;
-\}));
+  document.getElementById("#{toggleId}").style.display = vis;
+}));
 |]
 
 -- | A (fixed-size) list represented in html as an accordion card

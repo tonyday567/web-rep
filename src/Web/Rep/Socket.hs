@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | A socket between a web page and haskell, based on the box library.
 module Web.Rep.Socket (socketPage, defaultSocketPage, SocketConfig (..), defaultSocketConfig, serveSocketBox, CodeBox, CoCodeBox, CodeBoxConfig (..), defaultCodeBoxConfig, codeBox, codeBoxWith, serveRep, serveRepWithBox, replaceInput, replaceOutput, replaceOutput_, sharedStream, PlayConfig (..), defaultPlayConfig, repPlayConfig, servePlayStream, servePlayStreamWithBox, parserJ, Code (..), code, console, val, replace, append, clean, webSocket, refreshJsbJs, preventEnter, runScriptJs) where
@@ -23,7 +24,7 @@ import Lucid as L
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets qualified as WS
 import Optics.Core
-import Text.InterpolatedString.Perl6
+import Data.String.Interpolate
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Page
@@ -223,11 +224,11 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- | {"event":{"element":"textid","value":"abcdees"}}
 parserJ :: A.Parser (Text, Text)
 parserJ = do
-  _ <- A.string [q|{"event":{"element":"|]
+  _ <- A.string [i|{"event":{"element":"|]
   e <- A.takeTill (== '"')
-  _ <- A.string [q|","value":"|]
+  _ <- A.string [i|","value":"|]
   v <- A.takeTill (== '"')
-  _ <- A.string [q|"}}|]
+  _ <- A.string [i|"}}|]
   pure (e, v)
 
 -- * code hooks
@@ -250,17 +251,17 @@ code (Eval t) = t
 code (Val t) = val t
 
 console :: Text -> Text
-console t = [qc| console.log({t}) |]
+console t = [i| console.log(#{t}) |]
 
 val :: Text -> Text
-val t = [qc| jsb.ws.send({t}) |]
+val t = [i| jsb.ws.send(#{t}) |]
 
 -- | replace a container and run any embedded scripts
 replace :: Text -> Text -> Text
 replace d t =
-  [qc|
-     var $container = document.getElementById('{d}');
-     $container.innerHTML = '{clean t}';
+  [i|
+     var $container = document.getElementById('#{d}');
+     $container.innerHTML = '#{clean t}';
      runScripts($container);
      refreshJsb();
      |]
@@ -268,9 +269,9 @@ replace d t =
 -- | append to a container and run any embedded scripts
 append :: Text -> Text -> Text
 append d t =
-  [qc|
-     var $container = document.getElementById('{d}');
-     $container.innerHTML += '{clean t}';
+  [i|
+     var $container = document.getElementById('#{d}');
+     $container.innerHTML += '#{clean t}';
      runScripts($container);
      refreshJsb();
      |]
@@ -288,7 +289,7 @@ clean =
 webSocket :: RepJs
 webSocket =
   RepJsText
-    [q|
+    [i|
 window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
 jsb.event = function(ev) {
     jsb.ws.send(JSON.stringify({event: ev}));
@@ -304,7 +305,7 @@ jsb.ws.onmessage = function(evt){
 refreshJsbJs :: RepJs
 refreshJsbJs =
   RepJsText
-    [q|
+    [i|
 function refreshJsb () {
   $('.jsbClassEventInput').off('input');
   $('.jsbClassEventInput').on('input', (function(){
@@ -357,7 +358,7 @@ preventEnter :: RepJs
 preventEnter =
   RepJs $
     parseJs
-      [q|
+      [i|
 window.addEventListener('keydown',function(e) {
   if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {
     if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {
@@ -374,7 +375,7 @@ window.addEventListener('keydown',function(e) {
 runScriptJs :: RepJs
 runScriptJs =
   RepJsText
-    [q|
+    [i|
 function insertScript ($script) {
   var s = document.createElement('script')
   s.type = 'text/javascript'

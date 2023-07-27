@@ -39,7 +39,7 @@ import Language.JavaScript.Parser.AST
 import Language.JavaScript.Process.Minify
 import Lucid
 import Optics.Core
-import Text.InterpolatedString.Perl6
+import Data.String.Interpolate
 
 -- | Components of a web page.
 --
@@ -249,7 +249,7 @@ onLoadStatements :: [JSStatement] -> JS
 onLoadStatements js = JS $ JSAstProgram [JSAssignStatement (JSMemberDot (JSIdentifier JSNoAnnot "window") JSNoAnnot (JSIdentifier JSNoAnnot "onload")) (JSAssign JSNoAnnot) (JSFunctionExpression JSNoAnnot JSIdentNone JSNoAnnot JSLNil JSNoAnnot (JSBlock JSNoAnnot js JSNoAnnot)) JSSemiAuto] JSNoAnnot
 
 onLoadText :: Text -> Text
-onLoadText t = [qc| window.onload=function()\{{t}};|]
+onLoadText t = [i| window.onload=function(){#{t}};|]
 
 -- | Convert 'Text' to 'JS', throwing an error on incorrectness.
 parseJs :: Text -> JS

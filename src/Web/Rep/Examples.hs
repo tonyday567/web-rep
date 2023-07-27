@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Web.Rep.Examples
   ( page1,
@@ -30,7 +31,7 @@ import Data.Text (Text, pack)
 import GHC.Generics
 import Lucid
 import Optics.Core
-import Text.InterpolatedString.Perl6
+import Data.String.Interpolate
 import Web.Rep
 
 -- | simple page example
@@ -86,9 +87,9 @@ css1 = do
 click :: RepJs
 click =
   RepJsText
-    [q|
-$('#btnGo').click( function() {
-  $('#btnGo').toggleClass('on');
+    [i|
+$('\#btnGo').click( function() {
+  $('\#btnGo').toggleClass('on');
   alert('bada bing!');
 });
 |]
@@ -175,8 +176,8 @@ fiddleExample =
   Concerns
     mempty
     mempty
-    [q|
-<div class=" form-group-sm "><label for="1">fiddle example</label><input max="10.0" value="3.0" oninput="jsb.event({ &#39;element&#39;: this.id, &#39;value&#39;: this.value});" step="1.0" min="0.0" id="1" type="range" class=" custom-range  form-control-range "></div>
+    [i|
+<div class=" form-group-sm "><label for="1">fiddle example</label><input max="10.0" value="3.0" oninput="jsb.event({ &\#39;element&\#39;: this.id, &\#39;value&\#39;: this.value});" step="1.0" min="0.0" id="1" type="range" class=" custom-range  form-control-range "></div>
 |]
 
 data SumTypeExample = SumInt Int | SumOnly | SumText Text deriving (Eq, Show, Generic)
