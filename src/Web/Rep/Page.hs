@@ -31,6 +31,7 @@ where
 
 import Clay (Css)
 import Clay qualified
+import Data.String.Interpolate
 import Data.Text (Text, unpack)
 import Data.Text.Lazy (toStrict)
 import GHC.Generics
@@ -39,7 +40,6 @@ import Language.JavaScript.Parser.AST
 import Language.JavaScript.Process.Minify
 import Lucid
 import Optics.Core
-import Data.String.Interpolate
 
 -- | Components of a web page.
 --

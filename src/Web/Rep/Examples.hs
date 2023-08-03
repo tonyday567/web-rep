@@ -27,11 +27,11 @@ import Clay qualified
 import Data.Attoparsec.Text
 import Data.Biapplicative
 import Data.Bool
+import Data.String.Interpolate
 import Data.Text (Text, pack)
 import GHC.Generics
 import Lucid
 import Optics.Core
-import Data.String.Interpolate
 import Web.Rep
 
 -- | simple page example

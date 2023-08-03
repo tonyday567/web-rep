@@ -17,6 +17,7 @@ import Data.Bool
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
 import Data.Profunctor
+import Data.String.Interpolate
 import Data.Text (Text, pack)
 import Data.Text qualified as Text
 import GHC.Generics
@@ -24,7 +25,6 @@ import Lucid as L
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets qualified as WS
 import Optics.Core
-import Data.String.Interpolate
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Page

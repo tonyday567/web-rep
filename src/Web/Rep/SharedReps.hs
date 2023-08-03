@@ -48,11 +48,11 @@ import Data.Biapplicative
 import Data.Bool
 import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
+import Data.String.Interpolate
 import Data.Text (Text, intercalate, pack, unpack)
 import Lucid
 import Optics.Core
 import Optics.Zoom
-import Data.String.Interpolate
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input
