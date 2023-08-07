@@ -23,7 +23,6 @@ module Web.Rep.Examples
   )
 where
 
-import Clay qualified
 import Data.Attoparsec.Text
 import Data.Biapplicative
 import Data.Bool
@@ -38,7 +37,7 @@ import Web.Rep
 page1 :: Page
 page1 =
   #htmlBody .~ button1 $
-    #cssBody .~ RepCss css1 $
+    #cssBody .~ css1 $
       #jsGlobal .~ mempty $
         #jsOnLoad .~ click $
           #libsCss .~ (libCss <$> cssLibs) $
@@ -75,13 +74,25 @@ jsLibsLocal :: [Text]
 jsLibsLocal = ["jquery-2.1.3.min.js"]
 
 css1 :: Css
-css1 = do
-  Clay.fontSize (Clay.px 10)
-  Clay.fontFamily ["Arial", "Helvetica"] [Clay.sansSerif]
-  "#btnGo" Clay.? do
-    Clay.marginTop (Clay.px 20)
-    Clay.marginBottom (Clay.px 20)
-  "#btnGo.on" Clay.? Clay.color Clay.green
+css1 =
+  Css
+    [i|
+{
+  font-size   : 10px;
+  font-family : "Arial","Helvetica", sans-serif;
+}
+
+\#btnGo
+{
+  margin-top    : 20px;
+  margin-bottom : 20px;
+}
+
+\#btnGo.on
+{
+  color : \#008000;
+}
+|]
 
 -- js
 click :: RepJs

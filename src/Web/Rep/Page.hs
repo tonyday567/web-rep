@@ -15,10 +15,8 @@ module Web.Rep.Page
     PageStructure (..),
     PageRender (..),
     -- $css
-    Css,
-    RepCss (..),
+    Css (..),
     renderCss,
-    renderRepCss,
     -- $js
     JS (..),
     RepJs (..),
@@ -29,10 +27,9 @@ module Web.Rep.Page
   )
 where
 
-import Clay (Css)
-import Clay qualified
 import Data.String.Interpolate
 import Data.Text (Text, unpack)
+import Data.Text qualified as Text
 import Data.Text.Lazy (toStrict)
 import GHC.Generics
 import Language.JavaScript.Parser
@@ -50,7 +47,7 @@ data Page = Page
     -- | javascript library links
     libsJs :: [Html ()],
     -- | css
-    cssBody :: RepCss,
+    cssBody :: Css,
     -- | javascript with global scope
     jsGlobal :: RepJs,
     -- | javascript included within the onLoad function
@@ -146,35 +143,16 @@ defaultPageConfig stem =
     ((stem <>) <$> suffixes)
     []
 
--- | Unifies css as either a 'Clay.Css' or as Text.
-data RepCss = RepCss Clay.Css | RepCssText Text deriving (Generic)
+-- | css as Text.
+newtype Css = Css {cssText :: Text} deriving (Generic, Semigroup, Monoid)
 
-instance Show RepCss where
-  show (RepCss css) = unpack . renderCss $ css
-  show (RepCssText txt) = unpack txt
-
-instance Semigroup RepCss where
-  (<>) (RepCss css) (RepCss css') = RepCss (css <> css')
-  (<>) (RepCssText css) (RepCssText css') = RepCssText (css <> css')
-  (<>) (RepCss css) (RepCssText css') =
-    RepCssText (renderCss css <> css')
-  (<>) (RepCssText css) (RepCss css') =
-    RepCssText (css <> renderCss css')
-
-instance Monoid RepCss where
-  mempty = RepCssText mempty
-
-  mappend = (<>)
-
--- | Render 'RepCss' as text.
-renderRepCss :: PageRender -> RepCss -> Text
-renderRepCss Minified (RepCss css) = toStrict $ Clay.renderWith Clay.compact [] css
-renderRepCss _ (RepCss css) = toStrict $ Clay.render css
-renderRepCss _ (RepCssText css) = css
+instance Show Css where
+  show (Css txt) = unpack txt
 
 -- | Render 'Css' as text.
-renderCss :: Css -> Text
-renderCss = toStrict . Clay.render
+renderCss :: PageRender -> Css -> Text
+renderCss Minified = Text.filter (\c -> c /= ' ' && c /= '\n') . cssText
+renderCss _ = cssText
 
 -- | wrapper for `JSAST`
 newtype JS = JS {unJS :: JSAST} deriving (Show, Eq, Generic)

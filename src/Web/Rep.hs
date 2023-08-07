@@ -30,10 +30,8 @@ module Web.Rep
     PageRender (..),
 
     -- * Css
-    Css,
-    RepCss (..),
+    Css (..),
     renderCss,
-    renderRepCss,
 
     -- * JS
     JS (..),

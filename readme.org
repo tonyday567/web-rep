@@ -19,9 +19,6 @@ http://localhost:9160/
 - [[https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html#flag-reference][scotty]]
 - get [[https://getbootstrap.com/][bootstrap]]
 - [[https://seiyria.com/bootstrap-slider][bootstrap-slider]]
-- [[http://hackage.haskell.org/package/blaze-html][blaze]]
-- [[http://hackage.haskell.org/package/lucid][lucid]]
-- [[https://www.stackage.org/clay][clay]]
 
 * eval usage
 
@@ -47,10 +44,34 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
 import Prelude
 import Box
 import Web.Rep
+import Data.Markup
+import Optics.Core
 putStrLn "ok"
 #+end_src
 
 #+RESULTS:
-: Ok, 11 modules loaded.
-: ghci
-: ok
+#+begin_example
+[ 1 of 11] Compiling Web.Rep.Html     ( src/Web/Rep/Html.hs, interpreted ) [Flags changed]
+[ 2 of 11] Compiling Web.Rep.Html.Input ( src/Web/Rep/Html/Input.hs, interpreted ) [Flags changed]
+[ 6 of 11] Compiling Web.Rep.Shared   ( src/Web/Rep/Shared.hs, interpreted ) [Flags changed]
+
+src/Web/Rep/Shared.hs:18:1: warning: [-Wunused-imports]
+    The import of ‘Control.Applicative’ is redundant
+      except perhaps to import instances from ‘Control.Applicative’
+    To import instances alone, use: import Control.Applicative()
+   |
+18 | import Control.Applicative
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[ 7 of 11] Compiling Web.Rep.Bootstrap ( src/Web/Rep/Bootstrap.hs, interpreted ) [Flags changed]
+[10 of 11] Compiling Web.Rep          ( src/Web/Rep.hs, interpreted ) [Flags changed]
+Ok, 11 modules loaded.
+ok
+#+end_example
+
+
+* css
+
+#+begin_src haskell :results output
+page1 & view #cssBody
+#+end_src
+
