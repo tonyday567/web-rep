@@ -1,5 +1,2 @@
 packages:
   web-rep.cabal
-
-allow-newer:
-  clay:base
