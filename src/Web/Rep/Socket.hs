@@ -1,25 +1,63 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | A socket between a web page and haskell, based on the box library.
-module Web.Rep.Socket (socketPage, defaultSocketPage, SocketConfig (..), defaultSocketConfig, serveSocketBox, CodeBox, CoCodeBox, CodeBoxConfig (..), defaultCodeBoxConfig, codeBox, codeBoxWith, serveRep, serveRepWithBox, replaceInput, replaceOutput, replaceOutput_, sharedStream, PlayConfig (..), defaultPlayConfig, repPlayConfig, servePlayStream, servePlayStreamWithBox, parserJ, Code (..), code, console, val, replace, append, clean, webSocket, refreshJsbJs, preventEnter, runScriptJs) where
+module Web.Rep.Socket
+  ( socketPage,
+    defaultSocketPage,
+    SocketConfig (..),
+    defaultSocketConfig,
+    serveSocketBox,
+    CodeBox,
+    CoCodeBox,
+    CodeBoxConfig (..),
+    defaultCodeBoxConfig,
+    codeBox,
+    codeBoxWith,
+    serveRep,
+    serveRepWithBox,
+    replaceInput,
+    replaceOutput,
+    replaceOutput_,
+    sharedStream,
+    PlayConfig (..),
+    defaultPlayConfig,
+    repPlayConfig,
+    servePlayStream,
+    servePlayStreamWithBox,
+    parserJ,
+    Code (..),
+    code,
+    console,
+    val,
+    replace,
+    append,
+    clean,
+    webSocket,
+    refreshJsbJs,
+    preventEnter,
+    runScriptJs,
+  )
+where
 
 import Box
 import Box.Socket (serverApp)
 import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
-import Data.Attoparsec.Text qualified as A
 import Data.Bifunctor
 import Data.Bool
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
+import Data.Markup.FlatParse
 import Data.Profunctor
 import Data.String.Interpolate
 import Data.Text (Text, pack)
 import Data.Text qualified as Text
+import FlatParse.Basic
 import GHC.Generics
 import Lucid as L
 import Network.Wai.Handler.WebSockets
@@ -111,7 +149,7 @@ codeBoxWith cfg =
     (view #codeBoxEmitterQueue cfg)
     (view #codeBoxCommitterQueue cfg)
     ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
-        . dimap (either undefined id . A.parseOnly parserJ) (mconcat . fmap code)
+        . dimap (either error id . runParserTextEither parserJ) (mconcat . fmap code)
     )
 
 -- | Turn the default configuration into a live (Codensity) CodeBox
@@ -222,14 +260,14 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- * low-level JS conversions
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
-parserJ :: A.Parser (Text, Text)
+parserJ :: Parser e (Text, Text)
 parserJ = do
-  _ <- A.string [i|{"event":{"element":"|]
-  e <- A.takeTill (== '"')
-  _ <- A.string [i|","value":"|]
-  v <- A.takeTill (== '"')
-  _ <- A.string [i|"}}|]
-  pure (e, v)
+  _ <- $(string [i|{"event":{"element":"|])
+  e <- some (satisfy (/= '"'))
+  _ <- $(string [i|","value":"|])
+  v <- some (satisfy (/= '"'))
+  _ <- $(string [i|"}}|])
+  pure (Text.pack e, Text.pack v)
 
 -- * code hooks
 

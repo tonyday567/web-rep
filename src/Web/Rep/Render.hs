@@ -93,10 +93,9 @@ renderPageWith pc p =
                       jsInline
                     ]
               )
-    css = rendercss (p ^. #cssBody)
+    css = renderCss (pc ^. #pageRender) (p ^. #cssBody)
     js = renderjs (p ^. #jsGlobal <> onLoad (p ^. #jsOnLoad))
     renderjs = renderRepJs $ pc ^. #pageRender
-    rendercss = renderCss $ pc ^. #pageRender
     cssInline
       | pc ^. #concerns == Separated || css == mempty = mempty
       | otherwise = style_ [type_ "text/css"] css

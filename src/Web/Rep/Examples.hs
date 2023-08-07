@@ -23,9 +23,9 @@ module Web.Rep.Examples
   )
 where
 
-import Data.Attoparsec.Text
 import Data.Biapplicative
 import Data.Bool
+import Data.Markup.FlatParse
 import Data.String.Interpolate
 import Data.Text (Text, pack)
 import GHC.Generics
@@ -155,8 +155,8 @@ repExamples = do
   dsV' <- sliderV (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
-  dr <- dropdown decimal (pack . show) (Just "dropdown") (pack . show <$> [1 .. 5 :: Int]) 3
-  drm <- dropdownMultiple decimal (pack . show) (Just "dropdown multiple") (pack . show <$> [1 .. 5 :: Int]) [2, 4]
+  dr <- dropdown int (pack . show) (Just "dropdown") (pack . show <$> [1 .. 5 :: Int]) 3
+  drm <- dropdownMultiple int (pack . show) (Just "dropdown multiple") (pack . show <$> [1 .. 5 :: Int]) [2, 4]
   drt <- toShape <$> dropdown takeText id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
   col <- colorPicker (Just "color") "#454e56"
   pure (RepExamples t ta n ds' nV dsV' c tog dr drm drt col)

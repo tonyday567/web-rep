@@ -42,14 +42,14 @@ where
 import Box.Codensity ()
 import Control.Monad
 import Control.Monad.State.Lazy
-import Data.Attoparsec.Text hiding (take)
-import Data.Attoparsec.Text qualified as A
 import Data.Biapplicative
 import Data.Bool
 import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
+import Data.Markup.FlatParse
 import Data.String.Interpolate
 import Data.Text (Text, intercalate, pack, unpack)
+import FlatParse.Basic hiding (take)
 import Lucid
 import Optics.Core
 import Optics.Zoom
@@ -66,8 +66,8 @@ import Prelude as P
 -- | Create a sharedRep from an Input.
 repInput ::
   (Monad m, ToHtml a) =>
-  -- | Parser
-  Parser a ->
+  -- | FlatParse Markup Parser
+  Parser Error a ->
   -- | Printer
   (a -> Text) ->
   -- | 'Input' type
@@ -75,12 +75,12 @@ repInput ::
   -- | initial value
   a ->
   SharedRep m a
-repInput p pr i = register (first pack . A.parseOnly p) pr (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i)
+repInput p pr i = register (first pack . runParserTextEither p) pr (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i)
 
 -- | Like 'repInput', but does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
-repMessage :: (Monad m, ToHtml a) => Parser a -> (a -> Text) -> Input a -> a -> a -> SharedRep m a
+repMessage :: (Monad m, ToHtml a) => Parser Error a -> (a -> Text) -> Input a -> a -> a -> SharedRep m a
 repMessage p _ i def a =
-  message (first pack . A.parseOnly p) (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
+  message (first pack . runParserTextEither p) (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
 
 -- | double slider
 --
@@ -141,7 +141,7 @@ sliderI ::
   SharedRep m a
 sliderI label l u s v =
   repInput
-    decimal
+    (fromIntegral <$> int)
     (pack . show)
     (Input v label mempty (Slider [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
     v
@@ -157,7 +157,7 @@ sliderVI ::
   SharedRep m a
 sliderVI label l u s v =
   repInput
-    decimal
+    (fromIntegral <$> int)
     (pack . show)
     (Input v label mempty (SliderV [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
     v
@@ -205,7 +205,7 @@ colorPicker label v =
 dropdown ::
   (Monad m, ToHtml a) =>
   -- | parse an a from Text
-  Parser a ->
+  Parser Error a ->
   -- | print an a to Text
   (a -> Text) ->
   -- | label suggestion
@@ -226,7 +226,7 @@ dropdown p pr label opts v =
 dropdownMultiple ::
   (Monad m, ToHtml a) =>
   -- | parse an a from Text
-  Parser a ->
+  Parser Error a ->
   -- | print an a to Text
   (a -> Text) ->
   -- | label suggestion
@@ -238,7 +238,7 @@ dropdownMultiple ::
   SharedRep m [a]
 dropdownMultiple p pr label opts vs =
   repInput
-    (p `sepBy1` char ',')
+    (sep comma p)
     (intercalate "," . fmap pr)
     (Input vs label mempty (DropdownMultiple opts ','))
     vs
@@ -255,7 +255,7 @@ datalist label opts v id'' =
 -- | A dropdown box designed to help represent a haskell sum type.
 dropdownSum ::
   (Monad m, ToHtml a) =>
-  Parser a ->
+  Parser Error a ->
   (a -> Text) ->
   Maybe Text ->
   [Text] ->
@@ -355,7 +355,7 @@ checkboxShow label id' v =
               join $
                 maybe
                   (Left "HashMap.lookup failed")
-                  (Right . either (Left . pack) Right . parseOnly ((== "true") <$> takeText))
+                  (Right . first pack . runParserTextEither ((== "true") <$> takeText))
                   (HashMap.lookup name s)
             )
         )
@@ -506,7 +506,7 @@ selectItems ks m =
 -- | rep of multiple items list
 repItemsSelect :: (Monad m) => [Text] -> [Text] -> SharedRep m [Text]
 repItemsSelect initial full =
-  dropdownMultiple (A.takeWhile (`notElem` ([','] :: [Char]))) id (Just "items") full initial
+  dropdownMultiple (pack <$> some (satisfy (`notElem` ([','] :: [Char])))) id (Just "items") full initial
 
 subtype :: (With a) => a -> Text -> Text -> a
 subtype h origt t =
