@@ -34,11 +34,8 @@ module Web.Rep
     renderCss,
 
     -- * JS
-    JS (..),
-    RepJs (..),
+    Js (..),
     onLoad,
-    renderRepJs,
-    parseJs,
     renderJs,
 
     -- * re-export modules

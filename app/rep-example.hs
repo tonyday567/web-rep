@@ -72,7 +72,7 @@ playTest = servePlayStream (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeB
 
 playPage :: Page
 playPage =
-  defaultSocketPage Boot5
+  defaultSocketPage
     & #htmlBody
       .~ divClass_
         "container"

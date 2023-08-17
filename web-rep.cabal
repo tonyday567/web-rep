@@ -105,8 +105,8 @@ library
         , bifunctors            >=5.5.11 && <5.7
         , box                   >=0.9 && <0.10
         , box-socket            >=0.4 && <0.5
+        , bytestring         >=0.11.3 && <0.13
         , flatparse
-        , language-javascript   >=0.6.0 && <0.8
         , lucid                 >=2.9 && <2.12
         , markup-parse
         , mtl                   >=2.2.2 && <2.4

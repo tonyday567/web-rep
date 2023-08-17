@@ -49,7 +49,6 @@ import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Bifunctor
-import Data.Bool
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
 import Data.Markup.FlatParse
@@ -83,9 +82,9 @@ socketPage =
           preventEnter
         ]
 
-defaultSocketPage :: BootstrapVersion -> Page
-defaultSocketPage v =
-  bool bootstrap5Page bootstrapPage (v == Boot4)
+defaultSocketPage :: Page
+defaultSocketPage =
+  bootstrapPage
     <> socketPage
     & #htmlBody
       .~ divClass_
@@ -140,7 +139,7 @@ data CodeBoxConfig = CodeBoxConfig
 
 -- | official default config.
 defaultCodeBoxConfig :: CodeBoxConfig
-defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig (defaultSocketPage Boot5) Single Single
+defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig defaultSocketPage Single Single
 
 -- | Turn a configuration into a live (Codensity) CodeBox
 codeBoxWith :: CodeBoxConfig -> CoCodeBox
@@ -324,9 +323,9 @@ clean =
 -- * initial javascript
 
 -- | create a web socket for event data
-webSocket :: RepJs
+webSocket :: Js
 webSocket =
-  RepJsText
+  Js
     [i|
 window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
 jsb.event = function(ev) {
@@ -340,9 +339,9 @@ jsb.ws.onmessage = function(evt){
 -- * scripts
 
 -- | Event hooks that may need to be reattached given dynamic content creation.
-refreshJsbJs :: RepJs
+refreshJsbJs :: Js
 refreshJsbJs =
-  RepJsText
+  Js
     [i|
 function refreshJsb () {
   $('.jsbClassEventInput').off('input');
@@ -392,11 +391,10 @@ function refreshJsb () {
 |]
 
 -- | prevent the Enter key from triggering an event
-preventEnter :: RepJs
+preventEnter :: Js
 preventEnter =
-  RepJs $
-    parseJs
-      [i|
+  Js $
+    [i|
 window.addEventListener('keydown',function(e) {
   if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {
     if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {
@@ -410,9 +408,9 @@ window.addEventListener('keydown',function(e) {
 -- | script injection js.
 --
 -- See https://ghinda.net/article/script-tags/ for why this might be needed.
-runScriptJs :: RepJs
+runScriptJs :: Js
 runScriptJs =
-  RepJsText
+  Js
     [i|
 function insertScript ($script) {
   var s = document.createElement('script')

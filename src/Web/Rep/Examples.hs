@@ -95,9 +95,9 @@ css1 =
 |]
 
 -- js
-click :: RepJs
+click :: Js
 click =
-  RepJsText
+  Js
     [i|
 $('\#btnGo').click( function() {
   $('\#btnGo').toggleClass('on');

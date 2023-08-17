@@ -18,11 +18,8 @@ module Web.Rep.Page
     Css (..),
     renderCss,
     -- $js
-    JS (..),
-    RepJs (..),
+    Js (..),
     onLoad,
-    renderRepJs,
-    parseJs,
     renderJs,
   )
 where
@@ -30,11 +27,7 @@ where
 import Data.String.Interpolate
 import Data.Text (Text, unpack)
 import Data.Text qualified as Text
-import Data.Text.Lazy (toStrict)
 import GHC.Generics
-import Language.JavaScript.Parser
-import Language.JavaScript.Parser.AST
-import Language.JavaScript.Process.Minify
 import Lucid
 import Optics.Core
 
@@ -49,9 +42,9 @@ data Page = Page
     -- | css
     cssBody :: Css,
     -- | javascript with global scope
-    jsGlobal :: RepJs,
+    jsGlobal :: Js,
     -- | javascript included within the onLoad function
-    jsOnLoad :: RepJs,
+    jsOnLoad :: Js,
     -- | html within the header
     htmlHeader :: Html (),
     -- | body html
@@ -154,91 +147,12 @@ renderCss :: PageRender -> Css -> Text
 renderCss Minified = Text.filter (\c -> c /= ' ' && c /= '\n') . cssText
 renderCss _ = cssText
 
--- | wrapper for `JSAST`
-newtype JS = JS {unJS :: JSAST} deriving (Show, Eq, Generic)
+-- | Javascript as Text
+newtype Js = Js {jsText :: Text} deriving (Eq, Show, Generic, Semigroup, Monoid)
 
-instance Semigroup JS where
-  (<>) (JS (JSAstProgram ss ann)) (JS (JSAstProgram ss' _)) =
-    JS $ JSAstProgram (ss <> ss') ann
-  (<>) (JS (JSAstProgram ss ann)) (JS (JSAstStatement s _)) =
-    JS $ JSAstProgram (ss <> [s]) ann
-  (<>) (JS (JSAstProgram ss ann)) (JS (JSAstExpression e ann')) =
-    JS $ JSAstProgram (ss <> [JSExpressionStatement e (JSSemi ann')]) ann
-  (<>) (JS (JSAstProgram ss ann)) (JS (JSAstLiteral e ann')) =
-    JS $ JSAstProgram (ss <> [JSExpressionStatement e (JSSemi ann')]) ann
-  (<>) (JS (JSAstStatement s ann)) (JS (JSAstProgram ss _)) =
-    JS $ JSAstProgram (s : ss) ann
-  (<>) (JS (JSAstStatement s ann)) (JS (JSAstStatement s' _)) =
-    JS $ JSAstProgram [s, s'] ann
-  (<>) (JS (JSAstStatement s ann)) (JS (JSAstExpression e ann')) =
-    JS $ JSAstProgram [s, JSExpressionStatement e (JSSemi ann')] ann
-  (<>) (JS (JSAstStatement s ann)) (JS (JSAstLiteral e ann')) =
-    JS $ JSAstProgram [s, JSExpressionStatement e (JSSemi ann')] ann
-  (<>) (JS (JSAstExpression e ann)) (JS (JSAstProgram ss _)) =
-    JS $ JSAstProgram (JSExpressionStatement e (JSSemi ann) : ss) ann
-  (<>) (JS (JSAstExpression e ann)) (JS (JSAstStatement s' _)) =
-    JS $ JSAstProgram [JSExpressionStatement e (JSSemi ann), s'] ann
-  (<>) (JS (JSAstExpression e ann)) (JS (JSAstExpression e' ann')) =
-    JS $ JSAstProgram [JSExpressionStatement e (JSSemi ann), JSExpressionStatement e' (JSSemi ann')] ann
-  (<>) (JS (JSAstExpression e ann)) (JS (JSAstLiteral e' ann')) =
-    JS $ JSAstProgram [JSExpressionStatement e (JSSemi ann), JSExpressionStatement e' (JSSemi ann')] ann
-  (<>) (JS (JSAstLiteral e ann)) (JS (JSAstProgram ss _)) =
-    JS $ JSAstProgram (JSExpressionStatement e (JSSemi ann) : ss) ann
-  (<>) (JS (JSAstLiteral e ann)) (JS (JSAstStatement s' _)) =
-    JS $ JSAstProgram [JSExpressionStatement e (JSSemi ann), s'] ann
-  (<>) (JS (JSAstLiteral e ann)) (JS (JSAstExpression e' ann')) =
-    JS $ JSAstProgram [JSExpressionStatement e (JSSemi ann), JSExpressionStatement e' (JSSemi ann')] ann
-  (<>) (JS (JSAstLiteral e ann)) (JS (JSAstLiteral e' ann')) =
-    JS $ JSAstProgram [JSExpressionStatement e (JSSemi ann), JSExpressionStatement e' (JSSemi ann')] ann
+onLoad :: Js -> Js
+onLoad (Js t) = Js [i| window.onload=function(){#{t}};|]
 
-instance Monoid JS where
-  mempty = JS $ JSAstProgram [] (JSAnnot (TokenPn 0 0 0) [])
-
-  mappend = (<>)
-
--- | Unifies javascript as 'JSStatement' and script as 'Text'.
-data RepJs = RepJs JS | RepJsText Text deriving (Eq, Show, Generic)
-
-instance Semigroup RepJs where
-  (<>) (RepJs js) (RepJs js') = RepJs (js <> js')
-  (<>) (RepJsText js) (RepJsText js') = RepJsText (js <> js')
-  (<>) (RepJs js) (RepJsText js') =
-    RepJsText (toStrict (renderToText $ unJS js) <> js')
-  (<>) (RepJsText js) (RepJs js') =
-    RepJsText (js <> toStrict (renderToText $ unJS js'))
-
-instance Monoid RepJs where
-  mempty = RepJs mempty
-
-  mappend = (<>)
-
--- | Wrap js in standard DOM window loader.
-onLoad :: RepJs -> RepJs
-onLoad (RepJs js) = RepJs $ onLoadStatements [toStatement js]
-onLoad (RepJsText js) = RepJsText $ onLoadText js
-
-toStatement :: JS -> JSStatement
-toStatement (JS (JSAstProgram ss ann)) = JSStatementBlock JSNoAnnot ss JSNoAnnot (JSSemi ann)
-toStatement (JS (JSAstStatement s _)) = s
-toStatement (JS (JSAstExpression e ann')) = JSExpressionStatement e (JSSemi ann')
-toStatement (JS (JSAstLiteral e ann')) = JSExpressionStatement e (JSSemi ann')
-
-onLoadStatements :: [JSStatement] -> JS
-onLoadStatements js = JS $ JSAstProgram [JSAssignStatement (JSMemberDot (JSIdentifier JSNoAnnot "window") JSNoAnnot (JSIdentifier JSNoAnnot "onload")) (JSAssign JSNoAnnot) (JSFunctionExpression JSNoAnnot JSIdentNone JSNoAnnot JSLNil JSNoAnnot (JSBlock JSNoAnnot js JSNoAnnot)) JSSemiAuto] JSNoAnnot
-
-onLoadText :: Text -> Text
-onLoadText t = [i| window.onload=function(){#{t}};|]
-
--- | Convert 'Text' to 'JS', throwing an error on incorrectness.
-parseJs :: Text -> JS
-parseJs = JS . readJs . unpack
-
--- | Render 'JS' as 'Text'.
-renderJs :: JS -> Text
-renderJs = toStrict . renderToText . unJS
-
--- | Render 'RepJs' as 'Text'.
-renderRepJs :: PageRender -> RepJs -> Text
-renderRepJs _ (RepJsText js) = js
-renderRepJs Minified (RepJs js) = toStrict . renderToText . minifyJS . unJS $ js
-renderRepJs Pretty (RepJs js) = toStrict . renderToText . unJS $ js
+-- | Render 'Js' as 'Text'.
+renderJs :: Js -> Text
+renderJs = jsText

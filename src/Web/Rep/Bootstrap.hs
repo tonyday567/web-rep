@@ -1,10 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 -- | Some <https://getbootstrap.com/ bootstrap> assets and functionality.
 module Web.Rep.Bootstrap
-  ( BootstrapVersion (..),
+  ( bootstrapCss',
+    bootstrapJs',
+    bootstrapMeta',
     bootstrapPage,
-    bootstrap5Page,
     cardify,
     divClass_,
     accordion,
@@ -18,29 +21,23 @@ where
 import Control.Monad.State.Lazy
 import Data.Bool
 import Data.Functor.Identity
+import Data.Markup
 import Data.Text (Text)
-import GHC.Generics
 import Lucid
 import Lucid.Base
 import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Shared
+import Data.ByteString (ByteString)
 
-data BootstrapVersion = Boot4 | Boot5 deriving (Eq, Show, Generic)
-
-bootstrapCss :: [Html ()]
-bootstrapCss =
-  [ link_
-      [ rel_ "stylesheet",
-        href_ "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css",
-        integrity_ "sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T",
-        crossorigin_ "anonymous"
-      ]
-  ]
+-- $setup
+-- >>> :set -XOverloadedStrings
+-- >>> import Web.Rep
+-- >>> import Data.Markup
 
 -- | <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-bootstrap5Css :: [Html ()]
-bootstrap5Css =
+bootstrapCss :: [Html ()]
+bootstrapCss =
   [ link_
       [ rel_ "stylesheet",
         href_ "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css",
@@ -48,32 +45,23 @@ bootstrap5Css =
         crossorigin_ "anonymous"
       ]
   ]
-
-bootstrapJs :: [Html ()]
-bootstrapJs =
-  [ with
-      (script_ mempty)
-      [ src_ "https://code.jquery.com/jquery-3.3.1.slim.min.js",
-        integrity_ "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
-        crossorigin_ "anonymous"
-      ],
-    with
-      (script_ mempty)
-      [ src_ "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js",
-        integrity_ "sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1",
-        crossorigin_ "anonymous"
-      ],
-    with
-      (script_ mempty)
-      [ src_ "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js",
-        integrity_ "sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM",
-        crossorigin_ "anonymous"
+-- | Bootstrap 5 CSS link
+--
+-- >>> encodeMarkup bootstrapCss'
+-- "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css\" integrity=\"sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC\" crossorigin=\"anonymous\">"
+bootstrapCss' :: Markup
+bootstrapCss' =
+  Markup "link"
+      [ ( "rel", "stylesheet" ),
+        ( "href", "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" ),
+        ( "integrity", "sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" ),
+        ( "crossorigin", "anonymous" )
       ]
-  ]
+      mempty
 
 -- | <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-bootstrap5Js :: [Html ()]
-bootstrap5Js =
+bootstrapJs :: [Html ()]
+bootstrapJs =
   [ with
       (script_ mempty)
       [ src_ "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js",
@@ -88,6 +76,22 @@ bootstrap5Js =
       ]
   ]
 
+-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"></head><body><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script><script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"><
+
+bootstrapJs' :: [ Markup ]
+bootstrapJs' =
+  [ Markup "script"
+      [ ( "src", "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" ),
+        ("integrity", "sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"),
+        ( "crossorigin", "anonymous" )
+      ] mempty,
+    Markup "script"
+      [ ("src", "https://code.jquery.com/jquery-3.3.1.slim.min.js"),
+        ("integrity", "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"),
+        ("crossorigin", "anonymous")
+      ] mempty
+  ]
+
 bootstrapMeta :: [Html ()]
 bootstrapMeta =
   [ meta_ [charset_ "utf-8"],
@@ -97,24 +101,21 @@ bootstrapMeta =
       ]
   ]
 
+bootstrapMeta' :: [ Markup ]
+bootstrapMeta' =
+  [ Markup "meta" [("charset", "utf-8")] mempty,
+    Markup "meta"
+      [ ("name", "viewport"),
+        ("content", "width=device-width, initial-scale=1, shrink-to-fit=no")
+      ] mempty
+  ]
+
 -- | A page containing all the <https://getbootstrap.com/ bootstrap> needs for a web page.
 bootstrapPage :: Page
 bootstrapPage =
   Page
     bootstrapCss
     bootstrapJs
-    mempty
-    mempty
-    mempty
-    (mconcat bootstrapMeta)
-    mempty
-
--- | A page containing all the <https://getbootstrap.com/ bootstrap> needs for a web page.
-bootstrap5Page :: Page
-bootstrap5Page =
-  Page
-    bootstrap5Css
-    bootstrap5Js
     mempty
     mempty
     mempty
@@ -132,6 +133,20 @@ cardify (h, hatts) t (b, batts) =
         ( maybe mempty (with h5_ [class__ "card-title"] . toHtml) t
             <> b
         )
+
+cardify' :: ([Content], Attributes) -> Maybe ByteString -> ([Content], Attributes) -> Markup
+cardify' (h, hatts) t (b, batts) =
+  Markup "div" ([("class","card")] <> hatts)
+  [ MarkupLeaf $
+    Markup "div" ([("class", "card")] <> hatts)
+    (h <>
+     [ MarkupLeaf $
+       Markup "div" ([("class","body")] <> batts)
+       (maybe mempty
+         (\c -> [MarkupLeaf $ Markup "h5"
+                [("class", "card-title")]
+                  [Content c]]) t <>
+          b)])]
 
 -- | wrap some html with a classed div
 divClass_ :: Text -> Html () -> Html ()

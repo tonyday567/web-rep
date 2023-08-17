@@ -46,27 +46,20 @@ import Box
 import Web.Rep
 import Data.Markup
 import Optics.Core
+import FlatParse.Basic
+import Data.Markup.Parser
 putStrLn "ok"
 #+end_src
 
 #+RESULTS:
-#+begin_example
-[ 1 of 11] Compiling Web.Rep.Html     ( src/Web/Rep/Html.hs, interpreted ) [Flags changed]
-[ 2 of 11] Compiling Web.Rep.Html.Input ( src/Web/Rep/Html/Input.hs, interpreted ) [Flags changed]
-[ 6 of 11] Compiling Web.Rep.Shared   ( src/Web/Rep/Shared.hs, interpreted ) [Flags changed]
-
-src/Web/Rep/Shared.hs:18:1: warning: [-Wunused-imports]
-    The import of ‘Control.Applicative’ is redundant
-      except perhaps to import instances from ‘Control.Applicative’
-    To import instances alone, use: import Control.Applicative()
-   |
-18 | import Control.Applicative
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-[ 7 of 11] Compiling Web.Rep.Bootstrap ( src/Web/Rep/Bootstrap.hs, interpreted ) [Flags changed]
-[10 of 11] Compiling Web.Rep          ( src/Web/Rep.hs, interpreted ) [Flags changed]
-Ok, 11 modules loaded.
-ok
-#+end_example
+: Ok, 11 modules loaded.
+: <no location info>: error:
+:     Could not find module ‘Data.Markup.Parser’
+:     Perhaps you meant
+:       Data.Markup.Parse (from markup-parse-0.0.0.1)
+:       Data.Markup.Parse (needs flag -package-id markup-parse-0.0.0.1)
+:       Data.Markup.Parse (needs flag -package-id markup-parse-0.0.0.1)
+: ok
 
 
 * css
@@ -75,3 +68,17 @@ ok
 page1 & view #cssBody
 #+end_src
 
+#+begin_src haskell :results output
+toBS $ renderPage bootstrapPage
+#+end_src
+
+#+RESULTS:
+: "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css\" integrity=\"sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC\" crossorigin=\"anonymous\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\"></head><body><script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js\" integrity=\"sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM\" crossorigin=\"anonymous\"></script><script src=\"https://code.jquery.com/jquery-3.3.1.slim.min.js\" integrity=\"sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo\" crossorigin=\"anonymous\"></script><script
+: window.onload=function(){};</script></body></html>"
+
+#+begin_src haskell :results output
+runParser htmlP $ toBS $ renderPage bootstrapPage
+#+end_src
+
+#+RESULTS:
+: Fail
