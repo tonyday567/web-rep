@@ -7,12 +7,12 @@ import Box
 import Control.Monad
 import Data.Bifunctor
 import Data.Text (pack)
-import Lucid qualified as L
 import Optics.Core
 import Options.Applicative
 import Web.Rep
 import Web.Rep.Examples
 import Prelude
+import MarkupParse
 
 data AppType
   = SharedTest

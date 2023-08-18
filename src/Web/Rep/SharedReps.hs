@@ -25,8 +25,6 @@ module Web.Rep.SharedReps
     button,
     chooseFile,
     maybeRep,
-    fiddle,
-    viaFiddle,
     accordionList,
     listMaybeRep,
     listRep,
@@ -46,41 +44,41 @@ import Data.Biapplicative
 import Data.Bool
 import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
-import Data.Markup.FlatParse
+import MarkupParse
+import MarkupParse.FlatParse
 import Data.String.Interpolate
-import Data.Text (Text, intercalate, pack, unpack)
+import Data.ByteString (ByteString, intercalate)
 import FlatParse.Basic hiding (take)
-import Lucid
 import Optics.Core
 import Optics.Zoom
 import Web.Rep.Bootstrap
-import Web.Rep.Html
 import Web.Rep.Html.Input
-import Web.Rep.Page
 import Web.Rep.Shared
 import Prelude as P
+import Data.Tree
+import Data.Maybe
 
 -- $setup
 -- >>> :set -XOverloadedStrings
 
 -- | Create a sharedRep from an Input.
 repInput ::
-  (Monad m, ToHtml a) =>
+  (Monad m, Show a) =>
   -- | FlatParse Markup Parser
-  Parser Error a ->
+  Parser String a ->
   -- | Printer
-  (a -> Text) ->
+  (a -> ByteString) ->
   -- | 'Input' type
   Input a ->
   -- | initial value
   a ->
   SharedRep m a
-repInput p pr i = register (first pack . runParserTextEither p) pr (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i)
+repInput p pr i = register (first strToUtf8 . runParserEither p) pr (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i)
 
 -- | Like 'repInput', but does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
-repMessage :: (Monad m, ToHtml a) => Parser Error a -> (a -> Text) -> Input a -> a -> a -> SharedRep m a
+repMessage :: (Monad m, Show a) => Parser String a -> (a -> ByteString) -> Input a -> a -> a -> SharedRep m a
 repMessage p _ i def a =
-  message (first pack . runParserTextEither p) (\n v -> toHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
+  message (first strToUtf8 . runParserEither p) (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
 
 -- | double slider
 --
@@ -90,7 +88,7 @@ repMessage p _ i def a =
 -- slider (Just "label") 0 1 0.01 0.3 :: Monad m => SharedRep m Double
 slider ::
   (Monad m) =>
-  Maybe Text ->
+  Maybe ByteString ->
   Double ->
   Double ->
   Double ->
@@ -99,8 +97,8 @@ slider ::
 slider label l u s v =
   repInput
     double
-    (pack . show)
-    (Input v label mempty (Slider [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
+    (strToUtf8 . show)
+    (Input v label mempty (Slider [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step"  (strToUtf8 $ show s)]))
     v
 
 -- | double slider with shown value
@@ -111,7 +109,7 @@ slider label l u s v =
 -- slider (Just "label") 0 1 0.01 0.3 :: Monad m => SharedRep m Double
 sliderV ::
   (Monad m) =>
-  Maybe Text ->
+  Maybe ByteString ->
   Double ->
   Double ->
   Double ->
@@ -120,8 +118,8 @@ sliderV ::
 sliderV label l u s v =
   repInput
     double
-    (pack . show)
-    (Input v label mempty (SliderV [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
+    (strToUtf8 . show)
+    (Input v label mempty (SliderV [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
     v
 
 -- | integral slider
@@ -132,8 +130,8 @@ sliderV label l u s v =
 -- sliderI (Just "label") 0 1000 10 300
 --   :: (Monad m, ToHtml a, P.Integral a, Show a) => SharedRep m a
 sliderI ::
-  (Monad m, ToHtml a, P.Integral a, Show a) =>
-  Maybe Text ->
+  (Monad m, P.Integral a, Show a) =>
+  Maybe ByteString ->
   a ->
   a ->
   a ->
@@ -142,14 +140,14 @@ sliderI ::
 sliderI label l u s v =
   repInput
     (fromIntegral <$> int)
-    (pack . show)
-    (Input v label mempty (Slider [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
+    (strToUtf8 . show)
+    (Input v label mempty (Slider [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
     v
 
 -- | integral slider with shown value
 sliderVI ::
-  (Monad m, ToHtml a, P.Integral a, Show a) =>
-  Maybe Text ->
+  (Monad m, P.Integral a, Show a) =>
+  Maybe ByteString ->
   a ->
   a ->
   a ->
@@ -158,60 +156,60 @@ sliderVI ::
 sliderVI label l u s v =
   repInput
     (fromIntegral <$> int)
-    (pack . show)
-    (Input v label mempty (SliderV [min_ (pack $ show l), max_ (pack $ show u), step_ (pack $ show s)]))
+    (strToUtf8 . show)
+    (Input v label mempty (SliderV [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
     v
 
 -- | textbox classique
 --
 -- > :t textbox (Just "label") "some text"
--- textbox (Just "label") "some text" :: Monad m => SharedRep m Text
-textbox :: (Monad m) => Maybe Text -> Text -> SharedRep m Text
+-- textbox (Just "label") "some text" :: Monad m => SharedRep m ByteString
+textbox :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 textbox label v =
   repInput
-    takeText
+    takeRest
     id
     (Input v label mempty TextBox)
     v
 
 -- | textbox that only updates on focusout
-textbox' :: (Monad m) => Maybe Text -> Text -> SharedRep m Text
+textbox' :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 textbox' label v =
   repInput
-    takeText
+    takeRest
     id
     (Input v label mempty TextBox')
     v
 
 -- | textarea input element, specifying number of rows.
-textarea :: (Monad m) => Int -> Maybe Text -> Text -> SharedRep m Text
+textarea :: (Monad m) => Int -> Maybe ByteString -> ByteString -> SharedRep m ByteString
 textarea rows label v =
   repInput
-    takeText
+    takeRest
     id
     (Input v label mempty (TextArea rows))
     v
 
 -- | Non-typed hex color input
-colorPicker :: (Monad m) => Maybe Text -> Text -> SharedRep m Text
+colorPicker :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 colorPicker label v =
   repInput
-    takeText
+    takeRest
     id
     (Input v label mempty ColorPicker)
     v
 
 -- | dropdown box
 dropdown ::
-  (Monad m, ToHtml a) =>
-  -- | parse an a from Text
-  Parser Error a ->
-  -- | print an a to Text
-  (a -> Text) ->
+  (Monad m, Show a) =>
+  -- | parse an a from ByteString
+  Parser String a ->
+  -- | print an a to ByteString
+  (a -> ByteString) ->
   -- | label suggestion
-  Maybe Text ->
+  Maybe ByteString ->
   -- | list of dropbox elements (as text)
-  [Text] ->
+  [ByteString] ->
   -- | initial value
   a ->
   SharedRep m a
@@ -224,15 +222,15 @@ dropdown p pr label opts v =
 
 -- | dropdown box with multiple selections
 dropdownMultiple ::
-  (Monad m, ToHtml a) =>
-  -- | parse an a from Text
-  Parser Error a ->
-  -- | print an a to Text
-  (a -> Text) ->
+  (Monad m, Show a) =>
+  -- | parse an a from ByteString
+  Parser String a ->
+  -- | print an a to ByteString
+  (a -> ByteString) ->
   -- | label suggestion
-  Maybe Text ->
+  Maybe ByteString ->
   -- | list of dropbox elements (as text)
-  [Text] ->
+  [ByteString] ->
   -- | initial value
   [a] ->
   SharedRep m [a]
@@ -244,21 +242,21 @@ dropdownMultiple p pr label opts vs =
     vs
 
 -- | a datalist input
-datalist :: (Monad m) => Maybe Text -> [Text] -> Text -> Text -> SharedRep m Text
+datalist :: (Monad m) => Maybe ByteString -> [ByteString] -> ByteString -> ByteString -> SharedRep m ByteString
 datalist label opts v id'' =
   repInput
-    takeText
-    (pack . show)
+    takeRest
+    (strToUtf8 . show)
     (Input v label mempty (Datalist opts id''))
     v
 
 -- | A dropdown box designed to help represent a haskell sum type.
 dropdownSum ::
-  (Monad m, ToHtml a) =>
-  Parser Error a ->
-  (a -> Text) ->
-  Maybe Text ->
-  [Text] ->
+  (Monad m, Show a) =>
+  Parser String a ->
+  (a -> ByteString) ->
+  Maybe ByteString ->
+  [ByteString] ->
   a ->
   SharedRep m a
 dropdownSum p pr label opts v =
@@ -269,34 +267,34 @@ dropdownSum p pr label opts v =
     v
 
 -- | A checkbox input.
-checkbox :: (Monad m) => Maybe Text -> Bool -> SharedRep m Bool
+checkbox :: (Monad m) => Maybe ByteString -> Bool -> SharedRep m Bool
 checkbox label v =
   repInput
-    ((== "true") <$> takeText)
+    ((== "true") <$> takeRest)
     (bool "false" "true")
     (Input v label mempty (Checkbox v))
     v
 
 -- | a toggle button
-toggle :: (Monad m) => Maybe Text -> Bool -> SharedRep m Bool
+toggle :: (Monad m) => Maybe ByteString -> Bool -> SharedRep m Bool
 toggle label v =
   repInput
-    ((== "true") <$> takeText)
+    ((== "true") <$> takeRest)
     (bool "false" "true")
     (Input v label mempty (Toggle v label))
     v
 
 -- | a toggle button, with no label
-toggle_ :: (Monad m) => Maybe Text -> Bool -> SharedRep m Bool
+toggle_ :: (Monad m) => Maybe ByteString -> Bool -> SharedRep m Bool
 toggle_ label v =
   repInput
-    ((== "true") <$> takeText)
+    ((== "true") <$> takeRest)
     (bool "false" "true")
     (Input v Nothing mempty (Toggle v label))
     v
 
 -- | a button
-button :: (Monad m) => Maybe Text -> SharedRep m Bool
+button :: (Monad m) => Maybe ByteString -> SharedRep m Bool
 button label =
   repMessage
     (pure True)
@@ -306,11 +304,11 @@ button label =
     False
 
 -- | filename input
-chooseFile :: (Monad m) => Maybe Text -> Text -> SharedRep m Text
+chooseFile :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 chooseFile label v =
   repInput
-    takeText
-    (pack . show)
+    takeRest
+    (strToUtf8 . show)
     (Input v label mempty ChooseFile)
     v
 
@@ -319,7 +317,7 @@ chooseFile label v =
 -- Hides the underlying content on Nothing
 maybeRep ::
   (Monad m) =>
-  Maybe Text ->
+  Maybe ByteString ->
   Bool ->
   SharedRep m a ->
   SharedRep m (Maybe a)
@@ -331,39 +329,38 @@ maybeRep label st sa = SharedRep $ do
       cardify
         (a, [])
         Nothing
-        ( Lucid.with
-            div_
-            [ id_ id',
-              style_
+        ( pure $ wrap "div"
+            [ Attr "id" id',
+              Attr "style"
                 ("display:" <> bool "none" "block" st)
             ]
             b,
-          [style_ "padding-top: 0.25rem; padding-bottom: 0.25rem;"]
+          [Attr "style" "padding-top: 0.25rem; padding-bottom: 0.25rem;"]
         )
     mmap a b = bool Nothing (Just b) a
 
-checkboxShow :: (Monad m) => Maybe Text -> Text -> Bool -> SharedRep m Bool
+checkboxShow :: (Monad m) => Maybe ByteString -> ByteString -> Bool -> SharedRep m Bool
 checkboxShow label id' v =
   SharedRep $ do
     name <- zoom _1 genName
     zoom _2 (modify (HashMap.insert name (bool "false" "true" v)))
     pure $
       Rep
-        (toHtml (Input v label name (Checkbox v)) <> scriptToggleShow name id')
+        (inputToHtml (Input v label name (Checkbox v)) <> scriptToggleShow name id')
         ( \s ->
             ( s,
               join $
                 maybe
                   (Left "HashMap.lookup failed")
-                  (Right . first pack . runParserTextEither ((== "true") <$> takeText))
+                  (Right . first strToUtf8 . runParserEither ((== "true") <$> takeRest))
                   (HashMap.lookup name s)
             )
         )
 
 -- | toggle show/hide
-scriptToggleShow :: (Monad m) => Text -> Text -> HtmlT m ()
+scriptToggleShow :: ByteString -> ByteString -> [Tree Token]
 scriptToggleShow checkName toggleId =
-  script_
+  pure $ wrap "script" [] $ pure . pure . Content $
     [i|
 $('\##{checkName}').on('change', (function(){
   var vis = this.checked ? "block" : "none";
@@ -373,7 +370,7 @@ $('\##{checkName}').on('change', (function(){
 
 -- | A (fixed-size) list represented in html as an accordion card
 -- A major restriction of the library is that a 'SharedRep' does not have a Monad instance. In practice, this means that the external representation of lists cannot have a dynamic size.
-accordionList :: (Monad m) => Maybe Text -> Text -> Maybe Text -> (Text -> a -> SharedRep m a) -> [Text] -> [a] -> SharedRep m [a]
+accordionList :: (Monad m) => Maybe ByteString -> ByteString -> Maybe ByteString -> (ByteString -> a -> SharedRep m a) -> [ByteString] -> [a] -> SharedRep m [a]
 accordionList title prefix open srf labels as = SharedRep $ do
   (Rep h fa) <-
     unshare $
@@ -383,10 +380,10 @@ accordionList title prefix open srf labels as = SharedRep $ do
           (pure [])
           (zipWith srf labels as)
   h' <- zoom _1 h
-  pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
+  pure (Rep (maybe mempty (\t -> [Node (tag "h5" []) [pure $ Content t]]) title <> [h']) fa)
 
 -- | A (fixed-sized) list of (Bool, a) tuples.
-accordionBoolList :: (Monad m) => Maybe Text -> Text -> (a -> SharedRep m a) -> (Bool -> SharedRep m Bool) -> [Text] -> [(Bool, a)] -> SharedRep m [(Bool, a)]
+accordionBoolList :: (Monad m) => Maybe ByteString -> ByteString -> (a -> SharedRep m a) -> (Bool -> SharedRep m Bool) -> [ByteString] -> [(Bool, a)] -> SharedRep m [(Bool, a)]
 accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
   (Rep h fa) <-
     unshare $
@@ -400,18 +397,18 @@ accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
             ((\(ch, a) -> bimap (,) (,) (checkf ch) <<*>> bodyf a) <$> xs)
         )
   h' <- zoom _1 h
-  pure (Rep (maybe mempty (h5_ . toHtml) title <> h') fa)
+  pure (Rep ((maybe mempty (\t -> [Node (tag "h5" []) [pure $ Content t]]) title) <> [h']) fa)
 
 -- | A fixed-sized list of Maybe a\'s
-listMaybeRep :: (Monad m) => Maybe Text -> Text -> (Text -> Maybe a -> SharedRep m (Maybe a)) -> Int -> [a] -> SharedRep m [Maybe a]
+listMaybeRep :: (Monad m) => Maybe ByteString -> ByteString -> (ByteString -> Maybe a -> SharedRep m (Maybe a)) -> Int -> [a] -> SharedRep m [Maybe a]
 listMaybeRep t p srf n as =
   accordionList t p Nothing srf (defaultListLabels n) (take n ((Just <$> as) <> repeat Nothing))
 
 -- | A SharedRep of [a].  Due to the applicative nature of the bridge, the size of lists has to be fixed on construction.  listRep is a workaround for this, to enable some form of dynamic sizing.
 listRep ::
   (Monad m) =>
-  Maybe Text ->
-  Text ->
+  Maybe ByteString ->
+  ByteString ->
   -- | name prefix (should be unique)
   (Bool -> SharedRep m Bool) ->
   -- | Bool Rep
@@ -435,84 +432,50 @@ listRep t p brf srf n defa as =
       (take n (((True,) <$> as) <> repeat (False, defa)))
 
 -- a sensible default for the accordion row labels for a list
-defaultListLabels :: Int -> [Text]
-defaultListLabels n = (\x -> "[" <> pack (show x) <> "]") <$> [0 .. n] :: [Text]
+defaultListLabels :: Int -> [ByteString]
+defaultListLabels n = (\x -> "[" <> strToUtf8 (show x) <> "]") <$> [0 .. n] :: [ByteString]
 
 -- | Parse from a textbox
 --
 -- Uses focusout so as not to spam the reader.
-readTextbox :: (Monad m, Read a, Show a) => Maybe Text -> a -> SharedRep m (Either Text a)
-readTextbox label v = parsed . unpack <$> textbox' label (pack $ show v)
+readTextbox :: (Monad m, Read a, Show a) => Maybe ByteString -> a -> SharedRep m (Either ByteString a)
+readTextbox label v = parsed . utf8ToStr <$> textbox' label (strToUtf8 $ show v)
   where
     parsed str =
       case reads str of
         [(a, "")] -> Right a
-        _badRead -> Left (pack str)
+        _badRead -> Left (strToUtf8 str)
 
--- | Representation of web concerns (css, js & html).
-fiddle :: (Monad m) => Concerns Text -> SharedRep m (Concerns Text, Bool)
-fiddle (Concerns c j h) =
-  bimap
-    (\c' j' h' up -> Lucid.with div_ [class__ "fiddle "] $ mconcat [up, h', j', c'])
-    (\c' j' h' up -> (Concerns c' j' h', up))
-    (textarea 10 (Just "css") c)
-    <<*>> textarea 10 (Just "js") j
-    <<*>> textarea 10 (Just "html") h
-    <<*>> button (Just "update")
-
--- | turns a SharedRep into a fiddle
-viaFiddle ::
-  (Monad m) =>
-  SharedRep m a ->
-  SharedRep m (Bool, Concerns Text, a)
-viaFiddle sr = SharedRep $ do
-  sr'@(Rep h _) <- unshare sr
-  hrep <- unshare $ textarea 10 (Just "html") (toText h)
-  crep <- unshare $ textarea 10 (Just "css") mempty
-  jrep <- unshare $ textarea 10 (Just "js") mempty
-  u <- unshare $ button (Just "update")
-  pure $
-    bimap
-      (\up a b c _ -> Lucid.with div_ [class__ "fiddle "] $ mconcat [up, a, b, c])
-      (\up a b c d -> (up, Concerns a b c, d))
-      u
-      <<*>> crep
-      <<*>> jrep
-      <<*>> hrep
-      <<*>> sr'
-
-repChoice :: (Monad m) => Int -> [(Text, SharedRep m a)] -> SharedRep m a
+repChoice :: (Monad m) => Int -> [(ByteString, SharedRepF m Token a)] -> SharedRep m a
 repChoice initt xs =
   bimap hmap mmap dd
     <<*>> foldr (\x a -> bimap (:) (:) x <<*>> a) (pure []) cs
   where
     ts = fst <$> xs
     cs = snd <$> xs
-    dd = dropdownSum takeText id Nothing ts t0
+    dd = dropdownSum takeRest id Nothing ts t0
     t0 = ts List.!! initt
     hmap dd' cs' =
-      div_
+      pure $ wrap "div" []
         ( dd'
-            <> mconcat (zipWith (`subtype` t0) cs' ts)
+            <> (zipWith (\c t -> pure $ fromMaybe c $ addAttrs (subtype t0 t) c) cs' ts)
         )
     mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
 
 -- | select test keys from a Map
-selectItems :: [Text] -> HashMap.HashMap Text a -> [(Text, a)]
+selectItems :: [ByteString] -> HashMap.HashMap ByteString a -> [(ByteString, a)]
 selectItems ks m =
   HashMap.toList $
     HashMap.filterWithKey (\k _ -> k `elem` ks) m
 
 -- | rep of multiple items list
-repItemsSelect :: (Monad m) => [Text] -> [Text] -> SharedRep m [Text]
+repItemsSelect :: (Monad m) => [ByteString] -> [ByteString] -> SharedRep m [ByteString]
 repItemsSelect initial full =
-  dropdownMultiple (pack <$> some (satisfy (`notElem` ([','] :: [Char])))) id (Just "items") full initial
+  dropdownMultiple (strToUtf8 <$> some (satisfy (`notElem` ([','] :: [Char])))) id (Just "items") full initial
 
-subtype :: (With a) => a -> Text -> Text -> a
-subtype h origt t =
-  with
-    h
-    [ class__ "subtype ",
-      data_ "sumtype" t,
-      style_ ("display:" <> bool "block" "none" (origt /= t))
+subtype :: ByteString -> ByteString -> [Attr]
+subtype origt t =
+    [ Attr "class" "subtype ",
+      Attr "data_sumtype" t,
+      Attr "style" ("display:" <> bool "block" "none" (origt /= t))
     ]

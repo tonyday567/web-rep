@@ -20,25 +20,25 @@ module Web.Rep.Page
     -- $js
     Js (..),
     onLoad,
-    renderJs,
   )
 where
 
 import Data.String.Interpolate
-import Data.Text (Text, unpack)
-import Data.Text qualified as Text
 import GHC.Generics
-import Lucid
+import MarkupParse
 import Optics.Core
+import Data.Tree
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as C
 
 -- | Components of a web page.
 --
 -- A web page can take many forms but still have the same underlying representation. For example, CSS can be linked to in a separate file, or can be inline within html, but still be the same css and have the same expected external effect. A Page represents the practical components of what makes up a static snapshot of a web page.
 data Page = Page
   { -- | css library links
-    libsCss :: [Html ()],
+    libsCss :: [Tree Token],
     -- | javascript library links
-    libsJs :: [Html ()],
+    libsJs :: [Tree Token],
     -- | css
     cssBody :: Css,
     -- | javascript with global scope
@@ -46,9 +46,9 @@ data Page = Page
     -- | javascript included within the onLoad function
     jsOnLoad :: Js,
     -- | html within the header
-    htmlHeader :: Html (),
+    htmlHeader :: [ Tree Token ],
     -- | body html
-    htmlBody :: Html ()
+    htmlBody :: [ Tree Token ]
   }
   deriving (Show, Generic)
 
@@ -106,7 +106,6 @@ data PageStructure
   = HeaderBody
   | Headless
   | Snippet
-  | Svg
   deriving (Show, Eq, Generic)
 
 -- | Post-processing of page concerns
@@ -136,23 +135,17 @@ defaultPageConfig stem =
     ((stem <>) <$> suffixes)
     []
 
--- | css as Text.
-newtype Css = Css {cssText :: Text} deriving (Generic, Semigroup, Monoid)
-
-instance Show Css where
-  show (Css txt) = unpack txt
+-- | css as a string.
+newtype Css = Css {cssByteString :: ByteString} deriving (Show, Eq, Generic, Semigroup, Monoid)
 
 -- | Render 'Css' as text.
-renderCss :: PageRender -> Css -> Text
-renderCss Minified = Text.filter (\c -> c /= ' ' && c /= '\n') . cssText
-renderCss _ = cssText
+renderCss :: PageRender -> Css -> ByteString
+renderCss Minified = C.filter (\c -> c /= ' ' && c /= '\n') . cssByteString
+renderCss _ = cssByteString
 
--- | Javascript as Text
-newtype Js = Js {jsText :: Text} deriving (Eq, Show, Generic, Semigroup, Monoid)
+-- | Javascript as string
+newtype Js = Js {jsByteString :: ByteString} deriving (Eq, Show, Generic, Semigroup, Monoid)
 
 onLoad :: Js -> Js
 onLoad (Js t) = Js [i| window.onload=function(){#{t}};|]
 
--- | Render 'Js' as 'Text'.
-renderJs :: Js -> Text
-renderJs = jsText

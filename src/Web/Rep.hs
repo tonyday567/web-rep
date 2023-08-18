@@ -36,7 +36,6 @@ module Web.Rep
     -- * JS
     Js (..),
     onLoad,
-    renderJs,
 
     -- * re-export modules
     module Web.Rep.SharedReps,

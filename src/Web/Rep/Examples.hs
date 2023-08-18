@@ -25,13 +25,16 @@ where
 
 import Data.Biapplicative
 import Data.Bool
-import Data.Markup.FlatParse
+import MarkupParse.FlatParse
+import MarkupParse
 import Data.String.Interpolate
-import Data.Text (Text, pack)
+import Data.Text (pack)
 import GHC.Generics
-import Lucid
 import Optics.Core
 import Web.Rep
+import Data.ByteString (ByteString)
+import Data.Tree
+import FlatParse.Basic (strToUtf8, takeRest)
 
 -- | simple page example
 page1 :: Page
@@ -60,17 +63,17 @@ cfg2 =
           #filenames .~ (("other/cfg2" <>) <$> suffixes) $
             defaultPageConfig ""
 
-cssLibs :: [Text]
+cssLibs :: [ByteString]
 cssLibs =
   ["http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"]
 
-cssLibsLocal :: [Text]
+cssLibsLocal :: [ByteString]
 cssLibsLocal = ["css/font-awesome.min.css"]
 
-jsLibs :: [Text]
+jsLibs :: [ByteString]
 jsLibs = ["http://code.jquery.com/jquery-1.6.3.min.js"]
 
-jsLibsLocal :: [Text]
+jsLibsLocal :: [ByteString]
 jsLibsLocal = ["jquery-2.1.3.min.js"]
 
 css1 :: Css
@@ -105,17 +108,17 @@ $('\#btnGo').click( function() {
 });
 |]
 
-button1 :: Html ()
+button1 :: [Tree Token]
 button1 =
-  with
-    button_
-    [id_ "btnGo", Lucid.type_ "button"]
-    ("Go " <> with i_ [class__ "fa fa-play"] mempty)
+  pure $ wrap "button"
+    [Attr "id" "btnGo",
+     Attr "type" "button"]
+    [ pure (Content "Go"), pure $ tag "i" [Attr "class" "fa fa-play"]]
 
 -- | One of each sharedrep input instances.
 data RepExamples = RepExamples
-  { repTextbox :: Text,
-    repTextarea :: Text,
+  { repTextbox :: ByteString,
+    repTextarea :: ByteString,
     repSliderI :: Int,
     repSlider :: Double,
     repSliderVI :: Int,
@@ -125,7 +128,7 @@ data RepExamples = RepExamples
     repDropdown :: Int,
     repDropdownMultiple :: [Int],
     repShape :: Shape,
-    repColor :: Text
+    repColor :: ByteString
   }
   deriving (Show, Eq, Generic)
 
@@ -133,14 +136,14 @@ data RepExamples = RepExamples
 data Shape = SquareShape | CircleShape deriving (Eq, Show, Generic)
 
 -- | shape parser
-toShape :: Text -> Shape
+toShape :: ByteString -> Shape
 toShape t = case t of
   "Circle" -> CircleShape
   "Square" -> SquareShape
   _ -> CircleShape
 
 -- | shape printer
-fromShape :: Shape -> Text
+fromShape :: Shape -> ByteString
 fromShape CircleShape = "Circle"
 fromShape SquareShape = "Square"
 
@@ -155,9 +158,9 @@ repExamples = do
   dsV' <- sliderV (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
-  dr <- dropdown int (pack . show) (Just "dropdown") (pack . show <$> [1 .. 5 :: Int]) 3
-  drm <- dropdownMultiple int (pack . show) (Just "dropdown multiple") (pack . show <$> [1 .. 5 :: Int]) [2, 4]
-  drt <- toShape <$> dropdown takeText id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
+  dr <- dropdown int (strToUtf8 . show) (Just "dropdown") (strToUtf8 . show <$> [1 .. 5 :: Int]) 3
+  drm <- dropdownMultiple int (strToUtf8 . show) (Just "dropdown multiple") (strToUtf8 . show <$> [1 .. 5 :: Int]) [2, 4]
+  drt <- toShape <$> dropdown takeRest id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
   col <- colorPicker (Just "color") "#454e56"
   pure (RepExamples t ta n ds' nV dsV' c tog dr drm drt col)
 
@@ -168,7 +171,7 @@ listExample n =
     "al"
     Nothing
     (\l a -> sliderI (Just l) (0 :: Int) n 1 a)
-    ((\x -> "[" <> (pack . show) x <> "]") <$> [0 .. n] :: [Text])
+    ((\x -> "[" <> (strToUtf8 . show) x <> "]") <$> [0 .. n] :: [ByteString])
     [0 .. n]
 
 listRepExample :: (Monad m) => Int -> SharedRep m [Int]
@@ -182,7 +185,7 @@ listRepExample n =
     3
     [0 .. 4]
 
-fiddleExample :: Concerns Text
+fiddleExample :: Concerns ByteString
 fiddleExample =
   Concerns
     mempty
@@ -191,14 +194,14 @@ fiddleExample =
 <div class=" form-group-sm "><label for="1">fiddle example</label><input max="10.0" value="3.0" oninput="jsb.event({ &\#39;element&\#39;: this.id, &\#39;value&\#39;: this.value});" step="1.0" min="0.0" id="1" type="range" class=" custom-range  form-control-range "></div>
 |]
 
-data SumTypeExample = SumInt Int | SumOnly | SumText Text deriving (Eq, Show, Generic)
+data SumTypeExample = SumInt Int | SumOnly | SumText ByteString deriving (Eq, Show, Generic)
 
-sumTypeText :: SumTypeExample -> Text
+sumTypeText :: SumTypeExample -> ByteString
 sumTypeText (SumInt _) = "SumInt"
 sumTypeText SumOnly = "SumOnly"
 sumTypeText (SumText _) = "SumText"
 
-repSumTypeExample :: (Monad m) => Int -> Text -> SumTypeExample -> SharedRep m SumTypeExample
+repSumTypeExample :: (Monad m) => Int -> ByteString -> SumTypeExample -> SharedRep m SumTypeExample
 repSumTypeExample defi deft defst =
   bimap hmap mmap repst <<*>> repi <<*>> rept
   where
@@ -206,28 +209,27 @@ repSumTypeExample defi deft defst =
     rept = textbox Nothing defText
     repst =
       dropdownSum
-        takeText
+        takeRest
         id
         (Just "SumTypeExample")
         ["SumInt", "SumOnly", "SumText"]
         (sumTypeText defst)
     hmap repst' repi' rept' =
-      div_
+      wrap "div"
         ( repst'
-            <> with
-              repi'
-              [ class__ "subtype ",
-                data_ "sumtype" "SumInt",
-                style_
+            <> tag repi'
+              [ Attr "class" "subtype ",
+                Attr "data-sumtype" "SumInt",
+                Attr "style"
                   ( "display:"
                       <> bool "block" "none" (sumTypeText defst /= "SumInt")
                   )
               ]
             <> with
               rept'
-              [ class__ "subtype ",
-                data_ "sumtype" "SumText",
-                style_
+              [ Attr "class" "subtype ",
+                Attr "data-sumtype" "SumText",
+                Attr "style"
                   ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))
               ]
         )
@@ -246,11 +248,11 @@ repSumTypeExample defi deft defst =
 
 data SumType2Example = SumOutside Int | SumInside SumTypeExample deriving (Eq, Show, Generic)
 
-sumType2Text :: SumType2Example -> Text
+sumType2Text :: SumType2Example -> ByteString
 sumType2Text (SumOutside _) = "SumOutside"
 sumType2Text (SumInside _) = "SumInside"
 
-repSumType2Example :: (Monad m) => Int -> Text -> SumTypeExample -> SumType2Example -> SharedRep m SumType2Example
+repSumType2Example :: (Monad m) => Int -> ByteString -> SumTypeExample -> SumType2Example -> SharedRep m SumType2Example
 repSumType2Example defi deft defst defst2 =
   bimap hmap mmap repst2 <<*>> repst <<*>> repoi
   where
@@ -258,32 +260,30 @@ repSumType2Example defi deft defst defst2 =
     repst = repSumTypeExample defi deft SumOnly
     repst2 =
       dropdownSum
-        takeText
+        takeRest
         id
         (Just "SumType2Example")
         ["SumOutside", "SumInside"]
         (sumType2Text defst2)
     hmap repst2' repst' repoi' =
-      div_
+      wrap "div" []
         ( repst2'
-            <> with
-              repst'
-              [ class__ "subtype ",
-                data_ "sumtype" "SumInside",
-                style_
+            <> tag repst'
+              [ Attr "class" "subtype ",
+                Attr "data-sumtype" "SumInside",
+                Attr "style"
                   ( "display:"
                       <> bool "block" "none" (sumType2Text defst2 /= "SumInside")
                   )
               ]
-            <> with
-              repoi'
-              [ class__ "subtype ",
-                data_ "sumtype" "SumOutside",
-                style_
+            <> pure (tag repoi'
+              [ Attr "class" "subtype ",
+                Attr "data-sumtype" "SumOutside",
+                Attr "style"
                   ( "display:"
                       <> bool "block" "none" (sumType2Text defst2 /= "SumOutside")
                   )
-              ]
+              ])
         )
     mmap repst2' repst' repoi' =
       case repst2' of
