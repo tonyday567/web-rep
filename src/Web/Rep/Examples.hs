@@ -13,22 +13,14 @@ module Web.Rep.Examples
     Shape (..),
     fromShape,
     toShape,
-    SumTypeExample (..),
-    repSumTypeExample,
-    SumType2Example (..),
-    repSumType2Example,
     listExample,
     listRepExample,
-    fiddleExample,
   )
 where
 
-import Data.Biapplicative
-import Data.Bool
 import MarkupParse.FlatParse
 import MarkupParse
 import Data.String.Interpolate
-import Data.Text (pack)
 import GHC.Generics
 import Optics.Core
 import Web.Rep
@@ -185,111 +177,3 @@ listRepExample n =
     3
     [0 .. 4]
 
-fiddleExample :: Concerns ByteString
-fiddleExample =
-  Concerns
-    mempty
-    mempty
-    [i|
-<div class=" form-group-sm "><label for="1">fiddle example</label><input max="10.0" value="3.0" oninput="jsb.event({ &\#39;element&\#39;: this.id, &\#39;value&\#39;: this.value});" step="1.0" min="0.0" id="1" type="range" class=" custom-range  form-control-range "></div>
-|]
-
-data SumTypeExample = SumInt Int | SumOnly | SumText ByteString deriving (Eq, Show, Generic)
-
-sumTypeText :: SumTypeExample -> ByteString
-sumTypeText (SumInt _) = "SumInt"
-sumTypeText SumOnly = "SumOnly"
-sumTypeText (SumText _) = "SumText"
-
-repSumTypeExample :: (Monad m) => Int -> ByteString -> SumTypeExample -> SharedRep m SumTypeExample
-repSumTypeExample defi deft defst =
-  bimap hmap mmap repst <<*>> repi <<*>> rept
-  where
-    repi = sliderI Nothing 0 20 1 defInt
-    rept = textbox Nothing defText
-    repst =
-      dropdownSum
-        takeRest
-        id
-        (Just "SumTypeExample")
-        ["SumInt", "SumOnly", "SumText"]
-        (sumTypeText defst)
-    hmap repst' repi' rept' =
-      wrap "div"
-        ( repst'
-            <> tag repi'
-              [ Attr "class" "subtype ",
-                Attr "data-sumtype" "SumInt",
-                Attr "style"
-                  ( "display:"
-                      <> bool "block" "none" (sumTypeText defst /= "SumInt")
-                  )
-              ]
-            <> with
-              rept'
-              [ Attr "class" "subtype ",
-                Attr "data-sumtype" "SumText",
-                Attr "style"
-                  ("display:" <> bool "block" "none" (sumTypeText defst /= "SumText"))
-              ]
-        )
-    mmap repst' repi' rept' =
-      case repst' of
-        "SumInt" -> SumInt repi'
-        "SumOnly" -> SumOnly
-        "SumText" -> SumText rept'
-        _ -> SumOnly
-    defInt = case defst of
-      SumInt i -> i
-      _NotSumInt -> defi
-    defText = case defst of
-      SumText t -> t
-      _NotSumText -> deft
-
-data SumType2Example = SumOutside Int | SumInside SumTypeExample deriving (Eq, Show, Generic)
-
-sumType2Text :: SumType2Example -> ByteString
-sumType2Text (SumOutside _) = "SumOutside"
-sumType2Text (SumInside _) = "SumInside"
-
-repSumType2Example :: (Monad m) => Int -> ByteString -> SumTypeExample -> SumType2Example -> SharedRep m SumType2Example
-repSumType2Example defi deft defst defst2 =
-  bimap hmap mmap repst2 <<*>> repst <<*>> repoi
-  where
-    repoi = sliderI Nothing 0 20 1 defInt
-    repst = repSumTypeExample defi deft SumOnly
-    repst2 =
-      dropdownSum
-        takeRest
-        id
-        (Just "SumType2Example")
-        ["SumOutside", "SumInside"]
-        (sumType2Text defst2)
-    hmap repst2' repst' repoi' =
-      wrap "div" []
-        ( repst2'
-            <> tag repst'
-              [ Attr "class" "subtype ",
-                Attr "data-sumtype" "SumInside",
-                Attr "style"
-                  ( "display:"
-                      <> bool "block" "none" (sumType2Text defst2 /= "SumInside")
-                  )
-              ]
-            <> pure (tag repoi'
-              [ Attr "class" "subtype ",
-                Attr "data-sumtype" "SumOutside",
-                Attr "style"
-                  ( "display:"
-                      <> bool "block" "none" (sumType2Text defst2 /= "SumOutside")
-                  )
-              ])
-        )
-    mmap repst2' repst' repoi' =
-      case repst2' of
-        "SumOutside" -> SumOutside repoi'
-        "SumInside" -> SumInside repst'
-        _WeirdSpelling -> SumOutside repoi'
-    defInt = case defst of
-      SumInt i -> i
-      _NotSumInt -> defi

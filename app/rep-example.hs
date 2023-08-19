@@ -6,7 +6,7 @@
 import Box
 import Control.Monad
 import Data.Bifunctor
-import Data.Text (pack)
+import FlatParse.Basic (strToUtf8)
 import Optics.Core
 import Options.Applicative
 import Web.Rep
@@ -47,7 +47,7 @@ opts =
 
 -- | A simple count stream
 countStream :: Int -> Double -> CoEmitter IO (Gap, [Code])
-countStream n speed = fmap (second ((: []) . Replace "output" . pack . show)) <$> qList (zip (0 : repeat (1 / speed)) [0 .. n])
+countStream n speed = fmap (second ((: []) . Replace "output" . strToUtf8 . show)) <$> qList (zip (0 : repeat (1 / speed)) [0 .. n])
 
 main :: IO ()
 main = do
@@ -73,18 +73,21 @@ playTest = servePlayStream (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeB
 playPage :: Page
 playPage =
   defaultSocketPage
-    & #htmlBody
-      .~ divClass_
-        "container"
-        ( mconcat
-            [ divClass_ "row" (L.h1_ "Replay Simulation"),
-              divClass_ "row" . mconcat $
-                (\(t, h) -> divClass_ "col" (L.with L.div_ [L.id_ t] h))
-                  <$> [ ("input", mempty),
-                        ("output", mempty)
-                      ]
+    & set #htmlBody
+      (pure $ wrap "div" [Attr "class" "container"]
+        (
+            [ wrap "div" [Attr "class" "row"] [wrap "h1" [] [pure $ Content "replay simulation"]],
+              wrap "div" [Attr "class" "row"] $
+                (\(t, h) ->
+                   wrap "div" [Attr "class" "row"]
+                   (pure $ wrap "h2" [] (pure $ wrap "div" [Attr "id" t] [pure $ Content h]))) <$> sections
             ]
-        )
+        ))
+  where
+    sections =
+      [ ("input", mempty),
+        ("output", mempty)
+      ]
 
 restartTest :: IO (Either Bool ())
 restartTest = restart <$> (gapEffect . fmap (1,) <$> resetE 5 10) <*|> pure (glue showStdout . gapEffect <$|> countStream 100 1)

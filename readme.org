@@ -44,23 +44,16 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
 import Prelude
 import Box
 import Web.Rep
-import Data.Markup
 import Optics.Core
 import FlatParse.Basic
-import Data.Markup.Parser
+import MarkupParse
 putStrLn "ok"
 #+end_src
 
 #+RESULTS:
 : Ok, 11 modules loaded.
-: <no location info>: error:
-:     Could not find module ‘Data.Markup.Parser’
-:     Perhaps you meant
-:       Data.Markup.Parse (from markup-parse-0.0.0.1)
-:       Data.Markup.Parse (needs flag -package-id markup-parse-0.0.0.1)
-:       Data.Markup.Parse (needs flag -package-id markup-parse-0.0.0.1)
+: >
 : ok
-
 
 * css
 
