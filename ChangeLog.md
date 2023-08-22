@@ -1,3 +1,8 @@
+0.11
+===
+* Removed clay, lucid as dependencies
+* refactored to markup-parse as markup representation.
+
 0.10.2
 ===
 
