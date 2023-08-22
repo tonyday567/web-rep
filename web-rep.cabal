@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: web-rep
-version: 0.10.2.0
+version: 0.11.0.0
 license: BSD-3-Clause
 license-file: LICENSE
 copyright: Tony Day (c) 2015
@@ -105,10 +105,10 @@ library
         , bifunctors            >=5.5.11 && <5.7
         , box                   >=0.9 && <0.10
         , box-socket            >=0.4 && <0.5
-        , bytestring         >=0.11.3 && <0.13
-        , containers
-        , flatparse
-        , markup-parse
+        , bytestring            >=0.11.3 && <0.13
+        , containers            >=0.6 && <0.7
+        , flatparse             >=0.3.5 && <0.6
+        , markup-parse          >=0.1.0.1 && <0.2
         , mtl                   >=2.2.2 && <2.4
         , optics-core           >=0.4 && <0.5
         , optics-extra          >=0.4 && <0.5
@@ -143,12 +143,9 @@ executable web-rep-example
     build-depends:
         , base                 >=4.7 && <5
         , box                  >=0.9 && <0.10
-        , flatparse
-        , markup-parse
+        , flatparse            >=0.3.5 && <0.6
+        , markup-parse         >=0.1 && <0.2
         , optics-core          >=0.4 && <0.5
         , optparse-applicative >=0.17 && <0.19
         , text                 >=1.2 && <2.1
         , web-rep
-    ghc-options:
-        -funbox-strict-fields -fforce-recomp -threaded -rtsopts
-        -with-rtsopts=-N

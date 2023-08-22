@@ -17,12 +17,8 @@ http://localhost:9160/
 
 * library reference
 - [[https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html#flag-reference][scotty]]
-- get [[https://getbootstrap.com/][bootstrap]]
+- [[https://getbootstrap.com/][bootstrap]]
 - [[https://seiyria.com/bootstrap-slider][bootstrap-slider]]
-
-* eval usage
-
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!
 
 * Development
 
@@ -52,26 +48,5 @@ putStrLn "ok"
 
 #+RESULTS:
 : Ok, 11 modules loaded.
-: >
+: ghci
 : ok
-
-* css
-
-#+begin_src haskell :results output
-page1 & view #cssBody
-#+end_src
-
-#+begin_src haskell :results output
-toBS $ renderPage bootstrapPage
-#+end_src
-
-#+RESULTS:
-: "<!DOCTYPE HTML><html lang=\"en\"><head><meta charset=\"utf-8\"><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css\" integrity=\"sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC\" crossorigin=\"anonymous\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\"></head><body><script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js\" integrity=\"sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM\" crossorigin=\"anonymous\"></script><script src=\"https://code.jquery.com/jquery-3.3.1.slim.min.js\" integrity=\"sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo\" crossorigin=\"anonymous\"></script><script
-: window.onload=function(){};</script></body></html>"
-
-#+begin_src haskell :results output
-runParser htmlP $ toBS $ renderPage bootstrapPage
-#+end_src
-
-#+RESULTS:
-: Fail
