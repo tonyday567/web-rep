@@ -13,7 +13,6 @@ module Web.Rep.Page
     concernNames,
     PageConcerns (..),
     PageStructure (..),
-    PageRender (..),
     -- $css
     Css (..),
     renderCss,
@@ -23,22 +22,21 @@ module Web.Rep.Page
   )
 where
 
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as C
 import Data.String.Interpolate
 import GHC.Generics
 import MarkupParse
 import Optics.Core
-import Data.Tree
-import Data.ByteString (ByteString)
-import Data.ByteString.Char8 qualified as C
 
 -- | Components of a web page.
 --
 -- A web page can take many forms but still have the same underlying representation. For example, CSS can be linked to in a separate file, or can be inline within html, but still be the same css and have the same expected external effect. A Page represents the practical components of what makes up a static snapshot of a web page.
 data Page = Page
   { -- | css library links
-    libsCss :: [Tree Token],
+    libsCss :: Markup,
     -- | javascript library links
-    libsJs :: [Tree Token],
+    libsJs :: Markup,
     -- | css
     cssBody :: Css,
     -- | javascript with global scope
@@ -46,9 +44,9 @@ data Page = Page
     -- | javascript included within the onLoad function
     jsOnLoad :: Js,
     -- | html within the header
-    htmlHeader :: [ Tree Token ],
+    htmlHeader :: Markup,
     -- | body html
-    htmlBody :: [ Tree Token ]
+    htmlBody :: Markup
   }
   deriving (Show, Generic)
 
@@ -64,7 +62,7 @@ instance Semigroup Page where
       (p0 ^. #htmlBody <> p1 ^. #htmlBody)
 
 instance Monoid Page where
-  mempty = Page [] [] mempty mempty mempty mempty mempty
+  mempty = Page mempty mempty mempty mempty mempty mempty mempty
 
   mappend = (<>)
 
@@ -108,18 +106,11 @@ data PageStructure
   | Snippet
   deriving (Show, Eq, Generic)
 
--- | Post-processing of page concerns
-data PageRender
-  = Pretty
-  | Minified
-  | NoPost
-  deriving (Show, Eq, Generic)
-
 -- | Configuration options when rendering a 'Page'.
 data PageConfig = PageConfig
   { concerns :: PageConcerns,
     structure :: PageStructure,
-    pageRender :: PageRender,
+    renderStyle :: RenderStyle,
     filenames :: Concerns FilePath,
     localdirs :: [FilePath]
   }
@@ -131,7 +122,7 @@ defaultPageConfig stem =
   PageConfig
     Inline
     HeaderBody
-    Minified
+    Compact
     ((stem <>) <$> suffixes)
     []
 
@@ -139,8 +130,8 @@ defaultPageConfig stem =
 newtype Css = Css {cssByteString :: ByteString} deriving (Show, Eq, Generic, Semigroup, Monoid)
 
 -- | Render 'Css' as text.
-renderCss :: PageRender -> Css -> ByteString
-renderCss Minified = C.filter (\c -> c /= ' ' && c /= '\n') . cssByteString
+renderCss :: RenderStyle -> Css -> ByteString
+renderCss Compact = C.filter (\c -> c /= ' ' && c /= '\n') . cssByteString
 renderCss _ = cssByteString
 
 -- | Javascript as string
@@ -148,4 +139,3 @@ newtype Js = Js {jsByteString :: ByteString} deriving (Eq, Show, Generic, Semigr
 
 onLoad :: Js -> Js
 onLoad (Js t) = Js [i| window.onload=function(){#{t}};|]
-

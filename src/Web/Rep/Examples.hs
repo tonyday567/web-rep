@@ -18,15 +18,14 @@ module Web.Rep.Examples
   )
 where
 
-import MarkupParse.FlatParse
-import MarkupParse
-import Data.String.Interpolate
-import GHC.Generics
-import Optics.Core
-import Web.Rep
 import Data.ByteString (ByteString)
-import Data.Tree
-import FlatParse.Basic (strToUtf8, takeRest)
+import Data.String.Interpolate
+import FlatParse.Basic (takeRest)
+import GHC.Generics
+import MarkupParse
+import MarkupParse.FlatParse
+import Optics.Core hiding (element)
+import Web.Rep
 
 -- | simple page example
 page1 :: Page
@@ -35,21 +34,21 @@ page1 =
     #cssBody .~ css1 $
       #jsGlobal .~ mempty $
         #jsOnLoad .~ click $
-          #libsCss .~ (libCss <$> cssLibs) $
-            #libsJs .~ (libJs <$> jsLibs) $
+          #libsCss .~ mconcat (libCss <$> cssLibs) $
+            #libsJs .~ mconcat (libJs <$> jsLibs) $
               mempty
 
 -- | page with localised libraries
 page2 :: Page
 page2 =
-  #libsCss .~ (libCss <$> cssLibsLocal) $
-    #libsJs .~ (libJs <$> jsLibsLocal) $
+  #libsCss .~ mconcat (libCss <$> cssLibsLocal) $
+    #libsJs .~ mconcat (libJs <$> jsLibsLocal) $
       page1
 
 cfg2 :: PageConfig
 cfg2 =
   #concerns .~ Separated $
-    #pageRender .~ Pretty $
+    #renderStyle .~ Indented 4 $
       #structure .~ Headless $
         #localdirs .~ ["test/static"] $
           #filenames .~ (("other/cfg2" <>) <$> suffixes) $
@@ -100,12 +99,14 @@ $('\#btnGo').click( function() {
 });
 |]
 
-button1 :: [Tree Token]
+button1 :: Markup
 button1 =
-  pure $ wrap "button"
-    [Attr "id" "btnGo",
-     Attr "type" "button"]
-    [ pure (Content "Go"), pure $ tag "i" [Attr "class" "fa fa-play"]]
+  element
+    "button"
+    [ Attr "id" "btnGo",
+      Attr "type" "button"
+    ]
+    (content "Go" <> element_ "i" [Attr "class" "fa fa-play"])
 
 -- | One of each sharedrep input instances.
 data RepExamples = RepExamples
@@ -150,9 +151,9 @@ repExamples = do
   dsV' <- sliderV (Just "double slider") 0 1 0.1 0.5
   c <- checkbox (Just "checkbox") True
   tog <- toggle (Just "toggle") False
-  dr <- dropdown int (strToUtf8 . show) (Just "dropdown") (strToUtf8 . show <$> [1 .. 5 :: Int]) 3
+  dr <- dropdown (runParserEither int) (strToUtf8 . show) (Just "dropdown") (strToUtf8 . show <$> [1 .. 5 :: Int]) 3
   drm <- dropdownMultiple int (strToUtf8 . show) (Just "dropdown multiple") (strToUtf8 . show <$> [1 .. 5 :: Int]) [2, 4]
-  drt <- toShape <$> dropdown takeRest id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
+  drt <- toShape <$> dropdown (runParserEither takeRest) id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
   col <- colorPicker (Just "color") "#454e56"
   pure (RepExamples t ta n ds' nV dsV' c tog dr drm drt col)
 
@@ -176,4 +177,3 @@ listRepExample n =
     n
     3
     [0 .. 4]
-

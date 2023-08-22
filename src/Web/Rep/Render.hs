@@ -14,15 +14,13 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Data.Foldable
-import Optics.Core
-import Web.Rep.Html
-import Web.Rep.Page
-import MarkupParse
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
-import FlatParse.Basic (strToUtf8)
-import Data.Tree
+import Data.Foldable
+import MarkupParse
+import Optics.Core hiding (element)
+import Web.Rep.Html
+import Web.Rep.Page
 
 -- | Render a Page with the default configuration into Html.
 renderPage :: Page -> Markup
@@ -44,65 +42,65 @@ renderPageWith pc p =
     h =
       case pc ^. #structure of
         HeaderBody ->
-          Markup Html (doctypeHtml <>
-           [wrap "html"
+          doctypeHtml
+            <> element
+              "html"
               [Attr "lang" "en"]
-              [wrap "head" []
-                      ([ pure ( tag "meta" [Attr "charset" "utf-8"] )] <>
-                        cssInline <>
-                        libsCss' <>
-                        view #htmlHeader p),
-               wrap "body" []
-                    (
-                        view #htmlBody p <>
-                        libsJs' <>
-                        jsInline
-                    )
-              ]
-          ])
+              ( element
+                  "head"
+                  []
+                  (element_ "meta" [Attr "charset" "utf-8"])
+                  <> cssInline
+                  <> libsCss'
+                  <> view #htmlHeader p
+              )
+            <> element
+              "body"
+              []
+              ( view #htmlBody p
+                  <> libsJs'
+                  <> jsInline
+              )
         Headless ->
-            Markup Html $ doctypeHtml <>
-              [pure $ tag "meta" [Attr "charset" "utf-8"]] <>
-              libsCss' <>
-              cssInline <>
-              ( view #htmlHeader p  )<>
-              p ^. #htmlBody <>
-              libsJs' <>
-              jsInline
+          doctypeHtml
+            <> element_ "meta" [Attr "charset" "utf-8"]
+            <> libsCss'
+            <> cssInline
+            <> view #htmlHeader p
+            <> p ^. #htmlBody
+            <> libsJs'
+            <> jsInline
         Snippet ->
-            Markup Html $
-              libsCss' <>
-              cssInline <>
-              view #htmlHeader p <>
-              view #htmlBody p <>
-              libsJs' <>
-              jsInline
+          libsCss'
+            <> cssInline
+            <> view #htmlHeader p
+            <> view #htmlBody p
+            <> libsJs'
+            <> jsInline
 
     css :: ByteString
-    css = renderCss (pc ^. #pageRender) (p ^. #cssBody)
+    css = renderCss (view #renderStyle pc) (p ^. #cssBody)
 
     js :: ByteString
     js = jsByteString (p ^. #jsGlobal <> onLoad (p ^. #jsOnLoad))
     cssInline
       | pc ^. #concerns == Separated || css == mempty = mempty
-      | otherwise = pure $ wrap "style" [Attr "type" "text/css"] (pure $ pure $ Content css)
+      | otherwise = elementc "style" [Attr "type" "text/css"] css
     jsInline
       | pc ^. #concerns == Separated || js == mempty = mempty
-      | otherwise = pure $ wrap "script" [] (pure $ pure $ Content js)
-    libsCss' :: [Tree Token]
+      | otherwise = elementc "script" [] js
     libsCss' =
       case pc ^. #concerns of
         Inline -> view #libsCss p
         Separated ->
           view #libsCss p
-            <> [libCss (strToUtf8 $ pc ^. #filenames % #cssConcern)]
-    libsJs' :: [Tree Token]
+            <> libCss (strToUtf8 $ pc ^. #filenames % #cssConcern)
     libsJs' =
       case pc ^. #concerns of
         Inline -> p ^. #libsJs
         Separated ->
-          p ^. #libsJs
-            <> [libJs (strToUtf8 $ pc ^. #filenames % #jsConcern)]
+          view #libsJs p
+            <> libJs (strToUtf8 $ pc ^. #filenames % #jsConcern)
 
 -- | Render Page concerns to files.
 renderPageToFile :: FilePath -> PageConfig -> Page -> IO ()
@@ -114,13 +112,13 @@ renderPageToFile dir pc page =
 -- | Render a page to just a Html file.
 renderPageHtmlToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageHtmlToFile file pc page =
-  B.writeFile file (markdown Compact $ renderPageHtmlWith pc page)
+  B.writeFile file (markdown_ (view #renderStyle pc) Html $ renderPageHtmlWith pc page)
 
 -- | Render a Page as Text.
 renderPageAsByteString :: PageConfig -> Page -> Concerns ByteString
 renderPageAsByteString pc p =
   case pc ^. #concerns of
-    Inline -> Concerns mempty mempty (markdown Compact h)
-    Separated -> Concerns css js (markdown Compact h)
+    Inline -> Concerns mempty mempty (markdown_ (view #renderStyle pc) Html h)
+    Separated -> Concerns css js (markdown_ (view #renderStyle pc) Html h)
   where
     (css, js, h) = renderPageWith pc p

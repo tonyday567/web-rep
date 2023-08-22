@@ -8,15 +8,14 @@ where
 
 import Control.Monad
 import Control.Monad.Trans.Class
+import Data.ByteString qualified as B
 import Data.Text.Lazy (pack)
+import MarkupParse
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import Optics.Core hiding (only)
 import Web.Rep.Page
 import Web.Rep.Render
 import Web.Scotty
-import MarkupParse
-import Data.ByteString qualified as B
-import FlatParse.Basic (utf8ToStr)
 
 -- | serve a Page via a ScottyM
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
@@ -25,7 +24,7 @@ servePageWith rp pc p =
   where
     getpage = case pc ^. #concerns of
       Inline ->
-        get rp (html $ pack $ utf8ToStr $ markdown Compact $ renderPageHtmlWith pc p)
+        get rp (html $ pack $ utf8ToStr $ markdown_ Compact Html $ renderPageHtmlWith pc p)
       Separated ->
         let (css, js, h) = renderPageWith pc p
          in do
@@ -35,7 +34,7 @@ servePageWith rp pc p =
                 ( do
                     lift $ writeFile' cssfp css
                     lift $ writeFile' jsfp js
-                    html $ pack $ utf8ToStr $ markdown Compact h
+                    html $ pack $ utf8ToStr $ markdown_ Compact Html h
                 )
     cssfp = pc ^. #filenames % #cssConcern
     jsfp = pc ^. #filenames % #jsConcern

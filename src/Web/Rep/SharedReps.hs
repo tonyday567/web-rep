@@ -42,21 +42,20 @@ import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Biapplicative
 import Data.Bool
+import Data.ByteString (ByteString, intercalate)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
+import Data.Maybe
+import Data.String.Interpolate
+import FlatParse.Basic hiding (take)
 import MarkupParse
 import MarkupParse.FlatParse
-import Data.String.Interpolate
-import Data.ByteString (ByteString, intercalate)
-import FlatParse.Basic hiding (take)
-import Optics.Core
+import Optics.Core hiding (element)
 import Optics.Zoom
 import Web.Rep.Bootstrap
 import Web.Rep.Html.Input
 import Web.Rep.Shared
 import Prelude as P
-import Data.Tree
-import Data.Maybe
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -64,8 +63,8 @@ import Data.Maybe
 -- | Create a sharedRep from an Input.
 repInput ::
   (Monad m, Show a) =>
-  -- | FlatParse Markup Parser
-  Parser String a ->
+  -- | Parser
+  (ByteString -> Either ByteString a) ->
   -- | Printer
   (a -> ByteString) ->
   -- | 'Input' type
@@ -73,12 +72,12 @@ repInput ::
   -- | initial value
   a ->
   SharedRep m a
-repInput p pr i = register (first strToUtf8 . runParserEither p) pr (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i)
+repInput p pr i = register p pr (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i)
 
 -- | Like 'repInput', but does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
-repMessage :: (Monad m, Show a) => Parser String a -> (a -> ByteString) -> Input a -> a -> a -> SharedRep m a
+repMessage :: (Monad m, Show a) => (ByteString -> Either ByteString a) -> (a -> ByteString) -> Input a -> a -> a -> SharedRep m a
 repMessage p _ i def a =
-  message (first strToUtf8 . runParserEither p) (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
+  message p (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
 
 -- | double slider
 --
@@ -96,9 +95,9 @@ slider ::
   SharedRep m Double
 slider label l u s v =
   repInput
-    double
+    (runParserEither double)
     (strToUtf8 . show)
-    (Input v label mempty (Slider [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step"  (strToUtf8 $ show s)]))
+    (Input v label mempty (Slider [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
     v
 
 -- | double slider with shown value
@@ -117,7 +116,7 @@ sliderV ::
   SharedRep m Double
 sliderV label l u s v =
   repInput
-    double
+    (runParserEither double)
     (strToUtf8 . show)
     (Input v label mempty (SliderV [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
     v
@@ -139,7 +138,7 @@ sliderI ::
   SharedRep m a
 sliderI label l u s v =
   repInput
-    (fromIntegral <$> int)
+    (runParserEither (fromIntegral <$> int))
     (strToUtf8 . show)
     (Input v label mempty (Slider [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
     v
@@ -155,7 +154,7 @@ sliderVI ::
   SharedRep m a
 sliderVI label l u s v =
   repInput
-    (fromIntegral <$> int)
+    (runParserEither (fromIntegral <$> int))
     (strToUtf8 . show)
     (Input v label mempty (SliderV [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
     v
@@ -167,7 +166,7 @@ sliderVI label l u s v =
 textbox :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 textbox label v =
   repInput
-    takeRest
+    (runParserEither takeRest)
     id
     (Input v label mempty TextBox)
     v
@@ -176,7 +175,7 @@ textbox label v =
 textbox' :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 textbox' label v =
   repInput
-    takeRest
+    (runParserEither takeRest)
     id
     (Input v label mempty TextBox')
     v
@@ -185,7 +184,7 @@ textbox' label v =
 textarea :: (Monad m) => Int -> Maybe ByteString -> ByteString -> SharedRep m ByteString
 textarea rows label v =
   repInput
-    takeRest
+    (runParserEither takeRest)
     id
     (Input v label mempty (TextArea rows))
     v
@@ -194,7 +193,7 @@ textarea rows label v =
 colorPicker :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 colorPicker label v =
   repInput
-    takeRest
+    (runParserEither takeRest)
     id
     (Input v label mempty ColorPicker)
     v
@@ -203,7 +202,7 @@ colorPicker label v =
 dropdown ::
   (Monad m, Show a) =>
   -- | parse an a from ByteString
-  Parser String a ->
+  (ByteString -> Either ByteString a) ->
   -- | print an a to ByteString
   (a -> ByteString) ->
   -- | label suggestion
@@ -224,7 +223,7 @@ dropdown p pr label opts v =
 dropdownMultiple ::
   (Monad m, Show a) =>
   -- | parse an a from ByteString
-  Parser String a ->
+  Parser ByteString a ->
   -- | print an a to ByteString
   (a -> ByteString) ->
   -- | label suggestion
@@ -236,7 +235,7 @@ dropdownMultiple ::
   SharedRep m [a]
 dropdownMultiple p pr label opts vs =
   repInput
-    (sep comma p)
+    (runParserEither (sep comma p))
     (intercalate "," . fmap pr)
     (Input vs label mempty (DropdownMultiple opts ','))
     vs
@@ -245,7 +244,7 @@ dropdownMultiple p pr label opts vs =
 datalist :: (Monad m) => Maybe ByteString -> [ByteString] -> ByteString -> ByteString -> SharedRep m ByteString
 datalist label opts v id'' =
   repInput
-    takeRest
+    (runParserEither takeRest)
     (strToUtf8 . show)
     (Input v label mempty (Datalist opts id''))
     v
@@ -253,7 +252,7 @@ datalist label opts v id'' =
 -- | A dropdown box designed to help represent a haskell sum type.
 dropdownSum ::
   (Monad m, Show a) =>
-  Parser String a ->
+  (ByteString -> Either ByteString a) ->
   (a -> ByteString) ->
   Maybe ByteString ->
   [ByteString] ->
@@ -270,7 +269,7 @@ dropdownSum p pr label opts v =
 checkbox :: (Monad m) => Maybe ByteString -> Bool -> SharedRep m Bool
 checkbox label v =
   repInput
-    ((== "true") <$> takeRest)
+    (runParserEither ((== "true") <$> takeRest))
     (bool "false" "true")
     (Input v label mempty (Checkbox v))
     v
@@ -279,7 +278,7 @@ checkbox label v =
 toggle :: (Monad m) => Maybe ByteString -> Bool -> SharedRep m Bool
 toggle label v =
   repInput
-    ((== "true") <$> takeRest)
+    (runParserEither ((== "true") <$> takeRest))
     (bool "false" "true")
     (Input v label mempty (Toggle v label))
     v
@@ -288,7 +287,7 @@ toggle label v =
 toggle_ :: (Monad m) => Maybe ByteString -> Bool -> SharedRep m Bool
 toggle_ label v =
   repInput
-    ((== "true") <$> takeRest)
+    (runParserEither ((== "true") <$> takeRest))
     (bool "false" "true")
     (Input v Nothing mempty (Toggle v label))
     v
@@ -297,7 +296,7 @@ toggle_ label v =
 button :: (Monad m) => Maybe ByteString -> SharedRep m Bool
 button label =
   repMessage
-    (pure True)
+    (const (Right True))
     (bool "false" "true")
     (Input False label mempty Button)
     False
@@ -307,7 +306,7 @@ button label =
 chooseFile :: (Monad m) => Maybe ByteString -> ByteString -> SharedRep m ByteString
 chooseFile label v =
   repInput
-    takeRest
+    (runParserEither takeRest)
     (strToUtf8 . show)
     (Input v label mempty ChooseFile)
     v
@@ -329,9 +328,11 @@ maybeRep label st sa = SharedRep $ do
       cardify
         (a, [])
         Nothing
-        ( pure $ wrap "div"
+        ( element
+            "div"
             [ Attr "id" id',
-              Attr "style"
+              Attr
+                "style"
                 ("display:" <> bool "none" "block" st)
             ]
             b,
@@ -358,9 +359,11 @@ checkboxShow label id' v =
         )
 
 -- | toggle show/hide
-scriptToggleShow :: ByteString -> ByteString -> [Tree Token]
+scriptToggleShow :: ByteString -> ByteString -> Markup
 scriptToggleShow checkName toggleId =
-  pure $ wrap "script" [] $ pure . pure . Content $
+  elementc
+    "script"
+    []
     [i|
 $('\##{checkName}').on('change', (function(){
   var vis = this.checked ? "block" : "none";
@@ -380,7 +383,7 @@ accordionList title prefix open srf labels as = SharedRep $ do
           (pure [])
           (zipWith srf labels as)
   h' <- zoom _1 h
-  pure (Rep (maybe mempty (\t -> [Node (tag "h5" []) [pure $ Content t]]) title <> [h']) fa)
+  pure (Rep (maybe mempty (elementc "h5" []) title <> h') fa)
 
 -- | A (fixed-sized) list of (Bool, a) tuples.
 accordionBoolList :: (Monad m) => Maybe ByteString -> ByteString -> (a -> SharedRep m a) -> (Bool -> SharedRep m Bool) -> [ByteString] -> [(Bool, a)] -> SharedRep m [(Bool, a)]
@@ -397,7 +400,7 @@ accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
             ((\(ch, a) -> bimap (,) (,) (checkf ch) <<*>> bodyf a) <$> xs)
         )
   h' <- zoom _1 h
-  pure (Rep ((maybe mempty (\t -> [Node (tag "h5" []) [pure $ Content t]]) title) <> [h']) fa)
+  pure (Rep (maybe mempty (elementc "h5" []) title <> h') fa)
 
 -- | A fixed-sized list of Maybe a\'s
 listMaybeRep :: (Monad m) => Maybe ByteString -> ByteString -> (ByteString -> Maybe a -> SharedRep m (Maybe a)) -> Int -> [a] -> SharedRep m [Maybe a]
@@ -446,19 +449,20 @@ readTextbox label v = parsed . utf8ToStr <$> textbox' label (strToUtf8 $ show v)
         [(a, "")] -> Right a
         _badRead -> Left (strToUtf8 str)
 
-repChoice :: (Monad m) => Int -> [(ByteString, SharedRepF m Token a)] -> SharedRep m a
+repChoice :: (Monad m) => Int -> [(ByteString, SharedRep m a)] -> SharedRep m a
 repChoice initt xs =
   bimap hmap mmap dd
     <<*>> foldr (\x a -> bimap (:) (:) x <<*>> a) (pure []) cs
   where
     ts = fst <$> xs
     cs = snd <$> xs
-    dd = dropdownSum takeRest id Nothing ts t0
+    dd = dropdownSum (runParserEither takeRest) id Nothing ts t0
     t0 = ts List.!! initt
     hmap dd' cs' =
-      pure $ wrap "div" []
-        ( dd'
-            <> (zipWith (\c t -> pure $ fromMaybe c $ addAttrs (subtype t0 t) c) cs' ts)
+      element
+        "div"
+        []
+        ( dd' <> mconcat (zipWith (addSubtype t0) ts cs')
         )
     mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
 
@@ -475,7 +479,12 @@ repItemsSelect initial full =
 
 subtype :: ByteString -> ByteString -> [Attr]
 subtype origt t =
-    [ Attr "class" "subtype ",
-      Attr "data_sumtype" t,
-      Attr "style" ("display:" <> bool "block" "none" (origt /= t))
-    ]
+  [ Attr "class" "subtype ",
+    Attr "data_sumtype" t,
+    Attr "style" ("display:" <> bool "block" "none" (origt /= t))
+  ]
+
+addSubtype :: ByteString -> ByteString -> Markup -> Markup
+addSubtype origt t (Markup trees) =
+  Markup $
+    fmap (fmap (\toke -> fromMaybe toke $ addAttrs (subtype origt t) toke)) trees

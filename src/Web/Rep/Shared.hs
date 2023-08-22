@@ -19,14 +19,12 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Biapplicative
+import Data.ByteString (ByteString)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
+import MarkupParse
 import Optics.Core
 import Optics.Zoom
-import Data.ByteString (ByteString)
-import Data.Tree
-import MarkupParse
-import FlatParse.Basic
 
 -- |
 -- Information contained in a web page can usually be considered to be isomorphic to a map of named values - a 'HashMap'. This is especially true when considering a differential of information contained in a web page. Looking at a page from the outside, it often looks like a streaming differential of a hashmap.
@@ -39,7 +37,7 @@ data RepF r a = Rep
   deriving (Functor)
 
 -- | the common usage, where the representation domain is Html
-type Rep a = RepF [Tree Token] a
+type Rep a = RepF Markup a
 
 instance (Semigroup r) => Semigroup (RepF r a) where
   (Rep r0 a0) <> (Rep r1 a1) =
@@ -98,7 +96,7 @@ newtype SharedRepF m r a = SharedRep
   deriving (Functor)
 
 -- | default representation type of 'Html' ()
-type SharedRep m a = SharedRepF m [Tree Token] a
+type SharedRep m a = SharedRepF m Markup a
 
 instance (Functor m) => Bifunctor (SharedRepF m) where
   bimap f g (SharedRep s) = SharedRep $ fmap (bimap f g) s
@@ -184,7 +182,7 @@ runSharedRep s = flip runStateT (0, HashMap.empty) $ unshare s
 zeroState ::
   (Monad m) =>
   SharedRep m a ->
-  m ([Tree Token], (HashMap ByteString ByteString, Either ByteString a))
+  m (Markup, (HashMap ByteString ByteString, Either ByteString a))
 zeroState sr = do
   (Rep h fa, (_, m)) <- runSharedRep sr
   pure (h, fa m)
@@ -193,7 +191,7 @@ zeroState sr = do
 runOnce ::
   (Monad m) =>
   SharedRep m a ->
-  ([Tree Token] -> HashMap ByteString ByteString -> m ()) ->
+  (Markup -> HashMap ByteString ByteString -> m ()) ->
   m (HashMap ByteString ByteString, Either ByteString a)
 runOnce sr action = do
   (Rep h fa, (_, m)) <- runSharedRep sr

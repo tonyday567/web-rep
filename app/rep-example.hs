@@ -6,13 +6,12 @@
 import Box
 import Control.Monad
 import Data.Bifunctor
-import FlatParse.Basic (strToUtf8)
-import Optics.Core
+import MarkupParse
+import Optics.Core hiding (element)
 import Options.Applicative
 import Web.Rep
 import Web.Rep.Examples
 import Prelude
-import MarkupParse
 
 data AppType
   = SharedTest
@@ -73,16 +72,29 @@ playTest = servePlayStream (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeB
 playPage :: Page
 playPage =
   defaultSocketPage
-    & set #htmlBody
-      (pure $ wrap "div" [Attr "class" "container"]
-        (
-            [ wrap "div" [Attr "class" "row"] [wrap "h1" [] [pure $ Content "replay simulation"]],
-              wrap "div" [Attr "class" "row"] $
-                (\(t, h) ->
-                   wrap "div" [Attr "class" "row"]
-                   (pure $ wrap "h2" [] (pure $ wrap "div" [Attr "id" t] [pure $ Content h]))) <$> sections
-            ]
-        ))
+    & set
+      #htmlBody
+      ( element
+          "div"
+          [Attr "class" "container"]
+          ( element
+              "div"
+              [Attr "class" "row"]
+              (elementc "h1" [] "replay simulation")
+              <> element
+                "div"
+                [Attr "class" "row"]
+                ( mconcat $
+                    ( \(t, h) ->
+                        element
+                          "div"
+                          [Attr "class" "row"]
+                          (element "h2" [] (elementc "div" [Attr "id" t] h))
+                    )
+                      <$> sections
+                )
+          )
+      )
   where
     sections =
       [ ("input", mempty),

@@ -28,7 +28,6 @@ module Web.Rep.Socket
     repPlayConfig,
     servePlayStream,
     servePlayStreamWithBox,
-    parserJ,
     Code (..),
     code,
     console,
@@ -49,28 +48,27 @@ import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Bifunctor
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as C
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
-import MarkupParse.FlatParse
 import Data.Profunctor
 import Data.String.Interpolate
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.ByteString.Char8 qualified as C
-import Data.ByteString (ByteString)
 import FlatParse.Basic
 import GHC.Generics
+import MarkupParse
+import MarkupParse.FlatParse
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets qualified as WS
-import Optics.Core
+import Optics.Core hiding (element)
 import Web.Rep.Bootstrap
 import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Rep.SharedReps
 import Web.Scotty (middleware, scotty)
-import Data.Tree
-import MarkupParse
 
 toText_ :: ByteString -> Text
 toText_ = Text.pack . utf8ToStr
@@ -94,16 +92,29 @@ defaultSocketPage :: Page
 defaultSocketPage =
   bootstrapPage
     <> socketPage
-    & set #htmlBody
-      (pure $ wrap "div" [Attr "class" "container"]
-        (
-            [ wrap "div" [Attr "class" "row"] [wrap "h1" [] [pure $ Content "web-rep testing"]],
-              wrap "div" [Attr "class" "row"] $
-                (\(t, h) ->
-                   wrap "div" [Attr "class" "row"]
-                   (pure $ wrap "h2" [] (pure $ wrap "div" [Attr "id" t] [pure $ Content h]))) <$> sections
-            ]
-        ))
+    & set
+      #htmlBody
+      ( element
+          "div"
+          [Attr "class" "container"]
+          ( element
+              "div"
+              [Attr "class" "row"]
+              (elementc "h1" [] "web-rep testing")
+              <> element
+                "div"
+                [Attr "class" "row"]
+                ( mconcat $
+                    ( \(t, h) ->
+                        element
+                          "div"
+                          [Attr "class" "row"]
+                          (element "h2" [] (elementc "div" [Attr "id" t] h))
+                    )
+                      <$> sections
+                )
+          )
+      )
   where
     sections =
       [ ("input", mempty),
@@ -166,18 +177,18 @@ codeBox :: CoCodeBox
 codeBox = codeBoxWith defaultCodeBoxConfig
 
 -- | serve a SharedRep
-serveRep :: SharedRep IO a -> ([Tree Token] -> [Code]) -> (Either ByteString a -> [Code]) -> CodeBoxConfig -> IO ()
+serveRep :: SharedRep IO a -> (Markup -> [Code]) -> (Either ByteString a -> [Code]) -> CodeBoxConfig -> IO ()
 serveRep srep i o cfg =
   serveRepWithBox srep i o <$|> codeBoxWith cfg
 
 -- | non-codensity sharedRep server.
-serveRepWithBox :: SharedRep IO a -> ([Tree Token] -> [Code]) -> (Either ByteString a -> [Code]) -> CodeBox -> IO ()
+serveRepWithBox :: SharedRep IO a -> (Markup -> [Code]) -> (Either ByteString a -> [Code]) -> CodeBox -> IO ()
 serveRepWithBox srep i o (Box c e) =
   sharedStream srep (contramap i c) (contramap o c) e
 
 -- | Convert HTML representation to Code, replacing the input section of a page.
-replaceInput :: [Tree Token] -> [Code]
-replaceInput h = [Replace "input" (markdown Compact (Markup Html h))]
+replaceInput :: Markup -> [Code]
+replaceInput h = [Replace "input" (markdown_ Compact Html h)]
 
 -- | Convert (typically parsed representation) to Code, replacing the output section of a page, and appending errors.
 replaceOutput :: (Show a) => Either ByteString a -> [Code]
@@ -195,7 +206,7 @@ replaceOutput_ ea =
 
 -- | Stream a SharedRep
 sharedStream ::
-  (Monad m) => SharedRep m a -> Committer m ([Tree Token]) -> Committer m (Either ByteString a) -> Emitter m (ByteString, ByteString) -> m ()
+  (Monad m) => SharedRep m a -> Committer m Markup -> Committer m (Either ByteString a) -> Emitter m (ByteString, ByteString) -> m ()
 sharedStream sr ch c e =
   flip evalStateT (0, HashMap.empty) $ do
     -- you only want to run unshare once for a SharedRep
@@ -258,7 +269,7 @@ servePlayStreamWithBox :: PlayConfig -> CoEmitter IO (Gap, [Code]) -> CodeBox ->
 servePlayStreamWithBox pcfg pipe (Box c e) = do
   (playBox, _) <- toBoxM (Latest (False, pcfg))
   race_
-    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (markdown Compact $ Markup Html h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (markdown_ Compact Html h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
     (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) . pauser (playPause . snd <$> emitter playBox) =<< pipe))
   pure ()
 
@@ -403,7 +414,7 @@ function refreshJsb () {
 -- | prevent the Enter key from triggering an event
 preventEnter :: Js
 preventEnter =
-  Js $
+  Js
     [i|
 window.addEventListener('keydown',function(e) {
   if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {
