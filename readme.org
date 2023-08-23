@@ -17,15 +17,8 @@ http://localhost:9160/
 
 * library reference
 - [[https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html#flag-reference][scotty]]
-- get [[https://getbootstrap.com/][bootstrap]]
+- [[https://getbootstrap.com/][bootstrap]]
 - [[https://seiyria.com/bootstrap-slider][bootstrap-slider]]
-- [[http://hackage.haskell.org/package/blaze-html][blaze]]
-- [[http://hackage.haskell.org/package/lucid][lucid]]
-- [[https://www.stackage.org/clay][clay]]
-
-* eval usage
-
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#Do_not_ever_use_eval!
 
 * Development
 
@@ -47,6 +40,9 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
 import Prelude
 import Box
 import Web.Rep
+import Optics.Core
+import FlatParse.Basic
+import MarkupParse
 putStrLn "ok"
 #+end_src
 

@@ -1,12 +1,14 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 -- | Some <https://getbootstrap.com/ bootstrap> assets and functionality.
 module Web.Rep.Bootstrap
-  ( BootstrapVersion (..),
+  ( bootstrapCss,
+    bootstrapJs,
+    bootstrapMeta,
     bootstrapPage,
-    bootstrap5Page,
     cardify,
-    divClass_,
     accordion,
     accordionChecked,
     accordionCard,
@@ -17,85 +19,50 @@ where
 
 import Control.Monad.State.Lazy
 import Data.Bool
+import Data.ByteString (ByteString)
 import Data.Functor.Identity
-import Data.Text (Text)
-import GHC.Generics
-import Lucid
-import Lucid.Base
-import Web.Rep.Html
+import MarkupParse
 import Web.Rep.Page
 import Web.Rep.Shared
 
-data BootstrapVersion = Boot4 | Boot5 deriving (Eq, Show, Generic)
+-- $setup
+-- >>> :set -XOverloadedStrings
+-- >>> import Web.Rep
+-- >>> import MarkupParse
 
-bootstrapCss :: [Html ()]
+bootstrapCss :: Markup
 bootstrapCss =
-  [ link_
-      [ rel_ "stylesheet",
-        href_ "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css",
-        integrity_ "sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T",
-        crossorigin_ "anonymous"
-      ]
-  ]
+  element_
+    "link"
+    [ Attr "rel" "stylesheet",
+      Attr "href" "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css",
+      Attr "integrity" "sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC",
+      Attr "crossorigin" "anonymous"
+    ]
 
--- | <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-bootstrap5Css :: [Html ()]
-bootstrap5Css =
-  [ link_
-      [ rel_ "stylesheet",
-        href_ "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css",
-        integrity_ "sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC",
-        crossorigin_ "anonymous"
-      ]
-  ]
-
-bootstrapJs :: [Html ()]
+bootstrapJs :: Markup
 bootstrapJs =
-  [ with
-      (script_ mempty)
-      [ src_ "https://code.jquery.com/jquery-3.3.1.slim.min.js",
-        integrity_ "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
-        crossorigin_ "anonymous"
-      ],
-    with
-      (script_ mempty)
-      [ src_ "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js",
-        integrity_ "sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1",
-        crossorigin_ "anonymous"
-      ],
-    with
-      (script_ mempty)
-      [ src_ "https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js",
-        integrity_ "sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM",
-        crossorigin_ "anonymous"
+  element_
+    "script"
+    [ Attr "src" "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js",
+      Attr "integrity" "sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM",
+      Attr "crossorigin" "anonymous"
+    ]
+    <> element_
+      "script"
+      [ Attr "src" "https://code.jquery.com/jquery-3.3.1.slim.min.js",
+        Attr "integrity" "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
+        Attr "crossorigin" "anonymous"
       ]
-  ]
 
--- | <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
-bootstrap5Js :: [Html ()]
-bootstrap5Js =
-  [ with
-      (script_ mempty)
-      [ src_ "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js",
-        integrity_ "sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM",
-        crossorigin_ "anonymous"
-      ],
-    with
-      (script_ mempty)
-      [ src_ "https://code.jquery.com/jquery-3.3.1.slim.min.js",
-        integrity_ "sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
-        crossorigin_ "anonymous"
-      ]
-  ]
-
-bootstrapMeta :: [Html ()]
+bootstrapMeta :: Markup
 bootstrapMeta =
-  [ meta_ [charset_ "utf-8"],
-    meta_
-      [ name_ "viewport",
-        content_ "width=device-width, initial-scale=1, shrink-to-fit=no"
+  element_ "meta" [Attr "charset" "utf-8"]
+    <> element_
+      "meta"
+      [ Attr "name" "viewport",
+        Attr "content" "width=device-width, initial-scale=1, shrink-to-fit=no"
       ]
-  ]
 
 -- | A page containing all the <https://getbootstrap.com/ bootstrap> needs for a web page.
 bootstrapPage :: Page
@@ -106,104 +73,123 @@ bootstrapPage =
     mempty
     mempty
     mempty
-    (mconcat bootstrapMeta)
-    mempty
-
--- | A page containing all the <https://getbootstrap.com/ bootstrap> needs for a web page.
-bootstrap5Page :: Page
-bootstrap5Page =
-  Page
-    bootstrap5Css
-    bootstrap5Js
-    mempty
-    mempty
-    mempty
-    (mconcat bootstrapMeta)
+    bootstrapMeta
     mempty
 
 -- | wrap some Html with the bootstrap <https://getbootstrap.com/docs/4.3/components/card/ card> class
-cardify :: (Html (), [Attribute]) -> Maybe Text -> (Html (), [Attribute]) -> Html ()
+cardify :: (Markup, [Attr]) -> Maybe ByteString -> (Markup, [Attr]) -> Markup
 cardify (h, hatts) t (b, batts) =
-  with div_ ([class__ "card"] <> hatts) $
+  element "div" ([Attr "class" "card"] <> hatts) $
     h
-      <> with
-        div_
-        ([class__ "card-body"] <> batts)
-        ( maybe mempty (with h5_ [class__ "card-title"] . toHtml) t
-            <> b
+      <> element
+        "div"
+        ([Attr "class" "card-body"] <> batts)
+        ( maybe mempty (elementc "h5" [Attr "class" "card-title"]) t <> b
         )
 
--- | wrap some html with a classed div
-divClass_ :: Text -> Html () -> Html ()
-divClass_ t = with div_ [class__ t]
-
 -- | A Html object based on the bootstrap accordion card concept.
-accordionCard :: Bool -> [Attribute] -> Text -> Text -> Text -> Text -> Html () -> Html ()
+accordionCard :: Bool -> [Attr] -> ByteString -> ByteString -> ByteString -> ByteString -> Markup -> Markup
 accordionCard collapse atts idp idh idb t0 b =
-  with div_ ([class__ "card"] <> atts) $
-    with
-      div_
-      [class__ "card-header p-0", id_ idh]
-      ( with
-          h2_
-          [class__ "m-0"]
-          (with button_ [class__ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb] (toHtml t0))
-      )
-      <> with
-        div_
-        [id_ idb, class__ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
-        (with div_ [class__ "card-body"] b)
+  element
+    "div"
+    ([Attr "class" "card"] <> atts)
+    ( element
+        "div"
+        [Attr "class" "card-header p-0", Attr "id" idh]
+        ( element
+            "h2"
+            [Attr "class" "m-0"]
+            ( elementc
+                "button"
+                [ Attr "class" ("btn btn-link" <> bool "" " collapsed" collapse),
+                  Attr "type" "button",
+                  Attr "data-toggle" "collapse",
+                  Attr "data-target" ("#" <> idb),
+                  Attr "aria-expanded" (bool "true" "false" collapse),
+                  Attr "aria-controls" idb
+                ]
+                t0
+            )
+            <> element
+              "div"
+              [ Attr "id" "idb",
+                Attr "class" ("collapse" <> bool " show" "" collapse),
+                Attr "aria-labelledby" idh,
+                Attr "data-parent" ("#" <> idp)
+              ]
+              (element "div" [Attr "class" "card-body"] b)
+        )
+    )
 
 -- | A bootstrap accordion card attached to a checkbox.
-accordionCardChecked :: Bool -> Text -> Text -> Text -> Text -> Html () -> Html () -> Html ()
+accordionCardChecked :: Bool -> ByteString -> ByteString -> ByteString -> ByteString -> Markup -> Markup -> Markup
 accordionCardChecked collapse idp idh idb label bodyhtml checkhtml =
-  with div_ [class__ "card"] $
-    with
-      div_
-      [class__ "card-header p-0", id_ idh]
-      ( checkhtml
-          <> with
-            h2_
-            [class__ "m-0"]
-            (with button_ [class__ ("btn btn-link" <> bool "" " collapsed" collapse), type_ "button", data_ "toggle" "collapse", data_ "target" ("#" <> idb), makeAttribute "aria-expanded" (bool "true" "false" collapse), makeAttribute "aria-controls" idb] (toHtml label))
-      )
-      <> with
-        div_
-        [id_ idb, class__ ("collapse" <> bool " show" "" collapse), makeAttribute "aria-labelledby" idh, data_ "parent" ("#" <> idp)]
-        (with div_ [class__ "card-body"] bodyhtml)
+  element
+    "div"
+    [Attr "class" "card"]
+    ( element
+        "div"
+        [ Attr "class" "card-header p-0",
+          Attr "id" idh
+        ]
+        ( checkhtml
+            <> element
+              "h2"
+              [Attr "class" "m-0"]
+              ( elementc
+                  "button"
+                  [ Attr "class" ("btn btn-link" <> bool "" " collapsed" collapse),
+                    Attr "type" "button",
+                    Attr "data-toggle" "collapse",
+                    Attr "data-target" ("#" <> idb),
+                    Attr "aria-expanded" (bool "true" "false" collapse),
+                    Attr "aria-controls" idb
+                  ]
+                  label
+              )
+        )
+        <> element
+          "div"
+          [ Attr "id" "idb",
+            Attr "class" ("collapse" <> bool " show" "" collapse),
+            Attr "aria-labelledby" idh,
+            Attr "data-parent" ("#" <> idp)
+          ]
+          (element "div" [Attr "class" "card-body"] bodyhtml)
+    )
 
 -- | create a bootstrapped accordian class
 accordion ::
   (MonadState Int m) =>
-  Text ->
+  ByteString ->
   -- | name prefix.  This is needed because an Int doesn't seem to be a valid name.
-  Maybe Text ->
+  Maybe ByteString ->
   -- | card title
-  [(Text, Html ())] ->
+  [(ByteString, Markup)] ->
   -- | title, html tuple for each item in the accordion.
-  m (Html ())
+  m Markup
 accordion pre x hs = do
   idp' <- genNamePre pre
-  with div_ [class__ "accordion m-1", id_ idp'] <$> aCards idp'
+  element "div" [Attr "class" "accordion m-1", Attr "id" idp'] <$> (mconcat <$> aCards idp')
   where
-    aCards par = mconcat <$> mapM (aCard par) hs
+    aCards par = mapM (aCard par) hs
     aCard par (t, b) = do
       idh <- genNamePre pre
       idb <- genNamePre pre
       pure $ accordionCard (x /= Just t) [] par idh idb t b
 
 -- | create a bootstrapped accordian class
-accordionChecked :: (MonadState Int m) => Text -> [(Text, Html (), Html ())] -> m (Html ())
+accordionChecked :: (MonadState Int m) => ByteString -> [(ByteString, Markup, Markup)] -> m Markup
 accordionChecked pre hs = do
   idp' <- genNamePre pre
-  with div_ [class__ "accordion m-1", id_ idp'] <$> aCards idp'
+  element "div" [Attr "class" "accordion m-1", Attr "id" idp'] <$> (mconcat <$> aCards idp')
   where
-    aCards par = mconcat <$> mapM (aCard par) hs
+    aCards par = mapM (aCard par) hs
     aCard par (l, bodyhtml, checkhtml) = do
       idh <- genNamePre pre
       idb <- genNamePre pre
       pure $ accordionCardChecked True par idh idb l bodyhtml checkhtml
 
 -- | This version of accordion runs a local state for naming, and will cause name clashes if the prefix is not unique.
-accordion_ :: Text -> Maybe Text -> [(Text, Html ())] -> Html ()
+accordion_ :: ByteString -> Maybe ByteString -> [(ByteString, Markup)] -> Markup
 accordion_ pre x hs = runIdentity $ evalStateT (accordion pre x hs) 0

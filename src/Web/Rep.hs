@@ -27,21 +27,15 @@ module Web.Rep
     concernNames,
     PageConcerns (..),
     PageStructure (..),
-    PageRender (..),
+    RenderStyle (..),
 
     -- * Css
-    Css,
-    RepCss (..),
+    Css (..),
     renderCss,
-    renderRepCss,
 
     -- * JS
-    JS (..),
-    RepJs (..),
+    Js (..),
     onLoad,
-    renderRepJs,
-    parseJs,
-    renderJs,
 
     -- * re-export modules
     module Web.Rep.SharedReps,
@@ -58,6 +52,7 @@ module Web.Rep
 where
 
 import Data.HashMap.Strict qualified as HashMap
+import MarkupParse (RenderStyle (..))
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input

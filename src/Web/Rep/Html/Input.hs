@@ -4,25 +4,25 @@
 module Web.Rep.Html.Input
   ( Input (..),
     InputType (..),
+    inputToHtml,
   )
 where
 
 import Data.Bool
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as C
 import Data.Maybe
-import Data.Text (Text, pack, split)
 import GHC.Generics
-import Lucid
-import Lucid.Base
-import Web.Rep.Html
+import MarkupParse
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a = Input
   { -- | underlying value
     inputVal :: a,
     -- | label suggestion
-    inputLabel :: Maybe Text,
+    inputLabel :: Maybe ByteString,
     -- | name//key//id of the Input
-    inputId :: Text,
+    inputId :: ByteString,
     -- | type of html input
     inputType :: InputType
   }
@@ -30,257 +30,264 @@ data Input a = Input
 
 -- | Various types of web page inputs, encapsulating practical bootstrap class functionality
 data InputType
-  = Slider [Attribute]
-  | SliderV [Attribute]
+  = Slider [Attr]
+  | SliderV [Attr]
   | TextBox
   | TextBox'
   | TextArea Int
   | ColorPicker
   | ChooseFile
-  | Dropdown [Text]
-  | DropdownMultiple [Text] Char
-  | DropdownSum [Text]
-  | Datalist [Text] Text
+  | Dropdown [ByteString]
+  | DropdownMultiple [ByteString] Char
+  | DropdownSum [ByteString]
+  | Datalist [ByteString] ByteString
   | Checkbox Bool
-  | Toggle Bool (Maybe Text)
+  | Toggle Bool (Maybe ByteString)
   | Button
   deriving (Eq, Show, Generic)
 
-instance (ToHtml a) => ToHtml (Input a) where
-  toHtml (Input v l i (Slider satts)) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> input_
-            ( [ type_ "range",
-                class__ " form-control-range form-control-sm custom-range jsbClassEventChange",
-                id_ i,
-                value_ (pack $ show $ toHtml v)
-              ]
-                <> satts
-            )
-      )
-  toHtml (Input v l i (SliderV satts)) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> input_
-            ( [ type_ "range",
-                class__ " form-control-range form-control-sm custom-range jsbClassEventChange",
-                id_ i,
-                value_ (pack $ show $ toHtml v),
-                oninput_ ("$('#sliderv" <> i <> "').html($(this).val())")
-              ]
-                <> satts
-            )
-          <> span_ [id_ ("sliderv" <> i)] (toHtml v)
-      )
-  toHtml (Input v l i TextBox) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> input_
-            [ type_ "text",
-              class__ "form-control form-control-sm jsbClassEventInput",
-              id_ i,
-              value_ (pack $ show $ toHtmlRaw v)
-            ]
-      )
-  toHtml (Input v l i TextBox') =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> input_
-            [ type_ "text",
-              class__ "form-control form-control-sm jsbClassEventFocusout",
-              id_ i,
-              value_ (pack $ show $ toHtmlRaw v)
-            ]
-      )
-  toHtml (Input v l i (TextArea rows)) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> with
-            textarea_
-            [ rows_ (pack $ show rows),
-              class__ "form-control form-control-sm jsbClassEventInput",
-              id_ i
-            ]
-            (toHtmlRaw v)
-      )
-  toHtml (Input v l i ColorPicker) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> input_
-            [ type_ "color",
-              class__ "form-control form-control-sm jsbClassEventInput",
-              id_ i,
-              value_ (pack $ show $ toHtml v)
-            ]
-      )
-  toHtml (Input _ l i ChooseFile) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      (maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l)
-      <> input_
-        [ type_ "file",
-          class__ "form-control-file form-control-sm jsbClassEventChooseFile",
-          id_ i
+inputToHtml :: (Show a) => Input a -> Markup
+inputToHtml (Input v l i (Slider satts)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    (maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l)
+    <> element_
+      "input"
+      ( [ Attr "type" "range",
+          Attr "class" " form-control-range form-control-sm custom-range jsbClassEventChange",
+          Attr "id" i,
+          Attr "value" (strToUtf8 $ show v)
         ]
-  toHtml (Input v l i (Dropdown opts)) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> with
-            select_
-            [ class__ "form-control form-control-sm jsbClassEventInput",
-              id_ i
-            ]
-            opts'
+          <> satts
       )
-    where
-      opts' =
-        mconcat $
-          ( \o ->
-              with
-                option_
-                ( bool
-                    []
-                    [selected_ "selected"]
-                    (toText (toHtml o) == toText (toHtml v))
-                )
-                (toHtml o)
-          )
-            <$> opts
-  toHtml (Input vs l i (DropdownMultiple opts sep)) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> with
-            select_
-            [ class__ "form-control form-control-sm jsbClassEventChangeMultiple",
-              multiple_ "multiple",
-              id_ i
+inputToHtml (Input v l i (SliderV satts)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element_
+          "input"
+          ( [ Attr "type" "range",
+              Attr "class" " form-control-range form-control-sm custom-range jsbClassEventChange",
+              Attr "id" i,
+              Attr "value" (strToUtf8 $ show v),
+              Attr "oninput" ("$('#sliderv" <> i <> "').html($(this).val())")
             ]
-            opts'
+              <> satts
+          )
+    )
+    <> elementc "span" [Attr "id" ("sliderv" <> i)] (strToUtf8 $ show v)
+inputToHtml (Input v l i TextBox) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element_
+          "input"
+          [ Attr "type" "text",
+            Attr "class" "form-control form-control-sm jsbClassEventInput",
+            Attr "id" i,
+            Attr "value" (strToUtf8 $ show v)
+          ]
+    )
+inputToHtml (Input v l i TextBox') =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element_
+          "input"
+          [ Attr "type" "text",
+            Attr "class" "form-control form-control-sm jsbClassEventFocusout",
+            Attr "id" i,
+            Attr "value" (strToUtf8 $ show v)
+          ]
+    )
+inputToHtml (Input v l i (TextArea rows)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> elementc
+          "textarea"
+          [ Attr "rows" (strToUtf8 $ show rows),
+            Attr "class" "form-control form-control-sm jsbClassEventInput",
+            Attr "id" i
+          ]
+          (strToUtf8 $ show v)
+    )
+inputToHtml (Input v l i ColorPicker) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element_
+          "input"
+          [ Attr "type" "color",
+            Attr "class" "form-control form-control-sm jsbClassEventInput",
+            Attr "id" i,
+            Attr "value" (strToUtf8 $ show v)
+          ]
+    )
+inputToHtml (Input _ l i ChooseFile) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element_
+          "input"
+          [ Attr "type" "file",
+            Attr "class" "form-control-file form-control-sm jsbClassEventChooseFile",
+            Attr "id" i
+          ]
+    )
+inputToHtml (Input v l i (Dropdown opts)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element
+          "select"
+          [ Attr "class" "form-control form-control-sm jsbClassEventInput",
+            Attr "id" i
+          ]
+          (mconcat opts')
+    )
+  where
+    opts' =
+      ( \o ->
+          elementc
+            "option"
+            ( bool
+                []
+                [Attr "selected" "selected"]
+                (o == strToUtf8 (show v))
+            )
+            o
       )
-    where
-      opts' =
-        mconcat $
-          ( \o ->
-              with
-                option_
-                ( bool
-                    []
-                    [selected_ "selected"]
-                    (any (\v -> toText (toHtml o) == toText (toHtml v)) (Data.Text.split (== sep) (toText (toHtml vs))))
-                )
-                (toHtml o)
-          )
-            <$> opts
-  toHtml (Input v l i (DropdownSum opts)) =
-    with
-      div_
-      [class__ "form-group-sm sumtype-group"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> with
-            select_
-            [ class__ "form-control form-control-sm jsbClassEventInput jsbClassEventShowSum",
-              id_ i
-            ]
-            opts'
+        <$> opts
+inputToHtml (Input vs l i (DropdownMultiple opts sep)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element
+          "select"
+          [ Attr "class" "form-control form-control-sm jsbClassEventChangeMultiple",
+            Attr "multiple" "multiple",
+            Attr "id" i
+          ]
+          (mconcat opts')
+    )
+  where
+    opts' =
+      ( \o ->
+          elementc
+            "option"
+            ( bool
+                []
+                [Attr "selected" "selected"]
+                (any (\v -> o == strToUtf8 (show v)) (C.split sep (strToUtf8 $ show vs)))
+            )
+            o
       )
-    where
-      opts' =
-        mconcat $
-          ( \o ->
-              with
-                option_
-                (bool [] [selected_ "selected"] (toText (toHtml o) == toText (toHtml v)))
-                (toHtml o)
-          )
-            <$> opts
-  toHtml (Input v l i (Datalist opts listId)) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> input_
-            [ type_ "text",
-              class__ "form-control form-control-sm jsbClassEventInput",
-              id_ i,
-              list_ listId
-              -- the datalist concept in html assumes initial state is a null
-              -- and doesn't present the list if it has a value alreadyx
-              -- , value_ (show $ toHtml v)
-            ]
-          <> with
-            datalist_
-            [id_ listId]
-            ( mconcat $
-                ( \o ->
-                    with
-                      option_
+        <$> opts
+inputToHtml (Input v l i (DropdownSum opts)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm sumtype-group"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element
+          "select"
+          [ Attr "class" "form-control form-control-sm jsbClassEventInput jsbClassEventShowSum",
+            Attr "id" i
+          ]
+          (mconcat opts')
+    )
+  where
+    opts' =
+      ( \o ->
+          elementc
+            "option"
+            (bool [] [Attr "selected" "selected"] (o == strToUtf8 (show v)))
+            o
+      )
+        <$> opts
+inputToHtml (Input v l i (Datalist opts listId)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element_
+          "input"
+          [ Attr "type" "text",
+            Attr "class" "form-control form-control-sm jsbClassEventInput",
+            Attr "id" i,
+            Attr "list" listId
+            -- the datalist concept in html assumes initial state is a null
+            -- and doesn't present the list if it has a value alreadyx
+            -- , value_ (show $ toHtml v)
+          ]
+        <> element
+          "datalist"
+          [Attr "id" listId]
+          ( mconcat
+              ( ( \o ->
+                    elementc
+                      "option"
                       ( bool
                           []
-                          [selected_ "selected"]
-                          (toText (toHtml o) == toText (toHtml v))
+                          [Attr "selected" "selected"]
+                          (o == strToUtf8 (show v))
                       )
-                      (toHtml o)
+                      o
                 )
                   <$> opts
-            )
-      )
-  toHtml (Input _ l i (Checkbox checked)) =
-    with
-      div_
-      [class__ "form-check form-check-sm"]
-      ( input_
-          ( [ type_ "checkbox",
-              class__ "form-check-input jsbClassEventCheckbox",
-              id_ i
-            ]
-              <> bool [] [checked_] checked
+              )
           )
-          <> maybe mempty (with label_ [for_ i, class__ "form-check-label mb-0"] . toHtml) l
-      )
-  toHtml (Input _ l i (Toggle pushed lab)) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( maybe mempty (with label_ [for_ i, class__ "mb-0"] . toHtml) l
-          <> input_
-            ( [ type_ "button",
-                class__ "btn btn-primary btn-sm jsbClassEventToggle",
-                data_ "bs-toggle" "button",
-                id_ i,
-                makeAttribute "aria-pressed" (bool "false" "true" pushed)
-              ]
-                <> maybe [] (\l' -> [value_ l']) lab
-                <> bool [] [checked_] pushed
-            )
-      )
-  toHtml (Input _ l i Button) =
-    with
-      div_
-      [class__ "form-group-sm"]
-      ( input_
-          [ type_ "button",
-            id_ i,
-            class__ "btn btn-primary btn-sm jsbClassEventButton",
-            value_ (fromMaybe "button" l)
+    )
+inputToHtml (Input _ l i (Checkbox checked)) =
+  element
+    "div"
+    [Attr "class" "form-check form-check-sm"]
+    ( element
+        "input"
+        ( [ Attr "type" "checkbox",
+            Attr "class" "form-check-input jsbClassEventCheckbox",
+            Attr "id" i
           ]
-      )
-
-  toHtmlRaw = toHtml
+            <> bool [] [Attr "checked" ""] checked
+        )
+        ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "form-label-check mb-0"]) l
+        )
+    )
+inputToHtml (Input _ l i (Toggle pushed lab)) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
+        <> element_
+          "input"
+          ( [ Attr "type" "button",
+              Attr "class" "btn btn-primary btn-sm jsbClassEventToggle",
+              Attr "data-bs-toggle" "button",
+              Attr "id" i,
+              Attr "aria-pressed" (bool "false" "true" pushed)
+            ]
+              <> maybe [] (\l' -> [Attr "value" l']) lab
+              <> bool [] [Attr "checked" ""] pushed
+          )
+    )
+inputToHtml (Input _ l i Button) =
+  element
+    "div"
+    [Attr "class" "form-group-sm"]
+    ( element_
+        "input"
+        [ Attr "type" "button",
+          Attr "id" i,
+          Attr "class" "btn btn-primary btn-sm jsbClassEventButton",
+          Attr "value" (fromMaybe "button" l)
+        ]
+    )

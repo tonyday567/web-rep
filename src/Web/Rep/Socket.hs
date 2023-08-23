@@ -1,36 +1,80 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | A socket between a web page and haskell, based on the box library.
-module Web.Rep.Socket (socketPage, defaultSocketPage, SocketConfig (..), defaultSocketConfig, serveSocketBox, CodeBox, CoCodeBox, CodeBoxConfig (..), defaultCodeBoxConfig, codeBox, codeBoxWith, serveRep, serveRepWithBox, replaceInput, replaceOutput, replaceOutput_, sharedStream, PlayConfig (..), defaultPlayConfig, repPlayConfig, servePlayStream, servePlayStreamWithBox, parserJ, Code (..), code, console, val, replace, append, clean, webSocket, refreshJsbJs, preventEnter, runScriptJs) where
+module Web.Rep.Socket
+  ( socketPage,
+    defaultSocketPage,
+    SocketConfig (..),
+    defaultSocketConfig,
+    serveSocketBox,
+    CodeBox,
+    CoCodeBox,
+    CodeBoxConfig (..),
+    defaultCodeBoxConfig,
+    codeBox,
+    codeBoxWith,
+    serveRep,
+    serveRepWithBox,
+    replaceInput,
+    replaceOutput,
+    replaceOutput_,
+    sharedStream,
+    PlayConfig (..),
+    defaultPlayConfig,
+    repPlayConfig,
+    servePlayStream,
+    servePlayStreamWithBox,
+    Code (..),
+    code,
+    console,
+    val,
+    replace,
+    append,
+    clean,
+    webSocket,
+    refreshJsbJs,
+    preventEnter,
+    runScriptJs,
+  )
+where
 
 import Box
 import Box.Socket (serverApp)
 import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
-import Data.Attoparsec.Text qualified as A
 import Data.Bifunctor
-import Data.Bool
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as C
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
 import Data.Profunctor
-import Data.Text (Text, pack)
+import Data.String.Interpolate
+import Data.Text (Text)
 import Data.Text qualified as Text
+import FlatParse.Basic
 import GHC.Generics
-import Lucid as L
+import MarkupParse
+import MarkupParse.FlatParse
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets qualified as WS
-import Optics.Core
-import Text.InterpolatedString.Perl6
+import Optics.Core hiding (element)
 import Web.Rep.Bootstrap
-import Web.Rep.Html
 import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Rep.SharedReps
 import Web.Scotty (middleware, scotty)
+
+toText_ :: ByteString -> Text
+toText_ = Text.pack . utf8ToStr
+
+fromText_ :: Text -> ByteString
+fromText_ = strToUtf8 . Text.unpack
 
 -- | Page with all the trimmings for a sharedRep Box
 socketPage :: Page
@@ -44,18 +88,33 @@ socketPage =
           preventEnter
         ]
 
-defaultSocketPage :: BootstrapVersion -> Page
-defaultSocketPage v =
-  bool bootstrap5Page bootstrapPage (v == Boot4)
+defaultSocketPage :: Page
+defaultSocketPage =
+  bootstrapPage
     <> socketPage
-    & #htmlBody
-      .~ divClass_
-        "container"
-        ( mconcat
-            [ divClass_ "row" (h1_ "web-rep testing"),
-              divClass_ "row" $ mconcat $ (\(t, h) -> divClass_ "col" (h2_ (toHtml t) <> L.with div_ [id_ t] h)) <$> sections
-            ]
-        )
+    & set
+      #htmlBody
+      ( element
+          "div"
+          [Attr "class" "container"]
+          ( element
+              "div"
+              [Attr "class" "row"]
+              (elementc "h1" [] "web-rep testing")
+              <> element
+                "div"
+                [Attr "class" "row"]
+                ( mconcat $
+                    ( \(t, h) ->
+                        element
+                          "div"
+                          [Attr "class" "row"]
+                          (element "h2" [] (elementc "div" [Attr "id" t] h))
+                    )
+                      <$> sections
+                )
+          )
+      )
   where
     sections =
       [ ("input", mempty),
@@ -85,23 +144,23 @@ serveSocketBox cfg p b =
     servePageWith "/" (defaultPageConfig "") p
 
 -- | A common Box pattern. [Code] is typically committed to the websocket and key-value elements, representing changes to the shared objects that are in the Dom are emitted.
-type CodeBox = Box IO [Code] (Text, Text)
+type CodeBox = Box IO [Code] (ByteString, ByteString)
 
 -- | Codensity CodeBox
-type CoCodeBox = Codensity IO (Box IO [Code] (Text, Text))
+type CoCodeBox = Codensity IO (Box IO [Code] (ByteString, ByteString))
 
 -- | Configuration for a CodeBox serving.
 data CodeBoxConfig = CodeBoxConfig
   { codeBoxSocket :: SocketConfig,
     codeBoxPage :: Page,
     codeBoxCommitterQueue :: Queue [Code],
-    codeBoxEmitterQueue :: Queue (Text, Text)
+    codeBoxEmitterQueue :: Queue (ByteString, ByteString)
   }
   deriving (Generic)
 
 -- | official default config.
 defaultCodeBoxConfig :: CodeBoxConfig
-defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig (defaultSocketPage Boot5) Single Single
+defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig defaultSocketPage Single Single
 
 -- | Turn a configuration into a live (Codensity) CodeBox
 codeBoxWith :: CodeBoxConfig -> CoCodeBox
@@ -110,7 +169,7 @@ codeBoxWith cfg =
     (view #codeBoxEmitterQueue cfg)
     (view #codeBoxCommitterQueue cfg)
     ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
-        . dimap (either undefined id . A.parseOnly parserJ) (mconcat . fmap code)
+        . dimap (either error id . runParserEither parserJ . fromText_) (mconcat . fmap (toText_ . code))
     )
 
 -- | Turn the default configuration into a live (Codensity) CodeBox
@@ -118,36 +177,36 @@ codeBox :: CoCodeBox
 codeBox = codeBoxWith defaultCodeBoxConfig
 
 -- | serve a SharedRep
-serveRep :: SharedRep IO a -> (Html () -> [Code]) -> (Either Text a -> [Code]) -> CodeBoxConfig -> IO ()
+serveRep :: SharedRep IO a -> (Markup -> [Code]) -> (Either ByteString a -> [Code]) -> CodeBoxConfig -> IO ()
 serveRep srep i o cfg =
   serveRepWithBox srep i o <$|> codeBoxWith cfg
 
 -- | non-codensity sharedRep server.
-serveRepWithBox :: SharedRep IO a -> (Html () -> [Code]) -> (Either Text a -> [Code]) -> CodeBox -> IO ()
+serveRepWithBox :: SharedRep IO a -> (Markup -> [Code]) -> (Either ByteString a -> [Code]) -> CodeBox -> IO ()
 serveRepWithBox srep i o (Box c e) =
   sharedStream srep (contramap i c) (contramap o c) e
 
 -- | Convert HTML representation to Code, replacing the input section of a page.
-replaceInput :: Html () -> [Code]
-replaceInput h = [Replace "input" (toText h)]
+replaceInput :: Markup -> [Code]
+replaceInput h = [Replace "input" (markdown_ Compact Html h)]
 
 -- | Convert (typically parsed representation) to Code, replacing the output section of a page, and appending errors.
-replaceOutput :: (Show a) => Either Text a -> [Code]
+replaceOutput :: (Show a) => Either ByteString a -> [Code]
 replaceOutput ea =
   case ea of
     Left err -> [Append "debug" err]
-    Right a -> [Replace "output" (pack $ show a)]
+    Right a -> [Replace "output" (strToUtf8 $ show a)]
 
 -- | Convert (typically parsed representation) to Code, replacing the output section of a page, and throwing away errors.
-replaceOutput_ :: (Show a) => Either Text a -> [Code]
+replaceOutput_ :: (Show a) => Either ByteString a -> [Code]
 replaceOutput_ ea =
   case ea of
     Left _ -> []
-    Right a -> [Replace "output" (pack $ show a)]
+    Right a -> [Replace "output" (strToUtf8 $ show a)]
 
 -- | Stream a SharedRep
 sharedStream ::
-  (Monad m) => SharedRep m a -> Committer m (Html ()) -> Committer m (Either Text a) -> Emitter m (Text, Text) -> m ()
+  (Monad m) => SharedRep m a -> Committer m Markup -> Committer m (Either ByteString a) -> Emitter m (ByteString, ByteString) -> m ()
 sharedStream sr ch c e =
   flip evalStateT (0, HashMap.empty) $ do
     -- you only want to run unshare once for a SharedRep
@@ -191,7 +250,7 @@ repPlayConfig cfg =
 
 -- | representation of the playFrame in a PlayConfig
 repFrame :: Int -> SharedRep IO Int
-repFrame x = read . Text.unpack <$> textbox (Just "frame") (pack $ show x)
+repFrame x = read . utf8ToStr <$> textbox (Just "frame") (strToUtf8 $ show x)
 
 -- | representation of the playSpeed in a PlayConfig
 repSpeed :: Double -> SharedRep IO Double
@@ -210,7 +269,7 @@ servePlayStreamWithBox :: PlayConfig -> CoEmitter IO (Gap, [Code]) -> CodeBox ->
 servePlayStreamWithBox pcfg pipe (Box c e) = do
   (playBox, _) <- toBoxM (Latest (False, pcfg))
   race_
-    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (toText h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
+    (sharedStream ((,) <$> repReset <*> repPlayConfig pcfg) (contramap (\h -> [Replace "input" (markdown_ Compact Html h)]) c) (witherC (either (const (pure Nothing)) (pure . Just)) (committer playBox)) e)
     (restart (fst <$> emitter playBox) (glue c <$|> speedSkipEffect ((\x -> (playFrame (snd x), playSpeed (snd x))) <$> emitter playBox) . pauser (playPause . snd <$> emitter playBox) =<< pipe))
   pure ()
 
@@ -221,13 +280,13 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- * low-level JS conversions
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
-parserJ :: A.Parser (Text, Text)
+parserJ :: Parser e (ByteString, ByteString)
 parserJ = do
-  _ <- A.string [q|{"event":{"element":"|]
-  e <- A.takeTill (== '"')
-  _ <- A.string [q|","value":"|]
-  v <- A.takeTill (== '"')
-  _ <- A.string [q|"}}|]
+  _ <- $(string [i|{"event":{"element":"|])
+  e <- byteStringOf $ some (satisfy (/= '"'))
+  _ <- $(string [i|","value":"|])
+  v <- byteStringOf $ some (satisfy (/= '"'))
+  _ <- $(string [i|"}}|])
   pure (e, v)
 
 -- * code hooks
@@ -235,60 +294,60 @@ parserJ = do
 -- * code messaging
 
 data Code
-  = Replace Text Text
-  | Append Text Text
-  | Console Text
-  | Eval Text
-  | Val Text
+  = Replace ByteString ByteString
+  | Append ByteString ByteString
+  | Console ByteString
+  | Eval ByteString
+  | Val ByteString
   deriving (Eq, Show, Generic, Read)
 
-code :: Code -> Text
+code :: Code -> ByteString
 code (Replace i t) = replace i t
 code (Append i t) = append i t
 code (Console t) = console t
 code (Eval t) = t
 code (Val t) = val t
 
-console :: Text -> Text
-console t = [qc| console.log({t}) |]
+console :: ByteString -> ByteString
+console t = [i| console.log(#{t}) |]
 
-val :: Text -> Text
-val t = [qc| jsb.ws.send({t}) |]
+val :: ByteString -> ByteString
+val t = [i| jsb.ws.send(#{t}) |]
 
 -- | replace a container and run any embedded scripts
-replace :: Text -> Text -> Text
+replace :: ByteString -> ByteString -> ByteString
 replace d t =
-  [qc|
-     var $container = document.getElementById('{d}');
-     $container.innerHTML = '{clean t}';
+  [i|
+     var $container = document.getElementById('#{d}');
+     $container.innerHTML = '#{clean t}';
      runScripts($container);
      refreshJsb();
      |]
 
 -- | append to a container and run any embedded scripts
-append :: Text -> Text -> Text
+append :: ByteString -> ByteString -> ByteString
 append d t =
-  [qc|
-     var $container = document.getElementById('{d}');
-     $container.innerHTML += '{clean t}';
+  [i|
+     var $container = document.getElementById('#{d}');
+     $container.innerHTML += '#{clean t}';
      runScripts($container);
      refreshJsb();
      |]
 
-clean :: Text -> Text
+clean :: ByteString -> ByteString
 clean =
-  Text.intercalate "\\'"
-    . Text.split (== '\'')
-    . Text.intercalate "\\n"
-    . Text.lines
+  C.intercalate "\\'"
+    . C.split '\''
+    . C.intercalate "\\n"
+    . C.lines
 
 -- * initial javascript
 
 -- | create a web socket for event data
-webSocket :: RepJs
+webSocket :: Js
 webSocket =
-  RepJsText
-    [q|
+  Js
+    [i|
 window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
 jsb.event = function(ev) {
     jsb.ws.send(JSON.stringify({event: ev}));
@@ -301,10 +360,10 @@ jsb.ws.onmessage = function(evt){
 -- * scripts
 
 -- | Event hooks that may need to be reattached given dynamic content creation.
-refreshJsbJs :: RepJs
+refreshJsbJs :: Js
 refreshJsbJs =
-  RepJsText
-    [q|
+  Js
+    [i|
 function refreshJsb () {
   $('.jsbClassEventInput').off('input');
   $('.jsbClassEventInput').on('input', (function(){
@@ -353,11 +412,10 @@ function refreshJsb () {
 |]
 
 -- | prevent the Enter key from triggering an event
-preventEnter :: RepJs
+preventEnter :: Js
 preventEnter =
-  RepJs $
-    parseJs
-      [q|
+  Js
+    [i|
 window.addEventListener('keydown',function(e) {
   if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {
     if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {
@@ -371,10 +429,10 @@ window.addEventListener('keydown',function(e) {
 -- | script injection js.
 --
 -- See https://ghinda.net/article/script-tags/ for why this might be needed.
-runScriptJs :: RepJs
+runScriptJs :: Js
 runScriptJs =
-  RepJsText
-    [q|
+  Js
+    [i|
 function insertScript ($script) {
   var s = document.createElement('script')
   s.type = 'text/javascript'

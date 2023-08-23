@@ -8,8 +8,9 @@ where
 
 import Control.Monad
 import Control.Monad.Trans.Class
-import Data.Text (unpack)
-import Lucid
+import Data.ByteString qualified as B
+import Data.Text.Lazy (pack)
+import MarkupParse
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import Optics.Core hiding (only)
 import Web.Rep.Page
@@ -23,7 +24,7 @@ servePageWith rp pc p =
   where
     getpage = case pc ^. #concerns of
       Inline ->
-        get rp (html $ renderText $ renderPageHtmlWith pc p)
+        get rp (html $ pack $ utf8ToStr $ markdown_ Compact Html $ renderPageHtmlWith pc p)
       Separated ->
         let (css, js, h) = renderPageWith pc p
          in do
@@ -31,11 +32,11 @@ servePageWith rp pc p =
               get
                 rp
                 ( do
-                    lift $ writeFile' cssfp (unpack css)
-                    lift $ writeFile' jsfp (unpack js)
-                    html $ renderText h
+                    lift $ writeFile' cssfp css
+                    lift $ writeFile' jsfp js
+                    html $ pack $ utf8ToStr $ markdown_ Compact Html h
                 )
     cssfp = pc ^. #filenames % #cssConcern
     jsfp = pc ^. #filenames % #jsConcern
-    writeFile' fp s = unless (s == mempty) (writeFile fp s)
+    writeFile' fp s = unless (s == mempty) (B.writeFile fp s)
     servedir = (\x -> middleware $ staticPolicy (noDots <> addBase x)) <$> pc ^. #localdirs

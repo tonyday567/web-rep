@@ -6,7 +6,7 @@ module Web.Rep.Render
   ( renderPage,
     renderPageWith,
     renderPageHtmlWith,
-    renderPageAsText,
+    renderPageAsByteString,
     renderPageToFile,
     renderPageHtmlToFile,
   )
@@ -14,25 +14,26 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as B
 import Data.Foldable
-import Data.Text (Text, pack, unpack)
-import Lucid
-import Optics.Core
+import MarkupParse
+import Optics.Core hiding (element)
 import Web.Rep.Html
 import Web.Rep.Page
 
 -- | Render a Page with the default configuration into Html.
-renderPage :: Page -> Html ()
+renderPage :: Page -> Markup
 renderPage p =
   (\(_, _, x) -> x) $ renderPageWith (defaultPageConfig "default") p
 
 -- | Render a Page into Html.
-renderPageHtmlWith :: PageConfig -> Page -> Html ()
+renderPageHtmlWith :: PageConfig -> Page -> Markup
 renderPageHtmlWith pc p =
   (\(_, _, x) -> x) $ renderPageWith pc p
 
 -- | Render a Page into css text, js text and html.
-renderPageWith :: PageConfig -> Page -> (Text, Text, Html ())
+renderPageWith :: PageConfig -> Page -> (ByteString, ByteString, Markup)
 renderPageWith pc p =
   case pc ^. #concerns of
     Inline -> (mempty, mempty, h)
@@ -41,105 +42,83 @@ renderPageWith pc p =
     h =
       case pc ^. #structure of
         HeaderBody ->
-          doctype_
-            <> with
-              html_
-              [lang_ "en"]
-              ( head_
-                  ( mconcat
-                      [ meta_ [charset_ "utf-8"],
-                        cssInline,
-                        mconcat libsCss',
-                        p ^. #htmlHeader
-                      ]
-                  )
-                  <> body_
-                    ( mconcat
-                        [ p ^. #htmlBody,
-                          mconcat libsJs',
-                          jsInline
-                        ]
-                    )
+          doctypeHtml
+            <> element
+              "html"
+              [Attr "lang" "en"]
+              ( element
+                  "head"
+                  []
+                  (element_ "meta" [Attr "charset" "utf-8"])
+                  <> cssInline
+                  <> libsCss'
+                  <> view #htmlHeader p
+              )
+            <> element
+              "body"
+              []
+              ( view #htmlBody p
+                  <> libsJs'
+                  <> jsInline
               )
         Headless ->
-          mconcat
-            [ doctype_,
-              meta_ [charset_ "utf-8"],
-              mconcat libsCss',
-              cssInline,
-              p ^. #htmlHeader,
-              p ^. #htmlBody,
-              mconcat libsJs',
-              jsInline
-            ]
+          doctypeHtml
+            <> element_ "meta" [Attr "charset" "utf-8"]
+            <> libsCss'
+            <> cssInline
+            <> view #htmlHeader p
+            <> p ^. #htmlBody
+            <> libsJs'
+            <> jsInline
         Snippet ->
-          mconcat
-            [ mconcat libsCss',
-              cssInline,
-              p ^. #htmlHeader,
-              p ^. #htmlBody,
-              mconcat libsJs',
-              jsInline
-            ]
-        Svg ->
-          svgDocType
-            <> svg_
-              ( svgDefs $
-                  mconcat
-                    [ mconcat libsCss',
-                      cssInline,
-                      p ^. #htmlBody,
-                      mconcat libsJs',
-                      jsInline
-                    ]
-              )
-    css = rendercss (p ^. #cssBody)
-    js = renderjs (p ^. #jsGlobal <> onLoad (p ^. #jsOnLoad))
-    renderjs = renderRepJs $ pc ^. #pageRender
-    rendercss = renderRepCss $ pc ^. #pageRender
+          libsCss'
+            <> cssInline
+            <> view #htmlHeader p
+            <> view #htmlBody p
+            <> libsJs'
+            <> jsInline
+
+    css :: ByteString
+    css = renderCss (view #renderStyle pc) (p ^. #cssBody)
+
+    js :: ByteString
+    js = jsByteString (p ^. #jsGlobal <> onLoad (p ^. #jsOnLoad))
     cssInline
       | pc ^. #concerns == Separated || css == mempty = mempty
-      | otherwise = style_ [type_ "text/css"] css
+      | otherwise = elementc "style" [Attr "type" "text/css"] css
     jsInline
       | pc ^. #concerns == Separated || js == mempty = mempty
-      | otherwise = script_ mempty js
+      | otherwise = elementc "script" [] js
     libsCss' =
       case pc ^. #concerns of
-        Inline -> p ^. #libsCss
+        Inline -> view #libsCss p
         Separated ->
-          p ^. #libsCss
-            <> [libCss (pack $ pc ^. #filenames % #cssConcern)]
+          view #libsCss p
+            <> libCss (strToUtf8 $ pc ^. #filenames % #cssConcern)
     libsJs' =
       case pc ^. #concerns of
         Inline -> p ^. #libsJs
         Separated ->
-          p ^. #libsJs
-            <> [libJs (pack $ pc ^. #filenames % #jsConcern)]
+          view #libsJs p
+            <> libJs (strToUtf8 $ pc ^. #filenames % #jsConcern)
 
 -- | Render Page concerns to files.
 renderPageToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageToFile dir pc page =
-  sequenceA_ $ liftA2 writeFile' (pc ^. #filenames) (fmap unpack (renderPageAsText pc page))
+  sequenceA_ $ liftA2 writeFile' (pc ^. #filenames) (renderPageAsByteString pc page)
   where
-    writeFile' fp s = unless (s == mempty) (writeFile (dir <> "/" <> fp) s)
+    writeFile' fp s = unless (s == mempty) (B.writeFile (dir <> "/" <> fp) s)
 
 -- | Render a page to just a Html file.
 renderPageHtmlToFile :: FilePath -> PageConfig -> Page -> IO ()
 renderPageHtmlToFile file pc page =
-  writeFile file (unpack $ toText $ renderPageHtmlWith pc page)
+  B.writeFile file (markdown_ (view #renderStyle pc) Html $ renderPageHtmlWith pc page)
 
 -- | Render a Page as Text.
-renderPageAsText :: PageConfig -> Page -> Concerns Text
-renderPageAsText pc p =
+renderPageAsByteString :: PageConfig -> Page -> Concerns ByteString
+renderPageAsByteString pc p =
   case pc ^. #concerns of
-    Inline -> Concerns mempty mempty htmlt
-    Separated -> Concerns css js htmlt
+    Inline -> Concerns mempty mempty (markdown_ (view #renderStyle pc) Html h)
+    Separated -> Concerns css js (markdown_ (view #renderStyle pc) Html h)
   where
-    htmlt = toText h
     (css, js, h) = renderPageWith pc p
-
-svgDocType :: Html ()
-svgDocType = "?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"\n    \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\""
-
-svgDefs :: Html () -> Html ()
-svgDefs = term "defs"

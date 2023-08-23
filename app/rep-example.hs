@@ -6,9 +6,8 @@
 import Box
 import Control.Monad
 import Data.Bifunctor
-import Data.Text (pack)
-import Lucid qualified as L
-import Optics.Core
+import MarkupParse
+import Optics.Core hiding (element)
 import Options.Applicative
 import Web.Rep
 import Web.Rep.Examples
@@ -47,7 +46,7 @@ opts =
 
 -- | A simple count stream
 countStream :: Int -> Double -> CoEmitter IO (Gap, [Code])
-countStream n speed = fmap (second ((: []) . Replace "output" . pack . show)) <$> qList (zip (0 : repeat (1 / speed)) [0 .. n])
+countStream n speed = fmap (second ((: []) . Replace "output" . strToUtf8 . show)) <$> qList (zip (0 : repeat (1 / speed)) [0 .. n])
 
 main :: IO ()
 main = do
@@ -72,19 +71,35 @@ playTest = servePlayStream (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeB
 
 playPage :: Page
 playPage =
-  defaultSocketPage Boot5
-    & #htmlBody
-      .~ divClass_
-        "container"
-        ( mconcat
-            [ divClass_ "row" (L.h1_ "Replay Simulation"),
-              divClass_ "row" . mconcat $
-                (\(t, h) -> divClass_ "col" (L.with L.div_ [L.id_ t] h))
-                  <$> [ ("input", mempty),
-                        ("output", mempty)
-                      ]
-            ]
-        )
+  defaultSocketPage
+    & set
+      #htmlBody
+      ( element
+          "div"
+          [Attr "class" "container"]
+          ( element
+              "div"
+              [Attr "class" "row"]
+              (elementc "h1" [] "replay simulation")
+              <> element
+                "div"
+                [Attr "class" "row"]
+                ( mconcat $
+                    ( \(t, h) ->
+                        element
+                          "div"
+                          [Attr "class" "row"]
+                          (element "h2" [] (elementc "div" [Attr "id" t] h))
+                    )
+                      <$> sections
+                )
+          )
+      )
+  where
+    sections =
+      [ ("input", mempty),
+        ("output", mempty)
+      ]
 
 restartTest :: IO (Either Bool ())
 restartTest = restart <$> (gapEffect . fmap (1,) <$> resetE 5 10) <*|> pure (glue showStdout . gapEffect <$|> countStream 100 1)

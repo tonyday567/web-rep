@@ -19,10 +19,10 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Biapplicative
+import Data.ByteString (ByteString)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
-import Data.Text (Text, pack)
-import Lucid
+import MarkupParse
 import Optics.Core
 import Optics.Zoom
 
@@ -32,12 +32,12 @@ import Optics.Zoom
 -- RepF consists of an underlying value being represented, and, given a hashmap state, a way to produce a representation of the underlying value (or error), in another domain, together with the potential to alter the hashmap state.
 data RepF r a = Rep
   { rep :: r,
-    make :: HashMap Text Text -> (HashMap Text Text, Either Text a)
+    make :: HashMap ByteString ByteString -> (HashMap ByteString ByteString, Either ByteString a)
   }
   deriving (Functor)
 
 -- | the common usage, where the representation domain is Html
-type Rep a = RepF (Html ()) a
+type Rep a = RepF Markup a
 
 instance (Semigroup r) => Semigroup (RepF r a) where
   (Rep r0 a0) <> (Rep r1 a1) =
@@ -46,6 +46,7 @@ instance (Semigroup r) => Semigroup (RepF r a) where
       (\hm -> let (hm', x') = a0 hm in let (hm'', x'') = a1 hm' in (hm'', x' <> x''))
 
 instance (Monoid a, Monoid r) => Monoid (RepF r a) where
+  mempty :: RepF r a
   mempty = Rep mempty (,Right mempty)
 
   mappend = (<>)
@@ -75,7 +76,7 @@ instance (Monoid r) => Applicative (RepF r) where
 
 -- | stateful result of one step, given a 'Rep', and a monadic action.
 -- Useful for testing and for initialising a page.
-oneRep :: (Monad m) => Rep a -> (Rep a -> HashMap Text Text -> m ()) -> StateT (HashMap Text Text) m (HashMap Text Text, Either Text a)
+oneRep :: (Monad m) => Rep a -> (Rep a -> HashMap ByteString ByteString -> m ()) -> StateT (HashMap ByteString ByteString) m (HashMap ByteString ByteString, Either ByteString a)
 oneRep r@(Rep _ fa) action = do
   m <- get
   let (m', a) = fa m
@@ -90,12 +91,12 @@ oneRep r@(Rep _ fa) action = do
 --
 -- unshare should only be run once, which is a terrible flaw that might be fixed by linear types.
 newtype SharedRepF m r a = SharedRep
-  { unshare :: StateT (Int, HashMap Text Text) m (RepF r a)
+  { unshare :: StateT (Int, HashMap ByteString ByteString) m (RepF r a)
   }
   deriving (Functor)
 
 -- | default representation type of 'Html' ()
-type SharedRep m a = SharedRepF m (Html ()) a
+type SharedRep m a = SharedRepF m Markup a
 
 instance (Functor m) => Bifunctor (SharedRepF m) where
   bimap f g (SharedRep s) = SharedRep $ fmap (bimap f g) s
@@ -111,24 +112,24 @@ instance (Monad m, Monoid r) => Applicative (SharedRepF m r) where
   SharedRep f <*> SharedRep a = SharedRep $ liftA2 (<*>) f a
 
 -- | name supply for elements of a 'SharedRep'
-genName :: (MonadState Int m) => m Text
+genName :: (MonadState Int m) => m ByteString
 genName = do
   modify (+ 1)
-  pack . show <$> get
+  strToUtf8 . show <$> get
 
 -- | sometimes a number doesn't work properly in html (or js???), and an alpha prefix seems to help
-genNamePre :: (MonadState Int m) => Text -> m Text
+genNamePre :: (MonadState Int m) => ByteString -> m ByteString
 genNamePre p = (p <>) <$> genName
 
 -- | Create a sharedRep
 register ::
   (Monad m) =>
   -- | Parser
-  (Text -> Either Text a) ->
+  (ByteString -> Either ByteString a) ->
   -- | Printer
-  (a -> Text) ->
+  (a -> ByteString) ->
   -- | create initial object from name and initial value
-  (Text -> a -> r) ->
+  (ByteString -> a -> r) ->
   -- | initial value
   a ->
   SharedRepF m r a
@@ -153,9 +154,9 @@ register p pr f a =
 message ::
   (Monad m) =>
   -- | Parser
-  (Text -> Either Text a) ->
+  (ByteString -> Either ByteString a) ->
   -- | create initial object from name and initial value
-  (Text -> a -> r) ->
+  (ByteString -> a -> r) ->
   -- | initial value
   a ->
   -- | default value
@@ -163,25 +164,25 @@ message ::
   SharedRepF m r a
 message p f a d =
   SharedRep $ do
-    name <- zoom _1 genName
+    n <- zoom _1 genName
     pure $
       Rep
-        (f name a)
+        (f n a)
         ( \s ->
-            ( HashMap.delete name s,
+            ( HashMap.delete n s,
               join $
-                maybe (Right $ Right d) (Right . p) (HashMap.lookup name s)
+                maybe (Right $ Right d) (Right . p) (HashMap.lookup n s)
             )
         )
 
-runSharedRep :: SharedRepF m r a -> m (RepF r a, (Int, HashMap Text Text))
+runSharedRep :: SharedRepF m r a -> m (RepF r a, (Int, HashMap ByteString ByteString))
 runSharedRep s = flip runStateT (0, HashMap.empty) $ unshare s
 
 -- | compute the initial state of a SharedRep (testing)
 zeroState ::
   (Monad m) =>
   SharedRep m a ->
-  m (Html (), (HashMap Text Text, Either Text a))
+  m (Markup, (HashMap ByteString ByteString, Either ByteString a))
 zeroState sr = do
   (Rep h fa, (_, m)) <- runSharedRep sr
   pure (h, fa m)
@@ -190,8 +191,8 @@ zeroState sr = do
 runOnce ::
   (Monad m) =>
   SharedRep m a ->
-  (Html () -> HashMap Text Text -> m ()) ->
-  m (HashMap Text Text, Either Text a)
+  (Markup -> HashMap ByteString ByteString -> m ()) ->
+  m (HashMap ByteString ByteString, Either ByteString a)
 runOnce sr action = do
   (Rep h fa, (_, m)) <- runSharedRep sr
   action h m
