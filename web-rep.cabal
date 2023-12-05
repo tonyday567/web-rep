@@ -14,7 +14,7 @@ description:
     An applicative-based, shared-data representation of a web page. 
 
 build-type: Simple
-tested-with: GHC == 8.10.7 || ==9.2.8 || ==9.4.5 || ==9.6.2
+tested-with: GHC == 8.10.7 || ==9.2.8 || ==9.4.7 || ==9.6.3 || ==9.8.1
 extra-doc-files: ChangeLog.md
 
 source-repository head
@@ -100,7 +100,7 @@ library
     import: ghc2021-stanza
     hs-source-dirs: src
     build-depends:
-        , async                 ^>=2.2.4
+        , async                 >=2.2.4 && <2.3
         , base                  >=4.7 && <5
         , bifunctors            >=5.5.11 && <5.7
         , box                   >=0.9 && <0.10
@@ -112,14 +112,14 @@ library
         , optics-core           >=0.4 && <0.5
         , optics-extra          >=0.4 && <0.5
         , profunctors           >=5.6.2 && <5.7
-        , scotty                >=0.11.5 && <0.13
+        , scotty                >=0.11.5 && <0.21
         , string-interpolate    >=0.3 && <0.4
-        , text                  >=1.2 && <2.1
+        , text                  >=1.2 && <2.2
         , transformers          >=0.5.6 && <0.6.2
         , unordered-containers  >=0.2 && <0.3
-        , wai-middleware-static ^>=0.9
-        , wai-websockets        ^>=3.0.1.2
-        , websockets            ^>=0.12
+        , wai-middleware-static >=0.9 && <0.10
+        , wai-websockets        >=3.0.1.2 && <3.1
+        , websockets            >=0.12 && <0.13
     exposed-modules:
         Web.Rep
         Web.Rep.Bootstrap

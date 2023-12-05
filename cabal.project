@@ -1,2 +1,16 @@
 packages:
   web-rep.cabal
+
+allow-newer:
+  string-interpolate:bytestring,
+  string-interpolate:template-haskell,
+  string-interpolate:text,
+  scotty:text,
+  websockets:text,
+  websockets:bytestring,
+  websockets:attoparsec,
+  box-socket:text,
+  box-socket:bytestring,
+  box-socket:optparse-generic,
+  optparse-generic:text,
+  optparse-generic:bytestring,
