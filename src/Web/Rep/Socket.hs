@@ -43,7 +43,7 @@ module Web.Rep.Socket
 where
 
 import Box
-import Box.Socket (serverApp)
+import Box.Websocket (serverApp)
 import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
@@ -163,6 +163,12 @@ defaultCodeBoxConfig :: CodeBoxConfig
 defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig defaultSocketPage Single Single
 
 -- | Turn a configuration into a live (Codensity) CodeBox
+--
+-- FIXME:
+-- textarea bug:
+-- web-rep-example: uncaught parse error
+-- CallStack (from HasCallStack):
+--  error, called at src/Web/Rep/Socket.hs:172:25 in wb-rp-0.11.1-c7200511:Web.Rep.Socket
 codeBoxWith :: CodeBoxConfig -> CoCodeBox
 codeBoxWith cfg =
   fromActionWith
