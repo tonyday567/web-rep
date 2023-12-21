@@ -1,3 +1,7 @@
+0.11.1
+===
+* upgrade to box-socket-0.5
+
 0.11
 ===
 * Removed clay, lucid as dependencies

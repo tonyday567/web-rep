@@ -1,19 +1,43 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 -- | Common web page input elements, often with bootstrap scaffolding.
 module Web.Rep.Html.Input
   ( Input (..),
     InputType (..),
-    inputToHtml,
+    markupInput,
+    ToByteString (..),
   )
 where
 
 import Data.Bool
 import Data.ByteString (ByteString)
+import Data.Text (Text)
+import Data.Text.Encoding
 import Data.ByteString.Char8 qualified as C
 import Data.Maybe
 import GHC.Generics
 import MarkupParse
+
+class ToByteString a where
+  -- | Convert a value to a strict ByteString
+  toByteString :: a -> ByteString
+  default toByteString :: (Show a) => a -> ByteString
+  toByteString = strToUtf8 . show
+
+instance ToByteString ByteString
+  where
+    toByteString = id
+
+instance ToByteString Text
+  where
+    toByteString = encodeUtf8
+
+instance ToByteString Int
+instance ToByteString Integer
+instance ToByteString Double
+instance ToByteString Float
+instance ToByteString Bool
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a = Input
@@ -46,8 +70,8 @@ data InputType
   | Button
   deriving (Eq, Show, Generic)
 
-inputToHtml :: (Show a) => Input a -> Markup
-inputToHtml (Input v l i (Slider satts)) =
+markupInput :: (a -> ByteString) -> Input a -> Markup
+markupInput pr (Input v l i (Slider satts)) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -57,11 +81,11 @@ inputToHtml (Input v l i (Slider satts)) =
       ( [ Attr "type" "range",
           Attr "class" " form-control-range form-control-sm custom-range jsbClassEventChange",
           Attr "id" i,
-          Attr "value" (strToUtf8 $ show v)
+          Attr "value" (pr v)
         ]
           <> satts
       )
-inputToHtml (Input v l i (SliderV satts)) =
+markupInput pr (Input v l i (SliderV satts)) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -71,14 +95,14 @@ inputToHtml (Input v l i (SliderV satts)) =
           ( [ Attr "type" "range",
               Attr "class" " form-control-range form-control-sm custom-range jsbClassEventChange",
               Attr "id" i,
-              Attr "value" (strToUtf8 $ show v),
+              Attr "value" (pr v),
               Attr "oninput" ("$('#sliderv" <> i <> "').html($(this).val())")
             ]
               <> satts
           )
     )
-    <> elementc "span" [Attr "id" ("sliderv" <> i)] (strToUtf8 $ show v)
-inputToHtml (Input v l i TextBox) =
+    <> elementc "span" [Attr "id" ("sliderv" <> i)] (pr v)
+markupInput pr (Input v l i TextBox) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -88,10 +112,10 @@ inputToHtml (Input v l i TextBox) =
           [ Attr "type" "text",
             Attr "class" "form-control form-control-sm jsbClassEventInput",
             Attr "id" i,
-            Attr "value" (strToUtf8 $ show v)
+            Attr "value" (pr v)
           ]
     )
-inputToHtml (Input v l i TextBox') =
+markupInput pr (Input v l i TextBox') =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -101,23 +125,23 @@ inputToHtml (Input v l i TextBox') =
           [ Attr "type" "text",
             Attr "class" "form-control form-control-sm jsbClassEventFocusout",
             Attr "id" i,
-            Attr "value" (strToUtf8 $ show v)
+            Attr "value" (pr v)
           ]
     )
-inputToHtml (Input v l i (TextArea rows)) =
+markupInput pr (Input v l i (TextArea rows)) =
   element
     "div"
     [Attr "class" "form-group-sm"]
     ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "mb-0"]) l
         <> elementc
           "textarea"
-          [ Attr "rows" (strToUtf8 $ show rows),
+          [ Attr "rows" (toByteString rows),
             Attr "class" "form-control form-control-sm jsbClassEventInput",
             Attr "id" i
           ]
-          (strToUtf8 $ show v)
+          (pr v)
     )
-inputToHtml (Input v l i ColorPicker) =
+markupInput pr (Input v l i ColorPicker) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -127,10 +151,10 @@ inputToHtml (Input v l i ColorPicker) =
           [ Attr "type" "color",
             Attr "class" "form-control form-control-sm jsbClassEventInput",
             Attr "id" i,
-            Attr "value" (strToUtf8 $ show v)
+            Attr "value" (pr v)
           ]
     )
-inputToHtml (Input _ l i ChooseFile) =
+markupInput _ (Input _ l i ChooseFile) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -142,7 +166,7 @@ inputToHtml (Input _ l i ChooseFile) =
             Attr "id" i
           ]
     )
-inputToHtml (Input v l i (Dropdown opts)) =
+markupInput pr (Input v l i (Dropdown opts)) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -162,12 +186,12 @@ inputToHtml (Input v l i (Dropdown opts)) =
             ( bool
                 []
                 [Attr "selected" "selected"]
-                (o == strToUtf8 (show v))
+                (o == pr v)
             )
             o
       )
         <$> opts
-inputToHtml (Input vs l i (DropdownMultiple opts sep)) =
+markupInput pr (Input vs l i (DropdownMultiple opts sep)) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -188,12 +212,12 @@ inputToHtml (Input vs l i (DropdownMultiple opts sep)) =
             ( bool
                 []
                 [Attr "selected" "selected"]
-                (any (\v -> o == strToUtf8 (show v)) (C.split sep (strToUtf8 $ show vs)))
+                (any (\v -> o == strToUtf8 (show v)) (C.split sep (pr vs)))
             )
             o
       )
         <$> opts
-inputToHtml (Input v l i (DropdownSum opts)) =
+markupInput pr (Input v l i (DropdownSum opts)) =
   element
     "div"
     [Attr "class" "form-group-sm sumtype-group"]
@@ -210,11 +234,11 @@ inputToHtml (Input v l i (DropdownSum opts)) =
       ( \o ->
           elementc
             "option"
-            (bool [] [Attr "selected" "selected"] (o == strToUtf8 (show v)))
+            (bool [] [Attr "selected" "selected"] (o == pr v))
             o
       )
         <$> opts
-inputToHtml (Input v l i (Datalist opts listId)) =
+markupInput pr (Input v l i (Datalist opts listId)) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -239,7 +263,7 @@ inputToHtml (Input v l i (Datalist opts listId)) =
                       ( bool
                           []
                           [Attr "selected" "selected"]
-                          (o == strToUtf8 (show v))
+                          (o == pr v)
                       )
                       o
                 )
@@ -247,7 +271,7 @@ inputToHtml (Input v l i (Datalist opts listId)) =
               )
           )
     )
-inputToHtml (Input _ l i (Checkbox checked)) =
+markupInput _ (Input _ l i (Checkbox checked)) =
   element
     "div"
     [Attr "class" "form-check form-check-sm"]
@@ -262,7 +286,7 @@ inputToHtml (Input _ l i (Checkbox checked)) =
         ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "form-label-check mb-0"]) l
         )
     )
-inputToHtml (Input _ l i (Toggle pushed lab)) =
+markupInput _ (Input _ l i (Toggle pushed lab)) =
   element
     "div"
     [Attr "class" "form-group-sm"]
@@ -279,7 +303,7 @@ inputToHtml (Input _ l i (Toggle pushed lab)) =
               <> bool [] [Attr "checked" ""] pushed
           )
     )
-inputToHtml (Input _ l i Button) =
+markupInput _ (Input _ l i Button) =
   element
     "div"
     [Attr "class" "form-group-sm"]

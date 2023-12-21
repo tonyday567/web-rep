@@ -2,7 +2,6 @@ packages:
   web-rep.cabal
 
 allow-newer:
-  string-interpolate:bytestring,
   string-interpolate:template-haskell,
   string-interpolate:text,
   scotty:text,

@@ -63,7 +63,7 @@ import Prelude as P
 
 -- | Create a sharedRep from an Input.
 repInput ::
-  (Monad m, Show a) =>
+  (Monad m) =>
   -- | Parser
   (ByteString -> Either ByteString a) ->
   -- | Printer
@@ -73,12 +73,12 @@ repInput ::
   -- | initial value
   a ->
   SharedRep m a
-repInput p pr i = register p pr (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i)
+repInput p pr i = register p pr (\n v -> markupInput pr $ #inputVal .~ v $ #inputId .~ n $ i)
 
 -- | Like 'repInput', but does not put a value into the HashMap on instantiation, consumes the value when found in the HashMap, and substitutes a default on lookup failure
-repMessage :: (Monad m, Show a) => (ByteString -> Either ByteString a) -> (a -> ByteString) -> Input a -> a -> a -> SharedRep m a
-repMessage p _ i def a =
-  message p (\n v -> inputToHtml $ #inputVal .~ v $ #inputId .~ n $ i) a def
+repMessage :: (Monad m) => (ByteString -> Either ByteString a) -> (a -> ByteString) -> Input a -> a -> a -> SharedRep m a
+repMessage p pr i def a =
+  message p (\n v -> markupInput pr $ #inputVal .~ v $ #inputId .~ n $ i) a def
 
 -- | double slider
 --
@@ -130,7 +130,7 @@ sliderV label l u s v =
 -- sliderI (Just "label") 0 1000 10 300
 --   :: (Monad m, ToHtml a, P.Integral a, Show a) => SharedRep m a
 sliderI ::
-  (Monad m, P.Integral a, Show a) =>
+  (Monad m, P.Integral a, ToByteString a) =>
   Maybe ByteString ->
   a ->
   a ->
@@ -140,13 +140,13 @@ sliderI ::
 sliderI label l u s v =
   repInput
     (runParserEither (fromIntegral <$> int))
-    (strToUtf8 . show)
-    (Input v label mempty (Slider [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
+    toByteString
+    (Input v label mempty (Slider [Attr "min" (toByteString l), Attr "max" (toByteString u), Attr "step" (toByteString s)]))
     v
 
 -- | integral slider with shown value
 sliderVI ::
-  (Monad m, P.Integral a, Show a) =>
+  (Monad m, P.Integral a, ToByteString a) =>
   Maybe ByteString ->
   a ->
   a ->
@@ -156,8 +156,8 @@ sliderVI ::
 sliderVI label l u s v =
   repInput
     (runParserEither (fromIntegral <$> int))
-    (strToUtf8 . show)
-    (Input v label mempty (SliderV [Attr "min" (strToUtf8 $ show l), Attr "max" (strToUtf8 $ show u), Attr "step" (strToUtf8 $ show s)]))
+    toByteString
+    (Input v label mempty (SliderV [Attr "min" (toByteString l), Attr "max" (toByteString u), Attr "step" (toByteString s)]))
     v
 
 -- | textbox classique
@@ -201,7 +201,7 @@ colorPicker label v =
 
 -- | dropdown box
 dropdown ::
-  (Monad m, Show a) =>
+  (Monad m) =>
   -- | parse an a from ByteString
   (ByteString -> Either ByteString a) ->
   -- | print an a to ByteString
@@ -222,7 +222,7 @@ dropdown p pr label opts v =
 
 -- | dropdown box with multiple selections
 dropdownMultiple ::
-  (Monad m, Show a) =>
+  (Monad m) =>
   -- | parse an a from ByteString
   Parser ByteString a ->
   -- | print an a to ByteString
@@ -252,7 +252,7 @@ datalist label opts v id'' =
 
 -- | A dropdown box designed to help represent a haskell sum type.
 dropdownSum ::
-  (Monad m, Show a) =>
+  (Monad m) =>
   (ByteString -> Either ByteString a) ->
   (a -> ByteString) ->
   Maybe ByteString ->
@@ -348,7 +348,7 @@ checkboxShow label id' v =
     zoom _2 (modify (HashMap.insert name (bool "false" "true" v)))
     pure $
       Rep
-        (inputToHtml (Input v label name (Checkbox v)) <> scriptToggleShow name id')
+        (markupInput (strToUtf8 . show) (Input v label name (Checkbox v)) <> scriptToggleShow name id')
         ( \s ->
             ( s,
               join $
@@ -442,8 +442,8 @@ defaultListLabels n = (\x -> "[" <> strToUtf8 (show x) <> "]") <$> [0 .. n] :: [
 -- | Parse from a textbox
 --
 -- Uses focusout so as not to spam the reader.
-readTextbox :: (Monad m, Read a, Show a) => Maybe ByteString -> a -> SharedRep m (Either ByteString a)
-readTextbox label v = parsed . utf8ToStr <$> textbox' label (strToUtf8 $ show v)
+readTextbox :: (Monad m, Read a, ToByteString a) => Maybe ByteString -> a -> SharedRep m (Either ByteString a)
+readTextbox label v = parsed . utf8ToStr <$> textbox' label (toByteString v)
   where
     parsed str =
       case reads str of

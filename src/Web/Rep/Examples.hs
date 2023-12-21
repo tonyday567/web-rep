@@ -144,7 +144,7 @@ fromShape SquareShape = "Square"
 repExamples :: (Monad m) => SharedRep m RepExamples
 repExamples = do
   t <- textbox (Just "textbox") "sometext"
-  ta <- textarea 3 (Just "textarea") "no initial value & multi-line text\\nrenders is not ok?/"
+  ta <- textarea 3 (Just "textarea") "no initial value & multi-line text"
   n <- sliderI (Just "int slider") 0 5 1 3
   ds' <- slider (Just "double slider") 0 1 0.1 0.5
   nV <- sliderVI (Just "int slider") 0 5 1 3

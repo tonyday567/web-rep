@@ -55,7 +55,6 @@ import Data.HashMap.Strict as HashMap
 import Data.Profunctor
 import Data.String.Interpolate
 import Data.Text (Text)
-import Data.Text qualified as Text
 import FlatParse.Basic
 import GHC.Generics
 import MarkupParse
@@ -69,12 +68,13 @@ import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Rep.SharedReps
 import Web.Scotty (middleware, scotty)
+import Data.Text.Encoding
 
 toText_ :: ByteString -> Text
-toText_ = Text.pack . utf8ToStr
+toText_ = decodeUtf8Lenient
 
 fromText_ :: Text -> ByteString
-fromText_ = strToUtf8 . Text.unpack
+fromText_ = encodeUtf8
 
 -- | Page with all the trimmings for a sharedRep Box
 socketPage :: Page
@@ -164,11 +164,6 @@ defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig defaultSocketPage Singl
 
 -- | Turn a configuration into a live (Codensity) CodeBox
 --
--- FIXME:
--- textarea bug:
--- web-rep-example: uncaught parse error
--- CallStack (from HasCallStack):
---  error, called at src/Web/Rep/Socket.hs:172:25 in wb-rp-0.11.1-c7200511:Web.Rep.Socket
 codeBoxWith :: CodeBoxConfig -> CoCodeBox
 codeBoxWith cfg =
   fromActionWith
