@@ -1,0 +1,197 @@
+* checklist
+
+[[https://hackage.haskell.org/package/web-rep]]
+[[https://github.com/tonyday567/web-rep]]
+
+- [X] version check&bump
+
+  #+begin_src sh :results output
+  cd ~/haskell/web-rep
+  #+end_src
+
+  0.11.1
+
+  API change so: 0.12
+
+- [X] ghcup upgrades
+
+  #+begin_src sh :results output
+  ghcup list -c set -r
+  #+end_src
+
+  #+RESULTS:
+  : ghc 9.8.1 latest,base-4.19.0.0 hls-powered,2023-10-09
+  : cabal 3.10.2.0 latest
+  : hls 2.5.0.0 latest
+  : stack 2.13.1 latest
+  : ghcup 0.1.20.0 latest,recommended
+- [X] cabal.project check
+
+  #+begin_src sh :results output
+  cat cabal.project
+  #+end_src
+
+  #+RESULTS:
+  : packages:
+  :   web-rep.cabal
+  :
+  : allow-newer:
+  :   string-interpolate:template-haskell,
+  :   string-interpolate:text,
+  :   scotty:text,
+  :   websockets:text,
+- [X] upstream publishings
+- [X] cabal outdated
+    #+begin_src sh :results output
+    cabal outdated
+    #+end_src
+
+    #+RESULTS:
+    : Outdated dependencies:
+    : primitive >=0.7.2 && <0.9 (latest: 0.9.0.0)
+- [X] cabal gen-bounds
+    #+begin_src sh :results output
+    cabal gen-bounds
+    #+end_src
+
+    #+RESULTS:
+    : Resolving dependencies...
+    : Congratulations, all your dependencies have upper bounds!
+- [X] cabal update
+
+  #+begin_src sh :results output
+  cabal update
+  #+end_src
+
+  #+RESULTS:
+  : Downloading the latest package list from hackage.haskell.org
+  : Package list of hackage.haskell.org has been updated.
+  : The index-state is set to 2023-12-19T03:05:53Z.
+  : To revert to previous state run:
+  :     cabal v2-update 'hackage.haskell.org,2023-12-18T22:41:30Z'
+- [X] cabal build --ghc-options=-Wunused-packages
+    #+begin_src sh :results output
+    cabal clean && cabal build --ghc-options=-Wunused-packages
+    #+end_src
+
+    #+RESULTS:
+    : Up to date
+- [X] cabal-fix
+
+    #+begin_src sh :results output
+    cabal-fix --gen
+    #+end_src
+
+    #+begin_src sh :results output
+    cabal-fix -f ~/haskell/cabal-fix/my-cabal-fix.config
+    #+end_src
+
+    #+RESULTS:
+    : Nothing
+
+    #+begin_src sh :results output
+    cabal-fix -i
+    #+end_src
+
+    #+RESULTS:
+- [ ] cabal build --prefer-oldest
+
+    #+begin_src sh :results output
+    cabal build --prefer-oldest
+    #+end_src
+- [X] FIXMEs & TODOs
+- [X] pragma cleanup
+- [X] cabal-docspec
+
+    #+begin_src sh :results output
+    cabal-docspec
+    #+end_src
+
+    #+RESULTS:
+- [ ] cabal install
+    #+begin_src sh :results output
+    cabal install
+    #+end_src
+- [ ] cabal test
+    #+begin_src sh :results output
+    cabal test
+    #+end_src
+- [ ] cabal bench
+    #+begin_src sh :results output
+    cabal bench
+    #+end_src
+
+    #+RESULTS:
+    #+begin_example
+    Build profile: -w ghc-9.8.1 -O1
+    In order, the following will be built (use -v for more details):
+     - perf-0.12.0.1 (bench:perf-bench) (ephemeral targets)
+    Preprocessing benchmark 'perf-bench' for perf-0.12.0.1..
+    Building benchmark 'perf-bench' for perf-0.12.0.1..
+    [1 of 1] Compiling Main             ( app/bench.hs, /Users/tonyday/haskell/perf/dist-newstyle/build/x86_64-osx/ghc-9.8.1/perf-0.12.0.1/b/perf-bench/build/perf-bench/perf-bench-tmp/Main.o )
+    [1 of 2] Compiling Main             ( app/bench.hs, /Users/tonyday/haskell/perf/dist-newstyle/build/x86_64-osx/ghc-9.8.1/perf-0.12.0.1/b/perf-bench/build/perf-bench/perf-bench-tmp/Main.o )
+    [2 of 2] Linking /Users/tonyday/haskell/perf/dist-newstyle/build/x86_64-osx/ghc-9.8.1/perf-0.12.0.1/b/perf-bench/build/perf-bench/perf-bench [Objects changed]
+    Running 1 benchmarks...
+    Benchmark perf-bench: RUNNING...
+    label1          label2          old result      new result      change
+
+    sum             time            1.38e4          1.85e4          degraded
+    Benchmark perf-bench: ERROR
+    #+end_example
+- [X] ormolu
+
+  #+begin_src sh :results output
+  ormolu --mode check $(git ls-files '*.hs')
+  #+end_src
+
+  #+RESULTS:
+
+  #+begin_src sh :results output
+  ormolu --mode inplace $(git ls-files '*.hs')
+  #+end_src
+
+  #+RESULTS:
+- [X] hlint
+  #+begin_src sh :results output
+  hlint .
+  #+end_src
+
+  #+RESULTS:
+  : No hints
+- [X] CI upgrade
+
+  - check tested-with line in cabal file
+- [X] exact version bump
+  0.11.1.0
+- [X] branch, push & check CI
+- [ ] haddock
+
+  #+begin_src sh :results output
+  cabal haddock
+  #+end_src
+- [X] readme
+- [X] magit range
+- [X] ChangeLog
+- [X] PR to main
+- [ ] merge PR
+- [ ] immediate checkout and pull main
+- [ ] final check
+
+  #+begin_src sh :results output
+  cabal clean && cabal build && cabal-docspec
+  #+end_src
+- [ ] hkgr tagdist
+
+  #+begin_src sh :results output
+  hkgr tagdist
+  #+end_src
+
+  #+RESULTS:
+  : v0.12.0.1
+  : Running hlint
+  : Wrote tarball sdist to /Users/tonyday/haskell/perf/.hkgr/perf-0.12.0.1.tar.gz
+- [ ] hkgr publish
+
+  #+begin_src sh :results output
+  hkgr tagdist
+  #+end_src

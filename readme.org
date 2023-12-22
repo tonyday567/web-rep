@@ -31,7 +31,6 @@ http://localhost:9160/
 
 #+begin_src haskell :results output :exports both
 :r
-:set prompt "> "
 :set -Wno-type-defaults
 :set -Wno-name-shadowing
 :set -XOverloadedStrings

@@ -1,8 +1,10 @@
--- | A haskell library for representing web pages.
+-- | A haskell library for representing:
 --
--- This library is a collection of web page abstractions, together with a reimagining of <http://hackage.haskell.org/package/suavemente suavemente>.
+-- - web pages, as (composable) collections of Html, Css and JS text.
 --
--- I wanted to expose the server delivery mechanism, switch the streaming nature of the gap between a web page and a haskell server, and concentrate on getting a clean interface between pure haskell and the world that is a web page.
+-- - things that have a tied together represention in Haskell and in the DOM, where things can have shared sub-components.
+--
+-- - websocket & server communication protocols.
 --
 -- See app/examples.hs and 'Web.Examples' for usage.
 module Web.Rep

@@ -1,2 +1,8 @@
 packages:
   web-rep.cabal
+
+allow-newer:
+  string-interpolate:template-haskell,
+  string-interpolate:text,
+  scotty:text,
+  websockets:text,
