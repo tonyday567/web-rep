@@ -70,12 +70,6 @@ import Web.Rep.Shared
 import Web.Rep.SharedReps
 import Web.Scotty (middleware, scotty)
 
-toText_ :: ByteString -> Text
-toText_ = decodeUtf8Lenient
-
-fromText_ :: Text -> ByteString
-fromText_ = encodeUtf8
-
 -- | Page with all the trimmings for a sharedRep Box
 socketPage :: Page
 socketPage =
@@ -170,7 +164,7 @@ codeBoxWith cfg =
     (view #codeBoxEmitterQueue cfg)
     (view #codeBoxCommitterQueue cfg)
     ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
-        . dimap (either error id . runParserEither parserJ . fromText_) (mconcat . fmap (toText_ . code))
+        . dimap (either error id . runParserEither parserJ . encodeUtf8) (mconcat . fmap (decodeUtf8 . code))
     )
 
 -- | Turn the default configuration into a live (Codensity) CodeBox
