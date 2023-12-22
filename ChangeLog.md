@@ -1,5 +1,8 @@
-0.11.1
+0.12
 ===
+
+* markupInput replaces inputToHtml as per markup-parse
+* ToByteString introduced
 * upgrade to box-socket-0.5
 
 0.11
