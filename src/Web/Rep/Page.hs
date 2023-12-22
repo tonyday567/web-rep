@@ -3,9 +3,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
+-- | Representations of a web page, covering Html, CSS & JS artifacts.
 module Web.Rep.Page
-  ( -- $page
-    Page (..),
+  ( Page (..),
     PageConfig (..),
     defaultPageConfig,
     Concerns (..),
@@ -13,10 +13,8 @@ module Web.Rep.Page
     concernNames,
     PageConcerns (..),
     PageStructure (..),
-    -- $css
     Css (..),
     renderCss,
-    -- $js
     Js (..),
     onLoad,
   )
@@ -137,5 +135,6 @@ renderCss _ = cssByteString
 -- | Javascript as string
 newtype Js = Js {jsByteString :: ByteString} deriving (Eq, Show, Generic, Semigroup, Monoid)
 
+-- | Add the windows.onload assignment
 onLoad :: Js -> Js
 onLoad (Js t) = Js [i| window.onload=function(){#{t}};|]

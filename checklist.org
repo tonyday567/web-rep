@@ -99,7 +99,7 @@
     #+begin_src sh :results output
     cabal build --prefer-oldest
     #+end_src
-- [ ] FIXMEs & TODOs
+- [X] FIXMEs & TODOs
 - [X] pragma cleanup
 - [X] cabal-docspec
 

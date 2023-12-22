@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Common web page input elements, often with bootstrap scaffolding.
 module Web.Rep.Html.Input
@@ -12,31 +12,34 @@ where
 
 import Data.Bool
 import Data.ByteString (ByteString)
-import Data.Text (Text)
-import Data.Text.Encoding
 import Data.ByteString.Char8 qualified as C
 import Data.Maybe
+import Data.Text (Text)
+import Data.Text.Encoding
 import GHC.Generics
 import MarkupParse
 
+-- | Conversion to a 'ByteString'
 class ToByteString a where
   -- | Convert a value to a strict ByteString
   toByteString :: a -> ByteString
   default toByteString :: (Show a) => a -> ByteString
   toByteString = strToUtf8 . show
 
-instance ToByteString ByteString
-  where
-    toByteString = id
+instance ToByteString ByteString where
+  toByteString = id
 
-instance ToByteString Text
-  where
-    toByteString = encodeUtf8
+instance ToByteString Text where
+  toByteString = encodeUtf8
 
 instance ToByteString Int
+
 instance ToByteString Integer
+
 instance ToByteString Double
+
 instance ToByteString Float
+
 instance ToByteString Bool
 
 -- | something that might exist on a web page and be a front-end input to computations.
@@ -70,6 +73,7 @@ data InputType
   | Button
   deriving (Eq, Show, Generic)
 
+-- | Convert an 'Input' to 'Markup' via a specific printer.
 markupInput :: (a -> ByteString) -> Input a -> Markup
 markupInput pr (Input v l i (Slider satts)) =
   element

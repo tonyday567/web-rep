@@ -30,6 +30,7 @@ import Web.Rep.Shared
 -- >>> import Web.Rep
 -- >>> import MarkupParse
 
+-- | bootstrap css link
 bootstrapCss :: Markup
 bootstrapCss =
   element_
@@ -40,6 +41,7 @@ bootstrapCss =
       Attr "crossorigin" "anonymous"
     ]
 
+-- | bootstrap JS link
 bootstrapJs :: Markup
 bootstrapJs =
   element_
@@ -55,6 +57,7 @@ bootstrapJs =
         Attr "crossorigin" "anonymous"
       ]
 
+-- | bootstrap meta element.
 bootstrapMeta :: Markup
 bootstrapMeta =
   element_ "meta" [Attr "charset" "utf-8"]

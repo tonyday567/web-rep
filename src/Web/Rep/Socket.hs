@@ -55,6 +55,7 @@ import Data.HashMap.Strict as HashMap
 import Data.Profunctor
 import Data.String.Interpolate
 import Data.Text (Text)
+import Data.Text.Encoding
 import FlatParse.Basic
 import GHC.Generics
 import MarkupParse
@@ -68,7 +69,6 @@ import Web.Rep.Server
 import Web.Rep.Shared
 import Web.Rep.SharedReps
 import Web.Scotty (middleware, scotty)
-import Data.Text.Encoding
 
 toText_ :: ByteString -> Text
 toText_ = decodeUtf8Lenient
@@ -81,40 +81,41 @@ socketPage :: Page
 socketPage =
   mempty
     & #jsOnLoad
-      .~ mconcat
-        [ webSocket,
-          runScriptJs,
-          refreshJsbJs,
-          preventEnter
-        ]
+    .~ mconcat
+      [ webSocket,
+        runScriptJs,
+        refreshJsbJs,
+        preventEnter
+      ]
 
+-- | Bootstrapped base page for a web socket.
 defaultSocketPage :: Page
 defaultSocketPage =
   bootstrapPage
     <> socketPage
-    & set
-      #htmlBody
-      ( element
-          "div"
-          [Attr "class" "container"]
-          ( element
-              "div"
-              [Attr "class" "row"]
-              (elementc "h1" [] "web-rep testing")
-              <> element
+      & set
+        #htmlBody
+        ( element
+            "div"
+            [Attr "class" "container"]
+            ( element
                 "div"
                 [Attr "class" "row"]
-                ( mconcat $
-                    ( \(t, h) ->
-                        element
-                          "div"
-                          [Attr "class" "row"]
-                          (element "h2" [] (elementc "div" [Attr "id" t] h))
-                    )
-                      <$> sections
-                )
-          )
-      )
+                (elementc "h1" [] "web-rep testing")
+                <> element
+                  "div"
+                  [Attr "class" "row"]
+                  ( mconcat $
+                      ( \(t, h) ->
+                          element
+                            "div"
+                            [Attr "class" "row"]
+                            (element "h2" [] (elementc "div" [Attr "id" t] h))
+                      )
+                        <$> sections
+                  )
+            )
+        )
   where
     sections =
       [ ("input", mempty),
@@ -163,7 +164,6 @@ defaultCodeBoxConfig :: CodeBoxConfig
 defaultCodeBoxConfig = CodeBoxConfig defaultSocketConfig defaultSocketPage Single Single
 
 -- | Turn a configuration into a live (Codensity) CodeBox
---
 codeBoxWith :: CodeBoxConfig -> CoCodeBox
 codeBoxWith cfg =
   fromActionWith
@@ -294,6 +294,7 @@ parserJ = do
 
 -- * code messaging
 
+-- | A simple schema for code that communicates changes to a Html page via JS code.
 data Code
   = Replace ByteString ByteString
   | Append ByteString ByteString
@@ -302,6 +303,7 @@ data Code
   | Val ByteString
   deriving (Eq, Show, Generic, Read)
 
+-- | Convert 'Code' to a 'ByteString'
 code :: Code -> ByteString
 code (Replace i t) = replace i t
 code (Append i t) = append i t
@@ -309,9 +311,11 @@ code (Console t) = console t
 code (Eval t) = t
 code (Val t) = val t
 
+-- | write to the console
 console :: ByteString -> ByteString
 console t = [i| console.log(#{t}) |]
 
+-- | send arbitrary byestrings.
 val :: ByteString -> ByteString
 val t = [i| jsb.ws.send(#{t}) |]
 
@@ -335,6 +339,7 @@ append d t =
      refreshJsb();
      |]
 
+-- | Double backslash newline and single quotes.
 clean :: ByteString -> ByteString
 clean =
   C.intercalate "\\'"

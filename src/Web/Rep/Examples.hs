@@ -4,6 +4,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
+-- | Some simple usage examples to get started with the library.
+--
+-- The most important example is 'repExamples' which forms the basis of the app example.
 module Web.Rep.Examples
   ( page1,
     page2,
@@ -13,8 +16,6 @@ module Web.Rep.Examples
     Shape (..),
     fromShape,
     toShape,
-    listExample,
-    listRepExample,
   )
 where
 
@@ -45,6 +46,7 @@ page2 =
     #libsJs .~ mconcat (libJs <$> jsLibsLocal) $
       page1
 
+-- | Page with separated css and js.
 cfg2 :: PageConfig
 cfg2 =
   #concerns .~ Separated $
@@ -156,24 +158,3 @@ repExamples = do
   drt <- toShape <$> dropdown (runParserEither takeRest) id (Just "shape") ["Circle", "Square"] (fromShape SquareShape)
   col <- colorPicker (Just "color") "#454e56"
   pure (RepExamples t ta n ds' nV dsV' c tog dr drm drt col)
-
-listExample :: (Monad m) => Int -> SharedRep m [Int]
-listExample n =
-  accordionList
-    (Just "accordianListify")
-    "al"
-    Nothing
-    (\l a -> sliderI (Just l) (0 :: Int) n 1 a)
-    ((\x -> "[" <> (strToUtf8 . show) x <> "]") <$> [0 .. n] :: [ByteString])
-    [0 .. n]
-
-listRepExample :: (Monad m) => Int -> SharedRep m [Int]
-listRepExample n =
-  listRep
-    (Just "listifyMaybe")
-    "alm"
-    (checkbox Nothing)
-    (sliderI Nothing (0 :: Int) n 1)
-    n
-    3
-    [0 .. 4]

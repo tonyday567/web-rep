@@ -396,9 +396,9 @@ accordionBoolList title prefix bodyf checkf labels xs = SharedRep $ do
             . zipWith (\l (ch, a) -> (l, a, ch)) labels
         )
         ( foldr
-            (\a x -> bimap (:) (:) a <<*>> x)
+            ((\a x -> bimap (:) (:) a <<*>> x) . (\(ch, a) -> bimap (,) (,) (checkf ch) <<*>> bodyf a))
             (pure [])
-            ((\(ch, a) -> bimap (,) (,) (checkf ch) <<*>> bodyf a) <$> xs)
+            xs
         )
   h' <- zoom _1 h
   pure (Rep (maybe mempty (elementc "h5" []) title <> h') fa)
@@ -435,7 +435,7 @@ listRep t p brf srf n defa as =
       (defaultListLabels n)
       (take n (((True,) <$> as) <> repeat (False, defa)))
 
--- a sensible default for the accordion row labels for a list
+-- | A sensible default for the accordion row labels for a list
 defaultListLabels :: Int -> [ByteString]
 defaultListLabels n = (\x -> "[" <> strToUtf8 (show x) <> "]") <$> [0 .. n] :: [ByteString]
 
@@ -450,6 +450,7 @@ readTextbox label v = parsed . utf8ToStr <$> textbox' label (toByteString v)
         [(a, "")] -> Right a
         _badRead -> Left (strToUtf8 str)
 
+-- | Dropdown representation of a multi-element list.
 repChoice :: (Monad m) => Int -> [(ByteString, SharedRep m a)] -> SharedRep m a
 repChoice initt xs =
   bimap hmap mmap dd
@@ -478,6 +479,7 @@ repItemsSelect :: (Monad m) => [ByteString] -> [ByteString] -> SharedRep m [Byte
 repItemsSelect initial full =
   dropdownMultiple (strToUtf8 <$> some (satisfy (`notElem` ([','] :: [Char])))) id (Just "items") full initial
 
+-- | subtype Html class.
 subtype :: ByteString -> ByteString -> [Attr]
 subtype origt t =
   [ Attr "class" "subtype ",

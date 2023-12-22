@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | A shared-element representation of web page communication.
 module Web.Rep.Shared
   ( RepF (..),
     Rep,

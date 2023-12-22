@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: web-rep
-version: 0.12
+version: 0.12.0.0
 license: BSD-3-Clause
 license-file: LICENSE
 copyright: Tony Day (c) 2015
@@ -14,7 +14,7 @@ description:
     An applicative-based, shared-data representation of a web page. 
 
 build-type: Simple
-tested-with: GHC == 8.10.7 || ==9.4.7 || ==9.6.3 || ==9.8.1
+tested-with: GHC == 8.10.7 || ==9.2.7 || ==9.4.7 || ==9.6.3 || ==9.8.1
 extra-doc-files:
     ChangeLog.md
     readme.org
