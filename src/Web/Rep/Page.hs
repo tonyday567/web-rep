@@ -15,6 +15,7 @@ module Web.Rep.Page
     PageStructure (..),
     Css (..),
     renderCss,
+    cssColorScheme,
     Js (..),
     onLoad,
   )
@@ -131,6 +132,27 @@ newtype Css = Css {cssByteString :: ByteString} deriving (Show, Eq, Generic, Sem
 renderCss :: RenderStyle -> Css -> ByteString
 renderCss Compact = C.filter (\c -> c /= ' ' && c /= '\n') . cssByteString
 renderCss _ = cssByteString
+
+-- | Css snippet for reponsiveness to preferred color-scheme.
+cssColorScheme :: Css
+cssColorScheme =
+  Css
+    [i|
+{
+  color-scheme: light dark;
+}
+{
+  body {
+    background-color: rgb(92%, 92%, 92%);
+    color: rgb(5%, 5%, 5%);
+  }
+}
+@media (prefers-color-scheme:dark) {
+  body {
+    background-color: rgb(5%, 5%, 5%);
+    color: rgb(92%, 92%, 92%);
+  }
+}|]
 
 -- | Javascript as string
 newtype Js = Js {jsByteString :: ByteString} deriving (Eq, Show, Generic, Semigroup, Monoid)

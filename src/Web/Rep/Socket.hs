@@ -87,6 +87,7 @@ defaultSocketPage :: Page
 defaultSocketPage =
   bootstrapPage
     <> socketPage
+      & set #cssBody cssColorScheme
       & set
         #htmlBody
         ( element
