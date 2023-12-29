@@ -34,6 +34,7 @@ module Web.Rep
     -- * Css
     Css (..),
     renderCss,
+    cssColorScheme,
 
     -- * JS
     Js (..),

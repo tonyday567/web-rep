@@ -1,6 +1,10 @@
+0.12.1
+===
+* Changed the order of Page elements, so that inline css over-rides libraries.
+* Added cssColorScheme to API
+
 0.12
 ===
-
 * markupInput replaces inputToHtml as per markup-parse
 * ToByteString introduced
 * upgrade to box-socket-0.5

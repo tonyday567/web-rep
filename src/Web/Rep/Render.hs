@@ -50,8 +50,8 @@ renderPageWith pc p =
                   "head"
                   []
                   (element_ "meta" [Attr "charset" "utf-8"])
-                  <> cssInline
                   <> libsCss'
+                  <> cssInline
                   <> view #htmlHeader p
               )
             <> element
@@ -71,8 +71,8 @@ renderPageWith pc p =
             <> libsJs'
             <> jsInline
         Snippet ->
-          libsCss'
-            <> cssInline
+          cssInline
+            <> libsCss'
             <> view #htmlHeader p
             <> view #htmlBody p
             <> libsJs'
