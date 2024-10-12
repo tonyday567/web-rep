@@ -1,3 +1,8 @@
 packages:
   web-rep.cabal
 
+write-ghc-environment-files: always
+
+tests: True
+
+allow-newer: websockets:containers
