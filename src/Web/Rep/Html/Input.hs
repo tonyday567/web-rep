@@ -287,8 +287,7 @@ markupInput _ (Input _ l i (Checkbox checked)) =
           ]
             <> bool [] [Attr "checked" ""] checked
         )
-        ( maybe mempty (elementc "label" [Attr "for" i, Attr "class" "form-label-check mb-0"]) l
-        )
+        (maybe mempty (elementc "label" [Attr "for" i, Attr "class" "form-label-check mb-0"]) l)
     )
 markupInput _ (Input _ l i (Toggle pushed lab)) =
   element

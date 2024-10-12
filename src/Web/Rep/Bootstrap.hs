@@ -87,8 +87,7 @@ cardify (h, hatts) t (b, batts) =
       <> element
         "div"
         ([Attr "class" "card-body"] <> batts)
-        ( maybe mempty (elementc "h5" [Attr "class" "card-title"]) t <> b
-        )
+        (maybe mempty (elementc "h5" [Attr "class" "card-title"]) t <> b)
 
 -- | A Html object based on the bootstrap accordion card concept.
 accordionCard :: Bool -> [Attr] -> ByteString -> ByteString -> ByteString -> ByteString -> Markup -> Markup
@@ -173,7 +172,7 @@ accordion ::
   m Markup
 accordion pre x hs = do
   idp' <- genNamePre pre
-  element "div" [Attr "class" "accordion m-1", Attr "id" idp'] <$> (mconcat <$> aCards idp')
+  element "div" [Attr "class" "accordion m-1", Attr "id" idp'] . mconcat <$> aCards idp'
   where
     aCards par = mapM (aCard par) hs
     aCard par (t, b) = do
@@ -185,7 +184,7 @@ accordion pre x hs = do
 accordionChecked :: (MonadState Int m) => ByteString -> [(ByteString, Markup, Markup)] -> m Markup
 accordionChecked pre hs = do
   idp' <- genNamePre pre
-  element "div" [Attr "class" "accordion m-1", Attr "id" idp'] <$> (mconcat <$> aCards idp')
+  element "div" [Attr "class" "accordion m-1", Attr "id" idp'] . mconcat <$> aCards idp'
   where
     aCards par = mapM (aCard par) hs
     aCard par (l, bodyhtml, checkhtml) = do

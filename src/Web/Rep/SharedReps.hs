@@ -464,8 +464,7 @@ repChoice initt xs =
       element
         "div"
         []
-        ( dd' <> mconcat (zipWith (addSubtype t0) ts cs')
-        )
+        (dd' <> mconcat (zipWith (addSubtype t0) ts cs'))
     mmap dd' cs' = maybe (List.head cs') (cs' List.!!) (List.elemIndex dd' ts)
 
 -- | select test keys from a Map
