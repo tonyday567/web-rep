@@ -12,7 +12,6 @@ module Web.Rep.Render
   )
 where
 
-import Control.Applicative
 import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
