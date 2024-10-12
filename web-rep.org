@@ -1,6 +1,6 @@
 * web-rep
 
-[[https://hackage.haskell.org/package/numhask-array][file:https://img.shields.io/hackage/v/web-rep.svg]] [[https://github.com/tonyday567/numhask-array/actions?query=workflow%3Ahaskell-ci][file:https://github.com/tonyday567/web-rep/workflows/haskell-ci/badge.svg]]
+[[https://hackage.haskell.org/package/web-rep][file:https://img.shields.io/hackage/v/web-rep.svg]] [[https://github.com/tonyday567/web-rep/actions?query=workflow%3Ahaskell-ci][file:https://github.com/tonyday567/web-rep/workflows/haskell-ci/badge.svg]]
 
 Various functions and representations for a web page.
 
