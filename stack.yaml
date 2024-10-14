@@ -1,0 +1,5 @@
+resolver: nightly-2024-10-11
+
+extra-deps:
+  - box-0.9.3.2
+  - box-socket-0.5.2.0
