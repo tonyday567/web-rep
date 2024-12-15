@@ -64,7 +64,21 @@ sharedTest =
     (maybeRep (Just "maybe") False repExamples)
     replaceInput
     replaceOutput
-    defaultCodeBoxConfig
+    (defaultCodeBoxConfig & set #codeBoxPage sharedPage)
+
+sharedPage :: Page
+sharedPage = defaultSocketPage & set #htmlBody
+        ( element
+            "div"
+            [Attr "class" "container"]
+            ( element
+                "div"
+                [Attr "class" "row"]
+                (elementc "h1" [] "shared test")
+                <> element
+                  "div"
+                  [Attr "class" "row"]
+                  ( element "div" [Attr "class" "col-6", Attr "id" "input"] mempty <> element "div" [Attr "class" "col-6", Attr "id" "output"] mempty)))
 
 playTest :: IO ()
 playTest = servePlayStream (PlayConfig True 10 0) (defaultCodeBoxConfig & #codeBoxPage .~ playPage) (countStream 100 1)
