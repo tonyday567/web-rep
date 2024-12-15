@@ -43,7 +43,7 @@ instance ToByteString Float
 instance ToByteString Bool
 
 instance (ToByteString a) => ToByteString [a] where
-  toByteString xs = "[" <> (C.intercalate "," $ fmap toByteString xs) <> "]"
+  toByteString xs = "[" <> C.intercalate "," (fmap toByteString xs) <> "]"
 
 -- | something that might exist on a web page and be a front-end input to computations.
 data Input a = Input
@@ -76,7 +76,6 @@ data InputType
   | Button
   deriving (Eq, Show, Generic)
 
-
 label :: AttrValue -> Maybe ByteString -> Markup
 label i l = maybe mempty (elementc "label" [Attr "for" i, Attr "class" "col-sm col-form-label"]) l
 
@@ -86,22 +85,23 @@ markupInput pr (Input v l i (Slider satts)) =
   element
     "div"
     [Attr "class" "row"]
-    (label i l
-    <> element_
-      "input"
-      ( [ Attr "type" "range",
-          Attr "class" "col-sm jsbClassEventChange",
-          Attr "id" i,
-          Attr "value" (pr v)
-        ]
-        <> satts
-      ))
+    ( label i l
+        <> element_
+          "input"
+          ( [ Attr "type" "range",
+              Attr "class" "col-sm jsbClassEventChange",
+              Attr "id" i,
+              Attr "value" (pr v)
+            ]
+              <> satts
+          )
+    )
 markupInput pr (Input v l i (SliderV satts)) =
   element
     "div"
     [Attr "class" "row", Attr "style" "align-items: center;"]
-    (   label i l <>
-        element_
+    ( label i l
+        <> element_
           "input"
           ( [ Attr "type" "range",
               Attr "class" "col-sm jsbClassEventChange",
@@ -112,49 +112,45 @@ markupInput pr (Input v l i (SliderV satts)) =
               <> satts
           )
         <> elementc "span" [Attr "id" ("sliderv" <> i), Attr "class" "col-sm"] (pr v)
-
     )
 markupInput pr (Input v l i TextBox) =
   element
     "div"
     [Attr "class" "form-floating"]
-    (
-       element_
-          "input"
-          [ Attr "type" "text",
-            Attr "class" "form-control jsbClassEventInput",
-            Attr "id" i,
-            Attr "value" (pr v)
-          ] <>
-          label i l
+    ( element_
+        "input"
+        [ Attr "type" "text",
+          Attr "class" "form-control jsbClassEventInput",
+          Attr "id" i,
+          Attr "value" (pr v)
+        ]
+        <> label i l
     )
 markupInput pr (Input v l i TextBox') =
   element
     "div"
     [Attr "class" "form-floating"]
-    (
-        element_
-          "input"
-          [ Attr "type" "text",
-            Attr "class" "form-control jsbClassEventFocusout",
-            Attr "id" i,
-            Attr "value" (pr v)
-          ] <>
-     label i l
+    ( element_
+        "input"
+        [ Attr "type" "text",
+          Attr "class" "form-control jsbClassEventFocusout",
+          Attr "id" i,
+          Attr "value" (pr v)
+        ]
+        <> label i l
     )
 markupInput pr (Input v l i (TextArea rows)) =
   element
     "div"
     [Attr "class" "form-floating"]
-    (
-        elementc
-          "textarea"
-          [ Attr "rows" (toByteString rows),
-            Attr "class" "form-control jsbClassEventInput",
-            Attr "id" i
-          ]
-          (pr v)
-          <> label i l
+    ( elementc
+        "textarea"
+        [ Attr "rows" (toByteString rows),
+          Attr "class" "form-control jsbClassEventInput",
+          Attr "id" i
+        ]
+        (pr v)
+        <> label i l
     )
 markupInput pr (Input v l i ColorPicker) =
   element
@@ -329,6 +325,7 @@ markupInput _ (Input _ l i Button) =
           Attr "value" (fromMaybe "button" l)
         ]
     )
+
 {-
 markupInput _ (Input _ l i (Toggle pushed)) =
     maybe mempty (elementc "label" [Attr "for" i, Attr "class" "btn btn-primary"]) l
