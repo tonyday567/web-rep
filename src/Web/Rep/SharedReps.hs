@@ -30,6 +30,7 @@ module Web.Rep.SharedReps
     listMaybeRep,
     listRep,
     readTextbox,
+    readTextbox_,
     defaultListLabels,
     repChoice,
     subtype,
@@ -281,7 +282,7 @@ toggle label v =
   repInput
     (runParserEither ((== "true") <$> takeRest))
     (bool "false" "true")
-    (Input v label mempty (Toggle v label))
+    (Input v label mempty (Toggle v))
     v
 
 -- | a toggle button, with no label
@@ -290,7 +291,7 @@ toggle_ label v =
   repInput
     (runParserEither ((== "true") <$> takeRest))
     (bool "false" "true")
-    (Input v Nothing mempty (Toggle v label))
+    (Input v label mempty (Toggle v))
     v
 
 -- | a button
@@ -449,6 +450,17 @@ readTextbox label v = parsed . utf8ToStr <$> textbox' label (toByteString v)
       case reads str of
         [(a, "")] -> Right a
         _badRead -> Left (strToUtf8 str)
+
+-- | Parse from a textbox
+--
+-- Uses focusout so as not to spam the reader.
+readTextbox_ :: (Monad m, Read a, ToByteString a) => Maybe ByteString -> a -> SharedRep m a
+readTextbox_ label v = parsed . utf8ToStr <$> textbox' label (toByteString v)
+  where
+    parsed str =
+      case reads str of
+        [(a, "")] -> a
+        _badRead -> error "bad read"
 
 -- | Dropdown representation of a multi-element list.
 repChoice :: (Monad m) => Int -> [(ByteString, SharedRep m a)] -> SharedRep m a

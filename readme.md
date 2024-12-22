@@ -10,7 +10,7 @@
 
 # web-rep
 
-[![img](https://img.shields.io/hackage/v/web-rep.svg)](https://hackage.haskell.org/package/web-rep) [![img](https://github.com/tonyday567/web-rep/workflows/haskell-ci/badge.svg)](https://github.com/tonyday567/web-rep/actions?query=workflow%3Ahaskell-ci)
+[![img](https://img.shields.io/hackage/v/web-rep.svg)](https://hackage.haskell.org/package/web-rep) [![img](https://github.com/tonyday567/web-rep/actions/workflows/haskell-ci.yaml/badge.svg?branch=main)](https://github.com/tonyday567/web-rep/actions)
 
 Various functions and representations for a web page.
 

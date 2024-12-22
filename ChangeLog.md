@@ -1,3 +1,9 @@
+0.13
+===
+* added sharedPage
+* modified to use modern bootstrap methods
+
+
 0.12.1
 ===
 * Changed the order of Page elements, so that inline css over-rides libraries.
