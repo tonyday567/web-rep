@@ -17,7 +17,7 @@ Various functions and representations for a web page.
 The best way to understand functionality is via running the example app:
 
     cabal install
-    page-example --apptype SharedTest
+    web-rep-example --shared
 
 &#x2026; and then tune in to:
 

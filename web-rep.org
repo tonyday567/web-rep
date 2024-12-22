@@ -8,7 +8,7 @@ The best way to understand functionality is via running the example app:
 
 #+begin_src sh :results output
 cabal install
-page-example --apptype SharedTest
+web-rep-example --shared
 #+end_src
 
 ... and then tune in to:
