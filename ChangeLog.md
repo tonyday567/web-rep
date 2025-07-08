@@ -1,3 +1,8 @@
+0.14
+===
+
+* Added Web.Rep.Internal.FlatParse (due to markup-parse-2.0 changes)
+
 0.13
 ===
 * added sharedPage

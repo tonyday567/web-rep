@@ -24,9 +24,9 @@ import Data.String.Interpolate
 import FlatParse.Basic (takeRest)
 import GHC.Generics
 import MarkupParse
-import MarkupParse.FlatParse
 import Optics.Core hiding (element)
 import Web.Rep
+import Web.Rep.Internal.FlatParse
 
 -- | simple page example
 page1 :: Page
