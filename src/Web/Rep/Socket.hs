@@ -44,8 +44,8 @@ where
 
 import Box
 import Box.Websocket (serverApp)
-import Control.Concurrent.Async
 import Control.Category ((>>>))
+import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Bifunctor

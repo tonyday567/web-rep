@@ -86,7 +86,9 @@ runParserEither p bs = case runParser p bs of
 -- ' '
 --
 -- >>> runParser_ ws "x"
+
 -- *** Exception: uncaught parse error
+
 -- ...
 runParser_ :: Parser String a -> ByteString -> a
 runParser_ p bs = case runParser p bs of

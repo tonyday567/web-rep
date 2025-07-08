@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -56,14 +55,12 @@ import Optics.Core hiding (element)
 import Optics.Zoom
 import Web.Rep.Bootstrap
 import Web.Rep.Html.Input
+import Web.Rep.Internal.FlatParse
 import Web.Rep.Shared
 import Prelude as P
-import Web.Rep.Internal.FlatParse
 
 -- $setup
 -- >>> :set -XOverloadedStrings
-
-
 
 -- | Create a sharedRep from an Input.
 repInput ::
@@ -505,5 +502,3 @@ addSubtype :: ByteString -> ByteString -> Markup -> Markup
 addSubtype origt t (Markup trees) =
   Markup $
     fmap (fmap (\toke -> fromMaybe toke $ addAttrs (subtype origt t) toke)) trees
-
-
