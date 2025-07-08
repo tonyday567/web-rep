@@ -1,16 +1,7 @@
 
-# Table of Contents
-
-1.  [web-rep](#orgebbc06e)
-2.  [library reference](#org8d29302)
-3.  [Development](#orgddf3f50)
-
-
-<a id="orgebbc06e"></a>
-
 # web-rep
 
-[![img](https://img.shields.io/hackage/v/web-rep.svg)](https://hackage.haskell.org/package/web-rep) [![img](https://github.com/tonyday567/web-rep/actions/workflows/haskell-ci.yml/badge.svg?branch=main)](https://github.com/tonyday567/web-rep/actions)
+[![img](https://img.shields.io/hackage/v/web-rep.svg)](https://hackage.haskell.org/package/web-rep) [![img](https://github.com/tonyday567/web-rep/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/tonyday567/web-rep/actions/workflows/haskell-ci.yml)
 
 Various functions and representations for a web page.
 
@@ -24,16 +15,12 @@ The best way to understand functionality is via running the example app:
 <http://localhost:9160/>
 
 
-<a id="org8d29302"></a>
-
 # library reference
 
 -   [scotty](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/flags.html#flag-reference)
 -   [bootstrap](https://getbootstrap.com/)
 -   [bootstrap-slider](https://seiyria.com/bootstrap-slider)
 
-
-<a id="orgddf3f50"></a>
 
 # Development
 

@@ -51,11 +51,11 @@ import Data.Maybe
 import Data.String.Interpolate
 import FlatParse.Basic hiding (take)
 import MarkupParse
-import MarkupParse.FlatParse
 import Optics.Core hiding (element)
 import Optics.Zoom
 import Web.Rep.Bootstrap
 import Web.Rep.Html.Input
+import Web.Rep.Internal.FlatParse
 import Web.Rep.Shared
 import Prelude as P
 
@@ -355,7 +355,7 @@ checkboxShow label id' v =
               join $
                 maybe
                   (Left "HashMap.lookup failed")
-                  (Right . first strToUtf8 . runParserEither ((== "true") <$> takeRest))
+                  (Right . runParserEither ((== "true") <$> takeRest))
                   (HashMap.lookup name s)
             )
         )

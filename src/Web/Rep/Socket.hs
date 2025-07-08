@@ -44,6 +44,7 @@ where
 
 import Box
 import Box.Websocket (serverApp)
+import Control.Category ((>>>))
 import Control.Concurrent.Async
 import Control.Monad
 import Control.Monad.State.Lazy
@@ -59,7 +60,6 @@ import Data.Text.Encoding
 import FlatParse.Basic
 import GHC.Generics
 import MarkupParse
-import MarkupParse.FlatParse
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets qualified as WS
 import Optics.Core hiding (element)
@@ -165,7 +165,7 @@ codeBoxWith cfg =
     (view #codeBoxEmitterQueue cfg)
     (view #codeBoxCommitterQueue cfg)
     ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
-        . dimap (either error id . runParserEither parserJ . encodeUtf8) (mconcat . fmap (decodeUtf8 . code))
+        . dimap (either (C.unpack >>> error) id . runParserEither parserJ . encodeUtf8) (mconcat . fmap (decodeUtf8 . code))
     )
 
 -- | Turn the default configuration into a live (Codensity) CodeBox
@@ -460,3 +460,10 @@ function runScripts ($container) {
   })
 }
 |]
+
+-- | Run a Parser, throwing away leftovers. Returns Left on 'Fail' or 'Err'.
+runParserEither :: Parser ByteString a -> ByteString -> Either ByteString a
+runParserEither p bs = case runParser p bs of
+  Err e -> Left e
+  OK a _ -> Right a
+  Fail -> Left "uncaught parse error"
