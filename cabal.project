@@ -2,3 +2,9 @@ packages:
   web-rep.cabal
 
 write-ghc-environment-files: always
+
+allow-newer:
+  *:base,
+  *:template-haskell,
+  *:time,
+  *:containers

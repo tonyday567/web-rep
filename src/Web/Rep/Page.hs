@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
 -- | Representations of a web page, covering Html, CSS & JS artifacts.
@@ -23,7 +22,6 @@ where
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as C
-import Data.String.Interpolate
 import GHC.Generics
 import MarkupParse
 import Optics.Core
@@ -137,26 +135,11 @@ renderCss _ = cssByteString
 cssColorScheme :: Css
 cssColorScheme =
   Css
-    [i|
-{
-  color-scheme: light dark;
-}
-{
-  body {
-    background-color: rgb(92%, 92%, 92%);
-    color: rgb(5%, 5%, 5%);
-  }
-}
-@media (prefers-color-scheme:dark) {
-  body {
-    background-color: rgb(5%, 5%, 5%);
-    color: rgb(92%, 92%, 92%);
-  }
-}|]
+    "{\n  color-scheme: light dark;\n}\n{\n  body {\n    background-color: rgb(92%, 92%, 92%);\n    color: rgb(5%, 5%, 5%);\n  }\n}\n@media (prefers-color-scheme:dark) {\n  body {\n    background-color: rgb(5%, 5%, 5%);\n    color: rgb(92%, 92%, 92%);\n  }\n}"
 
 -- | Javascript as string
 newtype Js = Js {jsByteString :: ByteString} deriving (Eq, Show, Generic, Semigroup, Monoid)
 
 -- | Add the windows.onload assignment
 onLoad :: Js -> Js
-onLoad (Js t) = Js [i| window.onload=function(){#{t}};|]
+onLoad (Js t) = Js (" window.onload=function(){" <> t <> "};")

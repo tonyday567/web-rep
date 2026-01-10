@@ -1,7 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-x-partial #-}
 
@@ -48,7 +47,6 @@ import Data.ByteString (ByteString, intercalate)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
 import Data.Maybe
-import Data.String.Interpolate
 import FlatParse.Basic hiding (take)
 import MarkupParse
 import Optics.Core hiding (element)
@@ -366,12 +364,10 @@ scriptToggleShow checkName toggleId =
   elementc
     "script"
     []
-    [i|
-$('\##{checkName}').on('change', (function(){
-  var vis = this.checked ? "block" : "none";
-  document.getElementById("#{toggleId}").style.display = vis;
-}));
-|]
+    ("$('#" <> checkName <> "').on('change', (function(){" <>
+     "  var vis = this.checked ? \"block\" : \"none\";" <>
+     "  document.getElementById(\"" <> toggleId <> "\").style.display = vis;" <>
+     "}));")
 
 -- | A (fixed-size) list represented in html as an accordion card
 -- A major restriction of the library is that a 'SharedRep' does not have a Monad instance. In practice, this means that the external representation of lists cannot have a dynamic size.

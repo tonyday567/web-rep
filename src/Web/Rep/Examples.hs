@@ -1,7 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | Some simple usage examples to get started with the library.
@@ -20,7 +19,6 @@ module Web.Rep.Examples
 where
 
 import Data.ByteString (ByteString)
-import Data.String.Interpolate
 import FlatParse.Basic (takeRest)
 import GHC.Generics
 import MarkupParse
@@ -72,34 +70,30 @@ jsLibsLocal = ["jquery-2.1.3.min.js"]
 css1 :: Css
 css1 =
   Css
-    [i|
-{
-  font-size   : 10px;
-  font-family : "Arial","Helvetica", sans-serif;
-}
-
-\#btnGo
-{
-  margin-top    : 20px;
-  margin-bottom : 20px;
-}
-
-\#btnGo.on
-{
-  color : \#008000;
-}
-|]
+    "{\n\
+    \  font-size   : 10px;\n\
+    \  font-family : \"Arial\",\"Helvetica\", sans-serif;\n\
+    \}\n\
+    \\n\
+    \#btnGo\n\
+    \{\n\
+    \  margin-top    : 20px;\n\
+    \  margin-bottom : 20px;\n\
+    \}\n\
+    \\n\
+    \#btnGo.on\n\
+    \{\n\
+    \  color : #008000;\n\
+    \}"
 
 -- js
 click :: Js
 click =
   Js
-    [i|
-$('\#btnGo').click( function() {
-  $('\#btnGo').toggleClass('on');
-  alert('bada bing!');
-});
-|]
+    "$('#btnGo').click( function() {\n\
+    \  $('#btnGo').toggleClass('on');\n\
+    \  alert('bada bing!');\n\
+    \});"
 
 button1 :: Markup
 button1 =
