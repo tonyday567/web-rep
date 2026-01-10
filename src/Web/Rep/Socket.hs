@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
@@ -54,7 +53,6 @@ import Data.ByteString.Char8 qualified as C
 import Data.Functor.Contravariant
 import Data.HashMap.Strict as HashMap
 import Data.Profunctor
-import Data.String.Interpolate
 import Data.Text (Text)
 import Data.Text.Encoding
 import FlatParse.Basic
@@ -278,11 +276,11 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- | {"event":{"element":"textid","value":"abcdees"}}
 parserJ :: Parser e (ByteString, ByteString)
 parserJ = do
-  _ <- $(string [i|{"event":{"element":"|])
+  _ <- $(string "{\"event\":{\"element\":\"")
   e <- byteStringOf $ some (satisfy (/= '"'))
-  _ <- $(string [i|","value":"|])
+  _ <- $(string "\",\"value\":\"")
   v <- byteStringOf $ some (satisfy (/= '"'))
-  _ <- $(string [i|"}}|])
+  _ <- $(string "\"}}")
   pure (e, v)
 
 -- * code hooks
@@ -308,31 +306,21 @@ code (Val t) = val t
 
 -- | write to the console
 console :: ByteString -> ByteString
-console t = [i| console.log(#{t}) |]
+console t = " console.log(" <> t <> ") "
 
 -- | send arbitrary byestrings.
 val :: ByteString -> ByteString
-val t = [i| jsb.ws.send(#{t}) |]
+val t = " jsb.ws.send(" <> t <> ") "
 
 -- | replace a container and run any embedded scripts
 replace :: ByteString -> ByteString -> ByteString
 replace d t =
-  [i|
-     var $container = document.getElementById('#{d}');
-     $container.innerHTML = '#{clean t}';
-     runScripts($container);
-     refreshJsb();
-     |]
+  "\n     var $container = document.getElementById('" <> d <> "');\n     $container.innerHTML = '" <> clean t <> "';\n     runScripts($container);\n     refreshJsb();\n     "
 
 -- | append to a container and run any embedded scripts
 append :: ByteString -> ByteString -> ByteString
 append d t =
-  [i|
-     var $container = document.getElementById('#{d}');
-     $container.innerHTML += '#{clean t}';
-     runScripts($container);
-     refreshJsb();
-     |]
+  "\n     var $container = document.getElementById('" <> d <> "');\n     $container.innerHTML += '" <> clean t <> "';\n     runScripts($container);\n     refreshJsb();\n     "
 
 -- | Double backslash newline and single quotes.
 clean :: ByteString -> ByteString
@@ -348,15 +336,7 @@ clean =
 webSocket :: Js
 webSocket =
   Js
-    [i|
-window.jsb = {ws: new WebSocket('ws://' + location.host + '/')};
-jsb.event = function(ev) {
-    jsb.ws.send(JSON.stringify({event: ev}));
-};
-jsb.ws.onmessage = function(evt){ 
-    eval('(function(){' + evt.data + '})()');
-};
-|]
+    "\nwindow.jsb = {ws: new WebSocket('ws://' + location.host + '/')};\njsb.event = function(ev) {\n    jsb.ws.send(JSON.stringify({event: ev}));\n};\njsb.ws.onmessage = function(evt){ \n    eval('(function(){' + evt.data + '})()');  \n};\n"
 
 -- * scripts
 
@@ -364,68 +344,13 @@ jsb.ws.onmessage = function(evt){
 refreshJsbJs :: Js
 refreshJsbJs =
   Js
-    [i|
-function refreshJsb () {
-  $('.jsbClassEventInput').off('input');
-  $('.jsbClassEventInput').on('input', (function(){
-    jsb.event({ 'element': this.id, 'value': this.value});
-  }));
-  $('.jsbClassEventChange').off('change');
-  $('.jsbClassEventChange').on('change', (function(){
-    jsb.event({ 'element': this.id, 'value': this.value});
-  }));
-  $('.jsbClassEventFocusout').off('focusout');
-  $('.jsbClassEventFocusout').on('focusout', (function(){
-    jsb.event({ 'element': this.id, 'value': this.value});
-  }));
-  $('.jsbClassEventButton').off('click');
-  $('.jsbClassEventButton').on('click', (function(){
-    jsb.event({ 'element': this.id, 'value': this.value});
-  }));
-  $('.jsbClassEventToggle').off('click');
-  $('.jsbClassEventToggle').on('click', (function(){
-    jsb.event({ 'element': this.id, 'value': ('true' !== this.getAttribute('aria-pressed')).toString()});
-  }));
-  $('.jsbClassEventCheckbox').off('click');
-  $('.jsbClassEventCheckbox').on('click', (function(){
-    jsb.event({ 'element': this.id, 'value': this.checked.toString()});
-  }));
-  $('.jsbClassEventChooseFile').off('input');
-  $('.jsbClassEventChooseFile').on('input', (function(){
-    jsb.event({ 'element': this.id, 'value': this.files[0].name});
-  }));
-  $('.jsbClassEventShowSum').off('change');
-  $('.jsbClassEventShowSum').on('change', (function(){
-    var v = this.value;
-    $(this).parent('.sumtype-group').siblings('.subtype').each(function(i) {
-      if (this.dataset.sumtype === v) {
-        this.style.display = 'block';
-        } else {
-        this.style.display = 'none';
-      }
-    })
-  }));
-  $('.jsbClassEventChangeMultiple').off('change');
-  $('.jsbClassEventChangeMultiple').on('change', (function(){
-    jsb.event({ 'element': this.id, 'value': [...this.options].filter(option => option.selected).map(option => option.value).join(',')});
-  }));
-};
-|]
+    "\nfunction refreshJsb () {\n  $('.jsbClassEventInput').off('input');\n  $('.jsbClassEventInput').on('input', (function(){\n    jsb.event({ 'element': this.id, 'value': this.value});\n  }));\n  $('.jsbClassEventChange').off('change');\n  $('.jsbClassEventChange').on('change', (function(){\n    jsb.event({ 'element': this.id, 'value': this.value});\n  }));\n  $('.jsbClassEventFocusout').off('focusout');\n  $('.jsbClassEventFocusout').on('focusout', (function(){\n    jsb.event({ 'element': this.id, 'value': this.value});\n  }));\n  $('.jsbClassEventButton').off('click');\n  $('.jsbClassEventButton').on('click', (function(){\n    jsb.event({ 'element': this.id, 'value': this.value});\n  }));\n  $('.jsbClassEventToggle').off('click');\n  $('.jsbClassEventToggle').on('click', (function(){\n    jsb.event({ 'element': this.id, 'value': ('true' !== this.getAttribute('aria-pressed')).toString()});\n  }));\n  $('.jsbClassEventCheckbox').off('click');\n  $('.jsbClassEventCheckbox').on('click', (function(){\n    jsb.event({ 'element': this.id, 'value': this.checked.toString()});\n  }));\n  $('.jsbClassEventChooseFile').off('input');\n  $('.jsbClassEventChooseFile').on('input', (function(){\n    jsb.event({ 'element': this.id, 'value': this.files[0].name});\n  }));\n  $('.jsbClassEventShowSum').off('change');\n  $('.jsbClassEventShowSum').on('change', (function(){\n    var v = this.value;\n    $(this).parent('.sumtype-group').siblings('.subtype').each(function(i) {\n      if (this.dataset.sumtype === v) {\n        this.style.display = 'block';\n        } else {\n        this.style.display = 'none';\n      }\n    })\n  }));\n  $('.jsbClassEventChangeMultiple').off('change');\n  $('.jsbClassEventChangeMultiple').on('change', (function(){\n    jsb.event({ 'element': this.id, 'value': [...this.options].filter(option => option.selected).map(option => option.value).join(',')});\n  }));\n};\n"
 
 -- | prevent the Enter key from triggering an event
 preventEnter :: Js
 preventEnter =
   Js
-    [i|
-window.addEventListener('keydown',function(e) {
-  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {
-    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {
-      e.preventDefault();
-      return false;
-    }
-  }
-}, true);
-|]
+    "\nwindow.addEventListener('keydown',function(e) {\n  if(e.keyIdentifier=='U+000A' || e.keyIdentifier=='Enter' || e.keyCode==13) {\n    if(e.target.nodeName=='INPUT' && e.target.type !== 'textarea') {\n      e.preventDefault();\n      return false;\n    }\n  }\n}, true);\n"
 
 -- | script injection js.
 --
@@ -433,33 +358,7 @@ window.addEventListener('keydown',function(e) {
 runScriptJs :: Js
 runScriptJs =
   Js
-    [i|
-function insertScript ($script) {
-  var s = document.createElement('script')
-  s.type = 'text/javascript'
-  if ($script.src) {
-    s.onload = callback
-    s.onerror = callback
-    s.src = $script.src
-  } else {
-    s.textContent = $script.innerText
-  }
-
-  // re-insert the script tag so it executes.
-  document.head.appendChild(s)
-
-  // clean-up
-  $script.parentNode.removeChild($script)
-}
-
-function runScripts ($container) {
-  // get scripts tags from a node
-  var $scripts = $container.querySelectorAll('script')
-  $scripts.forEach(function ($script) {
-    insertScript($script)
-  })
-}
-|]
+    "\nfunction insertScript ($script) {\n  var s = document.createElement('script')\n  s.type = 'text/javascript'\n  if ($script.src) {\n    s.onload = callback\n    s.onerror = callback\n    s.src = $script.src\n  } else {\n    s.textContent = $script.innerText\n  }\n\n  // re-insert the script tag so it executes.\n  document.head.appendChild(s)\n\n  // clean-up\n  $script.parentNode.removeChild($script)\n}\n\nfunction runScripts ($container) {\n  // get scripts tags from a node\n  var $scripts = $container.querySelectorAll('script')\n  $scripts.forEach(function ($script) {\n    insertScript($script)\n  })\n}\n"
 
 -- | Run a Parser, throwing away leftovers. Returns Left on 'Fail' or 'Err'.
 runParserEither :: Parser ByteString a -> ByteString -> Either ByteString a

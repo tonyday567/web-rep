@@ -8,7 +8,5 @@
 /docs/
 /cabal.project.local*
 /.hkgr/
-/.ghc.environment.aarch64-darwin-9.10.1
-/.ghc.environment.aarch64-darwin-9.6.6
+/.ghc.environment*
 /checklist.org
-/.ghc.environment.aarch64-darwin-9.12.2
