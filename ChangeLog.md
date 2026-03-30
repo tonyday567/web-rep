@@ -1,3 +1,10 @@
+0.14.1
+======
+
+* Dependency maintenance: relaxed scotty < 1, transformers < 0.7
+* Doctests: removed non-deterministic exception test due to GHC HasCallStack changes
+* Updated tested-with to GHC 9.10.2, 9.12.3, 9.14.1
+
 0.14
 ===
 
