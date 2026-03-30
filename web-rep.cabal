@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: web-rep
-version: 0.14.0.1
+version: 0.14.1.0
 license: BSD-3-Clause
 license-file: LICENSE
 copyright: Tony Day (c) 2015
@@ -15,10 +15,8 @@ description:
 
 build-type: Simple
 tested-with:
-  ghc ==9.6.7
-  ghc ==9.8.4
   ghc ==9.10.2
-  ghc ==9.12.2
+  ghc ==9.12.3
   ghc ==9.14.1
 
 extra-doc-files:
@@ -84,9 +82,9 @@ library
     optics-core >=0.4 && <0.5,
     optics-extra >=0.4 && <0.5,
     profunctors >=5.6.2 && <5.7,
-    scotty >=0.11.5 && <0.23,
+    scotty >=0.11.5 && <1,
     text >=1.2 && <2.2,
-    transformers >=0.5.6 && <0.6.2,
+    transformers >=0.5.6 && <0.7,
     unordered-containers >=0.2 && <0.3,
     wai-middleware-static >=0.9 && <0.10,
     wai-websockets >=3.0.1.2 && <3.1,
@@ -119,4 +117,3 @@ executable web-rep-example
     optics-core >=0.4 && <0.5,
     optparse-applicative >=0.17 && <0.20,
     web-rep,
-
