@@ -55,7 +55,7 @@ import Data.HashMap.Strict as HashMap
 import Data.Profunctor
 import Data.Text (Text)
 import Data.Text.Encoding
-import FlatParse.Basic
+import Circuit.Parser
 import GHC.Generics
 import MarkupParse
 import Network.Wai.Handler.WebSockets
@@ -163,7 +163,7 @@ codeBoxWith cfg =
     (view #codeBoxEmitterQueue cfg)
     (view #codeBoxCommitterQueue cfg)
     ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
-        . dimap (either (C.unpack >>> error) id . runParserEither parserJ . encodeUtf8) (mconcat . fmap (decodeUtf8 . code))
+        . dimap (either (decodeUtf8With lenientDecode >>> error) id . runParserEither parserJ . encodeUtf8) (mconcat . fmap (decodeUtf8 . code))
     )
 
 -- | Turn the default configuration into a live (Codensity) CodeBox
@@ -274,13 +274,13 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- * low-level JS conversions
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
-parserJ :: Parser e (ByteString, ByteString)
+parserJ :: Parser Text Char (ByteString, ByteString)
 parserJ = do
-  _ <- $(string "{\"event\":{\"element\":\"")
-  e <- byteStringOf $ some (satisfy (/= '"'))
-  _ <- $(string "\",\"value\":\"")
-  v <- byteStringOf $ some (satisfy (/= '"'))
-  _ <- $(string "\"}}")
+  _ <- () <$ string "{\"event\":{\"element\":\""
+  e <- byteStringOf' $ some (satisfy (/= '"'))
+  _ <- () <$ string "\",\"value\":\""
+  v <- byteStringOf' $ some (satisfy (/= '"'))
+  _ <- () <$ string "\"}}"
   pure (e, v)
 
 -- * code hooks
@@ -360,9 +360,9 @@ runScriptJs =
   Js
     "\nfunction insertScript ($script) {\n  var s = document.createElement('script')\n  s.type = 'text/javascript'\n  if ($script.src) {\n    s.onload = callback\n    s.onerror = callback\n    s.src = $script.src\n  } else {\n    s.textContent = $script.innerText\n  }\n\n  // re-insert the script tag so it executes.\n  document.head.appendChild(s)\n\n  // clean-up\n  $script.parentNode.removeChild($script)\n}\n\nfunction runScripts ($container) {\n  // get scripts tags from a node\n  var $scripts = $container.querySelectorAll('script')\n  $scripts.forEach(function ($script) {\n    insertScript($script)\n  })\n}\n"
 
--- | Run a Parser, throwing away leftovers. Returns Left on 'Fail' or 'Err'.
-runParserEither :: Parser ByteString a -> ByteString -> Either ByteString a
-runParserEither p bs = case runParser p bs of
-  Err e -> Left e
-  OK a _ -> Right a
-  Fail -> Left "uncaught parse error"
+-- | Run a Parser, throwing away leftovers. Returns Left on failure.
+runParserEither :: Parser Text Char a -> ByteString -> Either ByteString a
+runParserEither p b = case runParser p b of
+  These a _ -> Right a
+  This a    -> Right a
+  That _    -> Left "uncaught parse error"

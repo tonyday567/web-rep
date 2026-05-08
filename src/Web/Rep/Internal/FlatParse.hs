@@ -1,19 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 
--- | flatparse parsing helpers
+-- | Parser helpers built on circuits-parser (replaces flatparse).
 --
 -- This module is exposed only for testing via doctest-parallel and is not intended to form part of the stable API.
 module Web.Rep.Internal.FlatParse
-  ( -- * Parsing
+  ( -- * Running
     runParserMaybe,
     runParserEither,
     runParser_,
-
-    -- * Flatparse re-exports
     runParser,
+
+    -- * Type
     Parser,
-    Result (..),
 
     -- * Parsers
     isWhitespace,
@@ -41,262 +39,156 @@ module Web.Rep.Internal.FlatParse
     signed,
     byteStringOf',
     comma,
+    takeRest,
   )
 where
 
+import Circuit.Parser
 import Data.Bool
 import Data.ByteString (ByteString)
+import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
+import Data.Text.Encoding.Error (lenientDecode)
+import Data.Text qualified as T
+import Data.ByteString.Char8 qualified as B
 import Data.Char hiding (isDigit)
-import FlatParse.Basic hiding (cut, take)
 import GHC.Exts
 import Prelude hiding (replicate)
 
--- $setup
--- >>> :set -XTemplateHaskell
--- >>> :set -XOverloadedStrings
--- >>> import Web.Rep.Internal.FlatParse
--- >>> import FlatParse.Basic
-
--- | Run a Parser, throwing away leftovers. Nothing on 'Fail' or 'Err'.
---
--- >>> runParserMaybe ws "x"
--- Nothing
---
--- >>> runParserMaybe ws " x"
--- Just ' '
-runParserMaybe :: Parser e a -> ByteString -> Maybe a
+-- | Run a Parser, throwing away leftovers. Nothing on failure.
+runParserMaybe :: Parser Text Char a -> ByteString -> Maybe a
 runParserMaybe p b = case runParser p b of
-  OK r _ -> Just r
-  Fail -> Nothing
-  Err _ -> Nothing
+  These r _ -> Just r
+  This r    -> Just r
+  That _    -> Nothing
 
--- | Run a Parser, throwing away leftovers. Returns Left on 'Fail' or 'Err'.
---
--- >>> runParserEither ws " x"
--- Right ' '
-runParserEither :: (IsString e) => Parser e a -> ByteString -> Either e a
-runParserEither p bs = case runParser p bs of
-  Err e -> Left e
-  OK a _ -> Right a
-  Fail -> Left "uncaught parse error"
+-- | Run a Parser, throwing away leftovers. Returns Left on failure.
+runParserEither :: Parser Text Char a -> ByteString -> Either ByteString a
+runParserEither p b = case runParser p b of
+  These a _ -> Right a
+  This a    -> Right a
+  That _    -> Left "uncaught parse error"
 
 -- | Run parser, discards leftovers & throws an error on failure.
---
--- >>> runParser_ ws " "
--- ' '
-runParser_ :: Parser String a -> ByteString -> a
-runParser_ p bs = case runParser p bs of
-  Err e -> error e
-  OK a "" -> a
-  OK _ _ -> error "leftovers"
-  Fail -> error "uncaught parse error"
+runParser_ :: Parser Text Char a -> ByteString -> a
+runParser_ p b = case runParser p b of
+  These a "" -> a
+  This a     -> a
+  _          -> error "uncaught parse error"
 
 -- | Consume whitespace.
---
--- >>> runParser ws_ " \nx"
--- OK () "x"
---
--- >>> runParser ws_ "x"
--- OK () "x"
-ws_ :: Parser e ()
-ws_ =
-  $( switch
-       [|
-         case _ of
-           " " -> ws_
-           "\n" -> ws_
-           "\t" -> ws_
-           "\r" -> ws_
-           "\f" -> ws_
-           _ -> pure ()
-         |]
-   )
+ws_ :: Parser Text Char ()
+ws_ = skipWhile isWhitespace
 {-# INLINE ws_ #-}
 
--- | \\n \\t \\f \\r and space
+-- Whitespace predicate
 isWhitespace :: Char -> Bool
-isWhitespace ' ' = True -- \x20 space
-isWhitespace '\x0a' = True -- \n linefeed
-isWhitespace '\x09' = True -- \t tab
-isWhitespace '\x0c' = True -- \f formfeed
-isWhitespace '\x0d' = True -- \r carriage return
-isWhitespace _ = False
+isWhitespace ' '     = True
+isWhitespace '\x0a'  = True
+isWhitespace '\x09'  = True
+isWhitespace '\x0c'  = True
+isWhitespace '\x0d'  = True
+isWhitespace _       = False
 {-# INLINE isWhitespace #-}
 
 -- | single whitespace
---
--- >>> runParser ws " \nx"
--- OK ' ' "\nx"
-ws :: Parser e Char
+ws :: Parser Text Char Char
 ws = satisfy isWhitespace
 
 -- | multiple whitespace
---
--- >>> runParser wss " \nx"
--- OK " \n" "x"
---
--- >>> runParser wss "x"
--- Fail
-wss :: Parser e ByteString
-wss = byteStringOf $ some ws
+wss :: Parser Text Char ByteString
+wss = byteStringOf' $ some ws
 
 -- | Single quote
---
--- >>> runParserMaybe sq "'"
--- Just ()
-sq :: ParserT st e ()
-sq = $(char '\'')
+sq :: Parser Text Char ()
+sq = () <$ char '\''
 
 -- | Double quote
---
--- >>> runParserMaybe dq "\""
--- Just ()
-dq :: ParserT st e ()
-dq = $(char '"')
+dq :: Parser Text Char ()
+dq = () <$ char '"'
 
 -- | Parse whilst not a specific character
---
--- >>> runParser (nota 'x') "abcxyz"
--- OK "abc" "xyz"
-nota :: Char -> Parser e ByteString
-nota c = withSpan (skipMany (satisfy (/= c))) (\() s -> unsafeSpanToByteString s)
+nota :: Char -> Parser Text Char ByteString
+nota c = byteStringOf' $ skipMany (satisfy (/= c))
 {-# INLINE nota #-}
 
 -- | Parse whilst satisfying a predicate.
---
--- >>> runParser (isa (=='x')) "xxxabc"
--- OK "xxx" "abc"
-isa :: (Char -> Bool) -> Parser e ByteString
-isa p = withSpan (skipMany (satisfy p)) (\() s -> unsafeSpanToByteString s)
+isa :: (Char -> Bool) -> Parser Text Char ByteString
+isa p = byteStringOf' $ skipMany (satisfy p)
 {-# INLINE isa #-}
 
--- | 'byteStringOf' but using withSpan internally. Doesn't seems faster...
-byteStringOf' :: Parser e a -> Parser e ByteString
-byteStringOf' p = withSpan p (\_ s -> unsafeSpanToByteString s)
+-- | Capture consumed input.
+byteStringOf' :: Parser Text Char a -> Parser Text Char ByteString
+byteStringOf' p = fst <$> captured p
 {-# INLINE byteStringOf' #-}
 
 -- | A single-quoted string.
-wrappedSq :: Parser b ByteString
-wrappedSq = $(char '\'') *> nota '\'' <* $(char '\'')
+wrappedSq :: Parser Text Char ByteString
+wrappedSq = sq *> nota '\'' <* sq
 {-# INLINE wrappedSq #-}
 
 -- | A double-quoted string.
-wrappedDq :: Parser b ByteString
-wrappedDq = $(char '"') *> nota '"' <* $(char '"')
+wrappedDq :: Parser Text Char ByteString
+wrappedDq = dq *> nota '"' <* dq
 {-# INLINE wrappedDq #-}
 
 -- | A single-quoted or double-quoted string.
---
--- >>> runParserMaybe wrappedQ "\"quoted\""
--- Just "quoted"
---
--- >>> runParserMaybe wrappedQ "'quoted'"
--- Just "quoted"
-wrappedQ :: Parser e ByteString
-wrappedQ =
-  wrappedDq
-    <|> wrappedSq
+wrappedQ :: Parser Text Char ByteString
+wrappedQ = wrappedDq <|> wrappedSq
 {-# INLINE wrappedQ #-}
 
 -- | A single-quoted or double-quoted wrapped parser.
---
--- >>> runParser (wrappedQNoGuard (many $ satisfy (/= '"'))) "\"name\""
--- OK "name" ""
---
--- Will consume quotes if the underlying parser does.
---
--- >>> runParser (wrappedQNoGuard (many anyChar)) "\"name\""
--- Fail
-wrappedQNoGuard :: Parser e a -> Parser e a
+wrappedQNoGuard :: Parser Text Char a -> Parser Text Char a
 wrappedQNoGuard p = wrapped dq p <|> wrapped sq p
 
--- | xml production [25]
---
--- >>> runParserMaybe eq " = "
--- Just ()
---
--- >>> runParserMaybe eq "="
--- Just ()
-eq :: Parser e ()
-eq = ws_ *> $(char '=') <* ws_
+-- | eq production: = with optional whitespace around
+eq :: Parser Text Char ()
+eq = ws_ *> (() <$ char '=') <* ws_
 {-# INLINE eq #-}
 
 -- | Some with a separator.
---
--- >>> runParser (sep ws (many (satisfy (/= ' ')))) "a b c"
--- OK ["a","b","c"] ""
-sep :: Parser e s -> Parser e a -> Parser e [a]
+sep :: Parser Text Char s -> Parser Text Char a -> Parser Text Char [a]
 sep s p = (:) <$> p <*> many (s *> p)
 
 -- | Parser bracketed by two other parsers.
---
--- >>> runParser (bracketed ($(char '[')) ($(char ']')) (many (satisfy (/= ']')))) "[bracketed]"
--- OK "bracketed" ""
-bracketed :: Parser e b -> Parser e b -> Parser e a -> Parser e a
+bracketed :: Parser Text Char b -> Parser Text Char b -> Parser Text Char a -> Parser Text Char a
 bracketed o c p = o *> p <* c
 {-# INLINE bracketed #-}
 
 -- | Parser bracketed by square brackets.
---
--- >>> runParser bracketedSB "[bracketed]"
--- OK "bracketed" ""
-bracketedSB :: Parser e [Char]
-bracketedSB = bracketed $(char '[') $(char ']') (many (satisfy (/= ']')))
+bracketedSB :: Parser Text Char String
+bracketedSB = bracketed (() <$ char '[') (() <$ char ']') (many (satisfy (/= ']')))
 
 -- | Parser wrapped by another parser.
---
--- >>> runParser (wrapped ($(char '"')) (many (satisfy (/= '"')))) "\"wrapped\""
--- OK "wrapped" ""
-wrapped :: Parser e () -> Parser e a -> Parser e a
+wrapped :: Parser Text Char () -> Parser Text Char a -> Parser Text Char a
 wrapped x p = bracketed x x p
 {-# INLINE wrapped #-}
 
 -- | A single digit
---
--- >>> runParserMaybe digit "5"
--- Just 5
-digit :: Parser e Int
+digit :: Parser Text Char Int
 digit = (\c -> ord c - ord '0') <$> satisfyAscii isDigit
 
 -- | An (unsigned) 'Int' parser
---
--- >>> runParserMaybe int "567"
--- Just 567
-int :: Parser e Int
+int :: Parser Text Char Int
 int = do
   (place, n) <- chainr (\n (!place, !acc) -> (place * 10, acc + place * n)) digit (pure (1, 0))
   case place of
     1 -> empty
     _ -> pure n
 
-digits :: Parser e (Int, Int)
+digits :: Parser Text Char (Int, Int)
 digits = do
   (place, n) <- chainr (\n (!place, !acc) -> (place * 10, acc + place * n)) digit (pure (1, 0))
   case place of
     1 -> empty
     _ -> pure (place, n)
 
--- | A 'Double' parser. uiua does not parse .1 as a double.
---
--- >>> runParser double "1.234x"
--- OK 1.234 "x"
---
--- >>> runParser double "."
--- Fail
---
--- >>> runParser double "123"
--- OK 123.0 ""
---
--- >>> runParser double ".123"
--- Fail
---
--- >>> runParser double "123."
--- OK 123.0 "."
-double :: Parser e Double
+-- | A 'Double' parser.
+double :: Parser Text Char Double
 double = do
   (placel, nl) <- digits
   withOption
-    ($(char '.') *> digits)
+    ((() <$ char '.') *> digits)
     ( \(placer, nr) ->
         case placel of
           1 -> empty
@@ -307,17 +199,13 @@ double = do
         _ -> pure $ fromIntegral nl
     )
 
-minus :: Parser e ()
-minus = $(char '-') <|> byteString "¯"
+minus :: Parser Text Char ()
+minus = (() <$ char '-') <|> string "¯"
 
--- | Parser for a signed prefix to a number. Unlike uiua, this parses '-' as a negative number prefix.
---
--- >>> runParser (signed double) "-1.234x"
--- OK (-1.234) "x"
---
--- >>> runParser (signed double) "¯1.234x"
--- OK (-1.234) "x"
-signed :: (Num b) => Parser e b -> Parser e b
+stringBs bs = () <$ string (decodeUtf8With lenientDecode bs)
+
+-- | Parser for a signed prefix to a number.
+signed :: (Num b) => Parser Text Char b -> Parser Text Char b
 signed p = do
   m <- optional minus
   case m of
@@ -325,8 +213,5 @@ signed p = do
     Just () -> negate <$> p
 
 -- | Comma parser
---
--- >>> runParserMaybe comma ","
--- Just ()
-comma :: Parser e ()
-comma = $(char ',')
+comma :: Parser Text Char ()
+comma = () <$ char ','

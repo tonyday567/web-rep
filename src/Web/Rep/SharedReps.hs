@@ -47,7 +47,7 @@ import Data.ByteString (ByteString, intercalate)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
 import Data.Maybe
-import FlatParse.Basic hiding (take)
+import Circuit.Parser (takeRest)
 import MarkupParse
 import Optics.Core hiding (element)
 import Optics.Zoom
@@ -223,7 +223,7 @@ dropdown p pr label opts v =
 dropdownMultiple ::
   (Monad m) =>
   -- | parse an a from ByteString
-  Parser ByteString a ->
+  Parser Text Char a ->
   -- | print an a to ByteString
   (a -> ByteString) ->
   -- | label suggestion

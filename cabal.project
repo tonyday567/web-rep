@@ -1,8 +1,5 @@
 packages:
   web-rep.cabal
-
-write-ghc-environment-files: always
-
-allow-newer:
-  *:base,
-  *:template-haskell
+  /Users/tonyday567/haskell/circuits-parser/circuits-parser.cabal
+  /Users/tonyday567/haskell/circuits/circuits.cabal
+  /Users/tonyday567/haskell/markup-parse/markup-parse.cabal

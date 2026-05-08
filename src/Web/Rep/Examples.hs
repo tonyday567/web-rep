@@ -19,7 +19,6 @@ module Web.Rep.Examples
 where
 
 import Data.ByteString (ByteString)
-import FlatParse.Basic (takeRest)
 import GHC.Generics
 import MarkupParse
 import Optics.Core hiding (element)
