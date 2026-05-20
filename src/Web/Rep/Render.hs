@@ -19,6 +19,7 @@ import Data.Foldable
 import MarkupParse
 import Optics.Core hiding (element)
 import Web.Rep.Html
+import Web.Rep.Internal.FlatParse (strToUtf8)
 import Web.Rep.Page
 
 -- | Render a Page with the default configuration into Html.

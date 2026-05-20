@@ -25,6 +25,7 @@ import Data.HashMap.Strict qualified as HashMap
 import MarkupParse
 import Optics.Core
 import Optics.Zoom
+import Web.Rep.Internal.FlatParse (strToUtf8)
 
 -- |
 -- Information contained in a web page can usually be considered to be isomorphic to a map of named values - a 'HashMap'. This is especially true when considering a differential of information contained in a web page. Looking at a page from the outside, it often looks like a streaming differential of a hashmap.

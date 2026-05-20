@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Data.Text.Encoding
 import GHC.Generics
 import MarkupParse
+import Web.Rep.Internal.FlatParse (strToUtf8)
 
 -- | Conversion to a 'ByteString'
 class ToByteString a where

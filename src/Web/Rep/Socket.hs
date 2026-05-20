@@ -51,10 +51,12 @@ import Data.Bifunctor
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as C
 import Data.Functor.Contravariant
+import Web.Rep.Internal.FlatParse (byteStringOf', runParserEither, strToUtf8, utf8ToStr)
 import Data.HashMap.Strict as HashMap
 import Data.Profunctor
 import Data.Text (Text)
 import Data.Text.Encoding
+import Data.Text.Encoding.Error (lenientDecode)
 import Circuit.Parser
 import GHC.Generics
 import MarkupParse
@@ -163,7 +165,7 @@ codeBoxWith cfg =
     (view #codeBoxEmitterQueue cfg)
     (view #codeBoxCommitterQueue cfg)
     ( serveSocketBox (view #codeBoxSocket cfg) (view #codeBoxPage cfg)
-        . dimap (either (decodeUtf8With lenientDecode >>> error) id . runParserEither parserJ . encodeUtf8) (mconcat . fmap (decodeUtf8 . code))
+        . dimap (either (C.unpack >>> error) id . runParserEither parserJ . encodeUtf8) (mconcat . fmap (decodeUtf8 . code))
     )
 
 -- | Turn the default configuration into a live (Codensity) CodeBox
@@ -274,7 +276,7 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- * low-level JS conversions
 
 -- | {"event":{"element":"textid","value":"abcdees"}}
-parserJ :: Parser Text Char (ByteString, ByteString)
+parserJ :: Parser ByteString Char (ByteString, ByteString)
 parserJ = do
   _ <- () <$ string "{\"event\":{\"element\":\""
   e <- byteStringOf' $ some (satisfy (/= '"'))
@@ -360,9 +362,4 @@ runScriptJs =
   Js
     "\nfunction insertScript ($script) {\n  var s = document.createElement('script')\n  s.type = 'text/javascript'\n  if ($script.src) {\n    s.onload = callback\n    s.onerror = callback\n    s.src = $script.src\n  } else {\n    s.textContent = $script.innerText\n  }\n\n  // re-insert the script tag so it executes.\n  document.head.appendChild(s)\n\n  // clean-up\n  $script.parentNode.removeChild($script)\n}\n\nfunction runScripts ($container) {\n  // get scripts tags from a node\n  var $scripts = $container.querySelectorAll('script')\n  $scripts.forEach(function ($script) {\n    insertScript($script)\n  })\n}\n"
 
--- | Run a Parser, throwing away leftovers. Returns Left on failure.
-runParserEither :: Parser Text Char a -> ByteString -> Either ByteString a
-runParserEither p b = case runParser p b of
-  These a _ -> Right a
-  This a    -> Right a
-  That _    -> Left "uncaught parse error"
+

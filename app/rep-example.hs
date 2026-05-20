@@ -10,6 +10,7 @@ import Optics.Core hiding (element)
 import Options.Applicative
 import Web.Rep
 import Web.Rep.Examples
+import Web.Rep.Internal.FlatParse (strToUtf8)
 import Prelude
 
 data AppType

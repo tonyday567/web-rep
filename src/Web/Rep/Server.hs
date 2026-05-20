@@ -16,6 +16,7 @@ import Optics.Core hiding (only)
 import Web.Rep.Page
 import Web.Rep.Render
 import Web.Scotty
+import Web.Rep.Internal.FlatParse (utf8ToStr)
 
 -- | serve a Page via a ScottyM
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()
