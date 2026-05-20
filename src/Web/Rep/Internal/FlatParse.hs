@@ -59,13 +59,6 @@ import Data.Char
 import GHC.Exts
 import Prelude hiding (replicate)
 
--- | Run a Parser, throwing away leftovers. Nothing on failure.
-runParserMaybe :: Parser B.ByteString Char a -> ByteString -> Maybe a
-runParserMaybe p b = case runParser p b of
-  These r _ -> Just r
-  This r    -> Just r
-  That _    -> Nothing
-
 -- | Run a Parser, throwing away leftovers. Returns Left on failure.
 runParserEither :: Parser B.ByteString Char a -> ByteString -> Either ByteString a
 runParserEither p b = case runParser p b of
