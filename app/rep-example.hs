@@ -5,7 +5,7 @@
 import Box
 import Control.Monad
 import Data.Bifunctor
-import MarkupParse hiding (Parser)
+import Circuit.Markup hiding (Parser)
 import Optics.Core hiding (element)
 import Options.Applicative
 import Web.Rep

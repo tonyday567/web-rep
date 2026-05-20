@@ -48,7 +48,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
 import Data.Maybe
 import Circuit.Parser (satisfy, some, takeRest)
-import MarkupParse
+import Circuit.Markup
 import Optics.Core hiding (element)
 import Optics.Zoom
 import Web.Rep.Bootstrap

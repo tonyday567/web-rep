@@ -22,7 +22,7 @@ import Data.Biapplicative
 import Data.ByteString (ByteString)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
-import MarkupParse
+import Circuit.Markup
 import Optics.Core
 import Optics.Zoom
 import Web.Rep.Internal.FlatParse (strToUtf8)

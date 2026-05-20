@@ -16,7 +16,7 @@ import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
 import Data.Foldable
-import MarkupParse
+import Circuit.Markup
 import Optics.Core hiding (element)
 import Web.Rep.Html
 import Web.Rep.Internal.FlatParse (strToUtf8)

@@ -23,7 +23,7 @@ where
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as C
 import GHC.Generics
-import MarkupParse
+import Circuit.Markup
 import Optics.Core
 
 -- | Components of a web page.

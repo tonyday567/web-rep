@@ -21,14 +21,14 @@ import Control.Monad.State.Lazy
 import Data.Bool
 import Data.ByteString (ByteString)
 import Data.Functor.Identity
-import MarkupParse
+import Circuit.Markup
 import Web.Rep.Page
 import Web.Rep.Shared
 
 -- $setup
 -- >>> :set -XOverloadedStrings
 -- >>> import Web.Rep
--- >>> import MarkupParse
+-- >>> import Circuit.Markup
 
 -- | bootstrap css link
 bootstrapCss :: Markup

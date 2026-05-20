@@ -10,7 +10,7 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Data.ByteString qualified as B
 import Data.Text.Lazy (pack)
-import MarkupParse
+import Circuit.Markup
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import Optics.Core hiding (only)
 import Web.Rep.Page

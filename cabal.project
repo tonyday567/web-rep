@@ -1,5 +1,6 @@
 packages:
   web-rep.cabal
-  /Users/tonyday567/haskell/circuits-parser/circuits-parser.cabal
-  /Users/tonyday567/haskell/circuits/circuits.cabal
-  /Users/tonyday567/haskell/markup-parse/markup-parse.cabal
+  ../circuits-parser/circuits-parser.cabal
+  ../circuits/circuits.cabal
+
+write-ghc-environment-files: always

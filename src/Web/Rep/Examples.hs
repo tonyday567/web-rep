@@ -20,7 +20,7 @@ where
 
 import Data.ByteString (ByteString)
 import GHC.Generics
-import MarkupParse
+import Circuit.Markup
 import Optics.Core hiding (element)
 import Web.Rep
 import Web.Rep.Internal.FlatParse

@@ -59,7 +59,7 @@ import Data.Text.Encoding
 import Data.Text.Encoding.Error (lenientDecode)
 import Circuit.Parser
 import GHC.Generics
-import MarkupParse
+import Circuit.Markup
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets qualified as WS
 import Optics.Core hiding (element)

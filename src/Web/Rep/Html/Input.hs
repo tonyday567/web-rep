@@ -17,7 +17,7 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text.Encoding
 import GHC.Generics
-import MarkupParse
+import Circuit.Markup
 import Web.Rep.Internal.FlatParse (strToUtf8)
 
 -- | Conversion to a 'ByteString'

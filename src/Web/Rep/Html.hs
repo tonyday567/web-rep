@@ -9,12 +9,12 @@ module Web.Rep.Html
 where
 
 import Data.ByteString (ByteString)
-import MarkupParse
+import Circuit.Markup
 
 -- $setup
 --
 -- >>> import Web.Rep.Html
--- >>> import MarkupParse
+-- >>> import Circuit.Markup
 -- >>> :set -XOverloadedStrings
 
 -- | Convert a link to a css library from text to html.
