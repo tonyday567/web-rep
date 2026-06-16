@@ -17,11 +17,11 @@ module Web.Rep.Bootstrap
   )
 where
 
+import Circuit.Markup
 import Control.Monad.State.Lazy
 import Data.Bool
 import Data.ByteString (ByteString)
 import Data.Functor.Identity
-import Circuit.Markup
 import Web.Rep.Page
 import Web.Rep.Shared
 

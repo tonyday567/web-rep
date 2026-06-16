@@ -10,6 +10,7 @@ module Web.Rep.Html.Input
   )
 where
 
+import Circuit.Markup
 import Data.Bool
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as C
@@ -17,7 +18,6 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Text.Encoding
 import GHC.Generics
-import Circuit.Markup
 import Web.Rep.Internal.FlatParse (strToUtf8)
 
 -- | Conversion to a 'ByteString'

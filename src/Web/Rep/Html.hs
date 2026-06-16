@@ -8,8 +8,8 @@ module Web.Rep.Html
   )
 where
 
-import Data.ByteString (ByteString)
 import Circuit.Markup
+import Data.ByteString (ByteString)
 
 -- $setup
 --

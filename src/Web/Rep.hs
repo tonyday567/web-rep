@@ -54,8 +54,8 @@ module Web.Rep
   )
 where
 
-import Data.HashMap.Strict qualified as HashMap
 import Circuit.Markup (RenderStyle (..))
+import Data.HashMap.Strict qualified as HashMap
 import Web.Rep.Bootstrap
 import Web.Rep.Html
 import Web.Rep.Html.Input

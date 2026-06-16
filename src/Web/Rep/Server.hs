@@ -6,17 +6,17 @@ module Web.Rep.Server
   )
 where
 
+import Circuit.Markup
 import Control.Monad
 import Control.Monad.Trans.Class
 import Data.ByteString qualified as B
 import Data.Text.Lazy (pack)
-import Circuit.Markup
 import Network.Wai.Middleware.Static (addBase, noDots, only, staticPolicy)
 import Optics.Core hiding (only)
+import Web.Rep.Internal.FlatParse (utf8ToStr)
 import Web.Rep.Page
 import Web.Rep.Render
 import Web.Scotty
-import Web.Rep.Internal.FlatParse (utf8ToStr)
 
 -- | serve a Page via a ScottyM
 servePageWith :: RoutePattern -> PageConfig -> Page -> ScottyM ()

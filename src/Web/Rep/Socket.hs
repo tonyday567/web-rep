@@ -43,6 +43,8 @@ where
 
 import Box
 import Box.Websocket (serverApp)
+import Circuit.Markup
+import Circuit.Parser
 import Control.Category ((>>>))
 import Control.Concurrent.Async
 import Control.Monad
@@ -51,19 +53,17 @@ import Data.Bifunctor
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as C
 import Data.Functor.Contravariant
-import Web.Rep.Internal.FlatParse (byteStringOf', runParserEither, strToUtf8, utf8ToStr)
 import Data.HashMap.Strict as HashMap
 import Data.Profunctor
 import Data.Text (Text)
 import Data.Text.Encoding
 import Data.Text.Encoding.Error (lenientDecode)
-import Circuit.Parser
 import GHC.Generics
-import Circuit.Markup
 import Network.Wai.Handler.WebSockets
 import Network.WebSockets qualified as WS
 import Optics.Core hiding (element)
 import Web.Rep.Bootstrap
+import Web.Rep.Internal.FlatParse (byteStringOf', runParserEither, strToUtf8, utf8ToStr)
 import Web.Rep.Page
 import Web.Rep.Server
 import Web.Rep.Shared
@@ -361,5 +361,3 @@ runScriptJs :: Js
 runScriptJs =
   Js
     "\nfunction insertScript ($script) {\n  var s = document.createElement('script')\n  s.type = 'text/javascript'\n  if ($script.src) {\n    s.onload = callback\n    s.onerror = callback\n    s.src = $script.src\n  } else {\n    s.textContent = $script.innerText\n  }\n\n  // re-insert the script tag so it executes.\n  document.head.appendChild(s)\n\n  // clean-up\n  $script.parentNode.removeChild($script)\n}\n\nfunction runScripts ($container) {\n  // get scripts tags from a node\n  var $scripts = $container.querySelectorAll('script')\n  $scripts.forEach(function ($script) {\n    insertScript($script)\n  })\n}\n"
-
-

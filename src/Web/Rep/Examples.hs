@@ -18,9 +18,9 @@ module Web.Rep.Examples
   )
 where
 
+import Circuit.Markup
 import Data.ByteString (ByteString)
 import GHC.Generics
-import Circuit.Markup
 import Optics.Core hiding (element)
 import Web.Rep
 import Web.Rep.Internal.FlatParse

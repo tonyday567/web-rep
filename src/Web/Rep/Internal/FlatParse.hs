@@ -50,12 +50,12 @@ where
 import Circuit.Parser
 import Data.Bool
 import Data.ByteString (ByteString)
-import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
-import Data.Text.Encoding.Error (lenientDecode)
-import Data.Text qualified as T
 import Data.ByteString.Char8 qualified as B
 import Data.Char
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
+import Data.Text.Encoding.Error (lenientDecode)
 import GHC.Exts
 import Prelude hiding (replicate)
 
@@ -63,15 +63,15 @@ import Prelude hiding (replicate)
 runParserEither :: Parser B.ByteString Char a -> ByteString -> Either ByteString a
 runParserEither p b = case runParser p b of
   These a _ -> Right a
-  This a    -> Right a
-  That _    -> Left "uncaught parse error"
+  This a -> Right a
+  That _ -> Left "uncaught parse error"
 
 -- | Run parser, discards leftovers & throws an error on failure.
 runParser_ :: Parser B.ByteString Char a -> ByteString -> a
 runParser_ p b = case runParser p b of
   These a t | B.null t -> a
-  This a               -> a
-  _                    -> error "uncaught parse error"
+  This a -> a
+  _ -> error "uncaught parse error"
 
 -- | Consume whitespace.
 ws_ :: Parser B.ByteString Char ()
@@ -80,12 +80,12 @@ ws_ = skipWhile isWhitespace
 
 -- Whitespace predicate
 isWhitespace :: Char -> Bool
-isWhitespace ' '     = True
-isWhitespace '\x0a'  = True
-isWhitespace '\x09'  = True
-isWhitespace '\x0c'  = True
-isWhitespace '\x0d'  = True
-isWhitespace _       = False
+isWhitespace ' ' = True
+isWhitespace '\x0a' = True
+isWhitespace '\x09' = True
+isWhitespace '\x0c' = True
+isWhitespace '\x0d' = True
+isWhitespace _ = False
 {-# INLINE isWhitespace #-}
 
 -- | single whitespace

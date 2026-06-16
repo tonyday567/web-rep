@@ -20,10 +20,10 @@ module Web.Rep.Page
   )
 where
 
+import Circuit.Markup
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as C
 import GHC.Generics
-import Circuit.Markup
 import Optics.Core
 
 -- | Components of a web page.

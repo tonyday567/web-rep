@@ -3,9 +3,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Box
+import Circuit.Markup hiding (Parser)
 import Control.Monad
 import Data.Bifunctor
-import Circuit.Markup hiding (Parser)
 import Optics.Core hiding (element)
 import Options.Applicative
 import Web.Rep

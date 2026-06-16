@@ -39,6 +39,8 @@ module Web.Rep.SharedReps
 where
 
 import Box.Codensity ()
+import Circuit.Markup
+import Circuit.Parser (satisfy, some, takeRest)
 import Control.Monad
 import Control.Monad.State.Lazy
 import Data.Biapplicative
@@ -47,8 +49,6 @@ import Data.ByteString (ByteString, intercalate)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List qualified as List
 import Data.Maybe
-import Circuit.Parser (satisfy, some, takeRest)
-import Circuit.Markup
 import Optics.Core hiding (element)
 import Optics.Zoom
 import Web.Rep.Bootstrap
