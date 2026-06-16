@@ -48,6 +48,7 @@ module Web.Rep.Internal.FlatParse
 where
 
 import Circuit.Parser
+import Control.Monad (void)
 import Data.Bool
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
@@ -98,11 +99,11 @@ wss = byteStringOf' $ some ws
 
 -- | Single quote
 sq :: Parser B.ByteString Char ()
-sq = Control.Monad.void (char '\'')
+sq = void (char '\'')
 
 -- | Double quote
 dq :: Parser B.ByteString Char ()
-dq = Control.Monad.void (char '"')
+dq = void (char '"')
 
 -- | Parse whilst not a specific character
 nota :: Char -> Parser B.ByteString Char ByteString
@@ -140,7 +141,7 @@ wrappedQNoGuard p = wrapped dq p <|> wrapped sq p
 
 -- | eq production: = with optional whitespace around
 eq :: Parser B.ByteString Char ()
-eq = ws_ *> Control.Monad.void (char '=') <* ws_
+eq = ws_ *> void (char '=') <* ws_
 {-# INLINE eq #-}
 
 -- | Some with a separator.
@@ -154,7 +155,7 @@ bracketed o c p = o *> p <* c
 
 -- | Parser bracketed by square brackets.
 bracketedSB :: Parser B.ByteString Char String
-bracketedSB = bracketed (Control.Monad.void (char '[')) (Control.Monad.void (char ']')) (many (satisfy (/= ']')))
+bracketedSB = bracketed (void (char '[')) (void (char ']')) (many (satisfy (/= ']')))
 
 -- | Parser wrapped by another parser.
 wrapped :: Parser B.ByteString Char () -> Parser B.ByteString Char a -> Parser B.ByteString Char a
@@ -185,7 +186,7 @@ double :: Parser B.ByteString Char Double
 double = do
   (placel, nl) <- digits
   withOption
-    (Control.Monad.void (char '.') *> digits)
+    (void (char '.') *> digits)
     ( \(placer, nr) ->
         case placel of
           1 -> empty
@@ -197,9 +198,9 @@ double = do
     )
 
 minus :: Parser B.ByteString Char ()
-minus = Control.Monad.void (char '-') <|> Control.Monad.void (string "¯")
+minus = void (char '-') <|> void (string "¯")
 
-stringBs bs = Control.Monad.void (string (B.unpack bs))
+stringBs bs = void (string (B.unpack bs))
 
 -- | Parser for a signed prefix to a number.
 signed :: (Num b) => Parser B.ByteString Char b -> Parser B.ByteString Char b
@@ -211,7 +212,7 @@ signed p = do
 
 -- | Comma parser
 comma :: Parser B.ByteString Char ()
-comma = Control.Monad.void (char ',')
+comma = void (char ',')
 
 -- | Convert a 'String' to a UTF-8 encoded 'ByteString'.
 strToUtf8 :: String -> ByteString
