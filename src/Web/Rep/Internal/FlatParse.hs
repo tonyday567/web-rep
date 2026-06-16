@@ -140,7 +140,7 @@ wrappedQNoGuard p = wrapped dq p <|> wrapped sq p
 
 -- | eq production: = with optional whitespace around
 eq :: Parser B.ByteString Char ()
-eq = ws_ *> (Control.Monad.void (char '=')) <* ws_
+eq = ws_ *> Control.Monad.void (char '=') <* ws_
 {-# INLINE eq #-}
 
 -- | Some with a separator.
@@ -185,7 +185,7 @@ double :: Parser B.ByteString Char Double
 double = do
   (placel, nl) <- digits
   withOption
-    ((Control.Monad.void (char '.')) *> digits)
+    (Control.Monad.void (char '.') *> digits)
     ( \(placer, nr) ->
         case placel of
           1 -> empty
@@ -197,7 +197,7 @@ double = do
     )
 
 minus :: Parser B.ByteString Char ()
-minus = (Control.Monad.void (char '-')) <|> (Control.Monad.void (string "¯"))
+minus = Control.Monad.void (char '-') <|> Control.Monad.void (string "¯")
 
 stringBs bs = Control.Monad.void (string (B.unpack bs))
 
