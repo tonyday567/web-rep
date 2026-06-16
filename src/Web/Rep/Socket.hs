@@ -278,11 +278,11 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- | {"event":{"element":"textid","value":"abcdees"}}
 parserJ :: Parser ByteString Char (ByteString, ByteString)
 parserJ = do
-  _ <- void (string "{\"event\":{\"element\":\"")
+  void (string "{\"event\":{\"element\":\"")
   e <- byteStringOf' $ some (satisfy (/= '"'))
-  _ <- void (string "\",\"value\":\"")
+  void (string "\",\"value\":\"")
   v <- byteStringOf' $ some (satisfy (/= '"'))
-  _ <- void (string "\"}}")
+  void (string "\"}}")
   pure (e, v)
 
 -- * code hooks
