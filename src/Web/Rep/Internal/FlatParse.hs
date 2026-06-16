@@ -98,11 +98,11 @@ wss = byteStringOf' $ some ws
 
 -- | Single quote
 sq :: Parser B.ByteString Char ()
-sq = () <$ char '\''
+sq = Control.Monad.void (char '\'')
 
 -- | Double quote
 dq :: Parser B.ByteString Char ()
-dq = () <$ char '"'
+dq = Control.Monad.void (char '"')
 
 -- | Parse whilst not a specific character
 nota :: Char -> Parser B.ByteString Char ByteString
@@ -140,7 +140,7 @@ wrappedQNoGuard p = wrapped dq p <|> wrapped sq p
 
 -- | eq production: = with optional whitespace around
 eq :: Parser B.ByteString Char ()
-eq = ws_ *> (() <$ char '=') <* ws_
+eq = ws_ *> (Control.Monad.void (char '=')) <* ws_
 {-# INLINE eq #-}
 
 -- | Some with a separator.
@@ -154,7 +154,7 @@ bracketed o c p = o *> p <* c
 
 -- | Parser bracketed by square brackets.
 bracketedSB :: Parser B.ByteString Char String
-bracketedSB = bracketed (() <$ char '[') (() <$ char ']') (many (satisfy (/= ']')))
+bracketedSB = bracketed (Control.Monad.void (char '[')) (Control.Monad.void (char ']')) (many (satisfy (/= ']')))
 
 -- | Parser wrapped by another parser.
 wrapped :: Parser B.ByteString Char () -> Parser B.ByteString Char a -> Parser B.ByteString Char a
@@ -185,7 +185,7 @@ double :: Parser B.ByteString Char Double
 double = do
   (placel, nl) <- digits
   withOption
-    ((() <$ char '.') *> digits)
+    ((Control.Monad.void (char '.')) *> digits)
     ( \(placer, nr) ->
         case placel of
           1 -> empty
@@ -197,9 +197,9 @@ double = do
     )
 
 minus :: Parser B.ByteString Char ()
-minus = (() <$ char '-') <|> (() <$ string "¯")
+minus = (Control.Monad.void (char '-')) <|> (Control.Monad.void (string "¯"))
 
-stringBs bs = () <$ string (B.unpack bs)
+stringBs bs = Control.Monad.void (string (B.unpack bs))
 
 -- | Parser for a signed prefix to a number.
 signed :: (Num b) => Parser B.ByteString Char b -> Parser B.ByteString Char b
@@ -211,7 +211,7 @@ signed p = do
 
 -- | Comma parser
 comma :: Parser B.ByteString Char ()
-comma = () <$ char ','
+comma = Control.Monad.void (char ',')
 
 -- | Convert a 'String' to a UTF-8 encoded 'ByteString'.
 strToUtf8 :: String -> ByteString

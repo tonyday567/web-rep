@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | A socket between a web page and haskell, based on the box library.
@@ -278,11 +278,11 @@ servePlayStream pcfg cbcfg s = servePlayStreamWithBox pcfg s <$|> codeBoxWith cb
 -- | {"event":{"element":"textid","value":"abcdees"}}
 parserJ :: Parser ByteString Char (ByteString, ByteString)
 parserJ = do
-  _ <- () <$ string "{\"event\":{\"element\":\""
+  _ <- void (string "{\"event\":{\"element\":\"")
   e <- byteStringOf' $ some (satisfy (/= '"'))
-  _ <- () <$ string "\",\"value\":\""
+  _ <- void (string "\",\"value\":\"")
   v <- byteStringOf' $ some (satisfy (/= '"'))
-  _ <- () <$ string "\"}}"
+  _ <- void (string "\"}}")
   pure (e, v)
 
 -- * code hooks
