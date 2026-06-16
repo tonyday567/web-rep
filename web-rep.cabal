@@ -15,8 +15,6 @@ description:
 
 build-type: Simple
 tested-with:
-  ghc ==9.10.2
-  ghc ==9.12.3
   ghc ==9.14.1
 
 extra-doc-files:
